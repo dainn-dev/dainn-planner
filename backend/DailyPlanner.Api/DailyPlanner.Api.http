@@ -1,0 +1,289 @@
+# Daily Planner API Testing
+# Switch between local development and Docker environments
+
+# Local Development (default .NET port)
+@DailyPlanner.Api_HostAddress = http://localhost:5113
+
+# Docker Environment (uncomment to use)
+@DailyPlanner.Api_HostAddress = http://localhost:8080
+
+# Variables for authentication
+@token = {{login.response.body.data.token}}
+@userId = {{login.response.body.data.user.id}}
+
+###
+
+# Health Check / Swagger
+GET {{DailyPlanner.Api_HostAddress}}/swagger
+Accept: text/html
+
+###
+
+# ===================
+# AUTHENTICATION
+# ===================
+
+# Register new user
+# @name register
+POST {{DailyPlanner.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123!",
+  "confirmPassword": "Test123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+
+###
+
+# Login user
+# @name login
+POST {{DailyPlanner.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123!"
+}
+
+###
+
+# ===================
+# USER MANAGEMENT
+# ===================
+
+# Get current user profile
+GET {{DailyPlanner.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Update user profile
+PUT {{DailyPlanner.Api_HostAddress}}/api/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe Updated",
+  "email": "test@example.com"
+}
+
+###
+
+# ===================
+# TASKS MANAGEMENT
+# ===================
+
+# Get all tasks
+GET {{DailyPlanner.Api_HostAddress}}/api/tasks
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Get tasks for specific date
+GET {{DailyPlanner.Api_HostAddress}}/api/tasks?date=2024-12-01
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Get completed tasks only
+GET {{DailyPlanner.Api_HostAddress}}/api/tasks?completed=true
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Create new task
+POST {{DailyPlanner.Api_HostAddress}}/api/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Complete project documentation",
+  "description": "Write comprehensive documentation for the Daily Planner API",
+  "dueDate": "2024-12-15T10:00:00Z",
+  "priority": "High",
+  "category": "Work"
+}
+
+###
+
+# Update task
+PUT {{DailyPlanner.Api_HostAddress}}/api/tasks/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Complete project documentation - Updated",
+  "description": "Write comprehensive documentation for the Daily Planner API with examples",
+  "dueDate": "2024-12-16T10:00:00Z",
+  "priority": "High",
+  "category": "Work",
+  "isCompleted": false
+}
+
+###
+
+# Mark task as completed
+PATCH {{DailyPlanner.Api_HostAddress}}/api/tasks/1/complete
+Authorization: Bearer {{token}}
+
+###
+
+# Delete task
+DELETE {{DailyPlanner.Api_HostAddress}}/api/tasks/1
+Authorization: Bearer {{token}}
+
+###
+
+# ===================
+# GOALS MANAGEMENT
+# ===================
+
+# Get all goals
+GET {{DailyPlanner.Api_HostAddress}}/api/goals
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Get goals with filters
+GET {{DailyPlanner.Api_HostAddress}}/api/goals?status=InProgress&category=Personal&page=1&pageSize=10
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Create new goal
+POST {{DailyPlanner.Api_HostAddress}}/api/goals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Learn Docker and Containerization",
+  "description": "Master Docker, Docker Compose, and container orchestration",
+  "category": "Learning",
+  "targetDate": "2024-12-31T23:59:59Z",
+  "priority": "High"
+}
+
+###
+
+# Update goal
+PUT {{DailyPlanner.Api_HostAddress}}/api/goals/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Learn Docker and Containerization - Advanced",
+  "description": "Master Docker, Docker Compose, Kubernetes, and container orchestration",
+  "category": "Learning",
+  "targetDate": "2024-12-31T23:59:59Z",
+  "priority": "High",
+  "status": "InProgress"
+}
+
+###
+
+# Delete goal
+DELETE {{DailyPlanner.Api_HostAddress}}/api/goals/1
+Authorization: Bearer {{token}}
+
+###
+
+# ===================
+# EVENTS MANAGEMENT
+# ===================
+
+# Get all events
+GET {{DailyPlanner.Api_HostAddress}}/api/events
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Get events for date range
+GET {{DailyPlanner.Api_HostAddress}}/api/events?startDate=2024-12-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Create new event
+POST {{DailyPlanner.Api_HostAddress}}/api/events
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Team Meeting",
+  "description": "Weekly team sync meeting",
+  "startTime": "2024-12-15T09:00:00Z",
+  "endTime": "2024-12-15T10:00:00Z",
+  "location": "Conference Room A",
+  "isAllDay": false
+}
+
+###
+
+# Update event
+PUT {{DailyPlanner.Api_HostAddress}}/api/events/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Team Meeting - Updated",
+  "description": "Weekly team sync meeting with project updates",
+  "startTime": "2024-12-15T09:30:00Z",
+  "endTime": "2024-12-15T10:30:00Z",
+  "location": "Conference Room B",
+  "isAllDay": false
+}
+
+###
+
+# Delete event
+DELETE {{DailyPlanner.Api_HostAddress}}/api/events/1
+Authorization: Bearer {{token}}
+
+###
+
+# ===================
+# NOTIFICATIONS
+# ===================
+
+# Get user notifications
+GET {{DailyPlanner.Api_HostAddress}}/api/notifications
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Mark notification as read
+PATCH {{DailyPlanner.Api_HostAddress}}/api/notifications/1/read
+Authorization: Bearer {{token}}
+
+###
+
+# ===================
+# ADMIN ENDPOINTS
+# ===================
+
+# Get all users (Admin only)
+GET {{DailyPlanner.Api_HostAddress}}/api/admin/users
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+
+# Get system statistics (Admin only)
+GET {{DailyPlanner.Api_HostAddress}}/api/admin/stats
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###

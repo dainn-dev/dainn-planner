@@ -1,0 +1,15 @@
+using DailyPlanner.Application.DTOs;
+
+namespace DailyPlanner.Application.Interfaces;
+
+public interface IDailyTaskService
+{
+    Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize);
+    Task<ApiResponse<DailyTaskDto>> CreateTaskAsync(string userId, CreateDailyTaskRequest request);
+    Task<ApiResponse<DailyTaskDto>> UpdateTaskAsync(string userId, Guid taskId, UpdateDailyTaskRequest request);
+    Task<ApiResponse<object>> DeleteTaskAsync(string userId, Guid taskId);
+    Task<ApiResponse<DailyTaskDto>> ToggleTaskAsync(string userId, Guid taskId);
+    Task<ApiResponse<MainDailyGoalDto?>> GetMainGoalAsync(string userId, DateTime date);
+    Task<ApiResponse<MainDailyGoalDto>> UpsertMainGoalAsync(string userId, DateTime date, UpdateMainDailyGoalRequest request);
+}
+

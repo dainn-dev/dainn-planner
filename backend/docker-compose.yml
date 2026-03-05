@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dailyplanner-postgres
+    environment:
+      POSTGRES_DB: dainn-planner
+      POSTGRES_USER: mindlex_dev_usr
+      POSTGRES_PASSWORD: SF-05a_15aJe6LOu
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - dailyplanner-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mindlex_dev_usr -d dainn-planner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Daily Planner API
+  dailyplanner-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dailyplanner-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres:5432;Database=dainn-planner;Username=mindlex_dev_usr;Password=SF-05a_15aJe6LOu
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - dailyplanner-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  dailyplanner-network:
+    driver: bridge
