@@ -65,11 +65,15 @@ const DailyPage = () => {
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
   const [taskPage, setTaskPage] = useState(1);
-  const [taskPageSize] = useState(10);
+  const [taskPageSize] = useState(5);
   const [taskTotalCount, setTaskTotalCount] = useState(0);
   const [taskTotalAll, setTaskTotalAll] = useState(0);   // all tasks (completed + incomplete) for progress
   const [taskCompletedCount, setTaskCompletedCount] = useState(0);
-  const [taskFilter, setTaskFilter] = useState('daily'); // 'daily' = incomplete, 'completed' = completed
+  const [taskStatusFilter, setTaskStatusFilter] = useState(''); // '' = all, 'completed', 'incomplete'
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState(''); // '' | '0' | '1' | '2'
+  const [taskTagFilter, setTaskTagFilter] = useState(''); // '' or tag string
+  const [taskSortOrder, setTaskSortOrder] = useState('desc'); // 'desc' | 'asc'
+  const [filterExpanded, setFilterExpanded] = useState(false);
   const [taskIdInProgress, setTaskIdInProgress] = useState(null); // task id showing 3s progress before toggle
   const [toggleProgressPercent, setToggleProgressPercent] = useState(0); // 0..100 for inline progress bar
   const [notifications, setNotifications] = useState([
@@ -111,7 +115,7 @@ const DailyPage = () => {
   // Load tasks and main goal on mount and when pagination or filter changes
   useEffect(() => {
     loadData();
-  }, [taskPage, taskPageSize, taskFilter]);
+  }, [taskPage, taskPageSize, taskStatusFilter, taskPriorityFilter, taskTagFilter, taskSortOrder]);
 
   // When a task is in "progress" (user checked checkbox): animate bar for 3s then call toggle API and refresh
   useEffect(() => {
@@ -140,8 +144,13 @@ const DailyPage = () => {
       
       // Load tasks for today (paged, filtered)
       try {
-        const completedParam = taskFilter === 'completed' ? true : false;
-        const tasksData = await tasksAPI.getTasks({ date: today, page: taskPage, pageSize: taskPageSize, completed: completedParam });
+        const params = { date: today, page: taskPage, pageSize: taskPageSize };
+        if (taskStatusFilter === 'completed') params.completed = true;
+        else if (taskStatusFilter === 'incomplete') params.completed = false;
+        if (taskPriorityFilter !== '') params.priority = parseInt(taskPriorityFilter, 10);
+        if (taskTagFilter.trim() !== '') params.tag = taskTagFilter.trim();
+        if (taskSortOrder) params.sortOrder = taskSortOrder;
+        const tasksData = await tasksAPI.getTasks(params);
         const list = tasksData?.items ?? (Array.isArray(tasksData) ? tasksData : []);
         const total = tasksData?.totalCount ?? list.length;
         setTasks(list.map(mapTaskFromApi));
@@ -550,23 +559,95 @@ const DailyPage = () => {
                       </button>
                     </div>
                   )}
-                  </div>
-                  <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => { setTaskFilter('daily'); setTaskPage(1); }}
-                      className={`text-sm font-medium px-3 py-1.5 rounded transition-colors ${taskFilter === 'daily' ? 'text-white bg-primary shadow-sm shadow-primary/30' : 'text-gray-600 hover:text-[#111418] bg-gray-100 hover:bg-gray-200'}`}
+                      onClick={() => setFilterExpanded((v) => !v)}
+                      className={`flex items-center gap-1.5 p-2 rounded-md transition-colors ${filterExpanded ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
+                      aria-label={filterExpanded ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
+                      aria-expanded={filterExpanded}
                     >
-                      Hàng ngày
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setTaskFilter('completed'); setTaskPage(1); }}
-                      className={`text-sm font-medium px-3 py-1.5 rounded transition-colors ${taskFilter === 'completed' ? 'text-white bg-primary shadow-sm shadow-primary/30' : 'text-gray-600 hover:text-[#111418] bg-gray-100 hover:bg-gray-200'}`}
-                    >
-                      Hoàn thành
+                      <span className="material-symbols-outlined text-[20px]">
+                        {filterExpanded ? 'filter_list_off' : 'filter_list'}
+                      </span>
+                      <span className="text-sm font-medium hidden sm:inline">
+                        {filterExpanded ? 'Đóng bộ lọc' : 'Bộ lọc'}
+                      </span>
+                      {(taskStatusFilter || taskPriorityFilter || taskTagFilter) && (
+                        <span className="flex h-2 w-2 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                      )}
                     </button>
                   </div>
+                  {filterExpanded && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <span className="material-symbols-outlined text-[16px]">filter_list</span>
+                      <span className="shrink-0">Trạng thái:</span>
+                      <select
+                        value={taskStatusFilter}
+                        onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
+                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="completed">Hoàn thành</option>
+                        <option value="incomplete">Chưa hoàn thành</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <span className="material-symbols-outlined text-[16px]">flag</span>
+                      <span className="shrink-0">Ưu tiên:</span>
+                      <select
+                        value={taskPriorityFilter}
+                        onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
+                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="0">Thấp</option>
+                        <option value="1">Trung bình</option>
+                        <option value="2">Cao</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <span className="material-symbols-outlined text-[16px]">label</span>
+                      <span className="shrink-0">Nhãn:</span>
+                      <select
+                        value={taskTagFilter}
+                        onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
+                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="">Tất cả</option>
+                        {DEFAULT_TAGS.map((tag) => (
+                          <option key={tag} value={tag}>{tag}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <span className="material-symbols-outlined text-[16px]">sort</span>
+                      <span className="shrink-0">Sắp xếp:</span>
+                      <select
+                        value={taskSortOrder}
+                        onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
+                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="desc">Mới nhất</option>
+                        <option value="asc">Cũ nhất</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTaskStatusFilter('');
+                        setTaskPriorityFilter('');
+                        setTaskTagFilter('');
+                        setTaskSortOrder('desc');
+                        setTaskPage(1);
+                      }}
+                      className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#111418] px-2.5 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">clear_all</span>
+                      <span>Xóa bộ lọc</span>
+                    </button>
+                  </div>
+                  )}
                 </div>
 
                 {/* Tasks List */}

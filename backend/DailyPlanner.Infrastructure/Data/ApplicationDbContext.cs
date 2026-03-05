@@ -2,16 +2,11 @@ using DailyPlanner.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DailyPlanner.Infrastructure.Data;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
-    private static readonly ValueConverter<List<string>?, string[]?> TagsConverter = new(
-        v => v == null ? null : v.ToArray(),
-        v => v != null ? v.ToList() : null);
-
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
@@ -48,7 +43,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.ReminderTime).HasMaxLength(10);
             entity.Property(e => e.Tags)
-                .HasConversion(TagsConverter)
                 .HasColumnType("text[]");
             entity.HasIndex(e => new { e.UserId, e.Date });
             entity.HasOne(e => e.User)

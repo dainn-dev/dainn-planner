@@ -19,13 +19,13 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<PagedTasksResult>>> GetTasks([FromQuery] DateTime? date, [FromQuery] bool? completed, [FromQuery] int? page, [FromQuery] int? pageSize)
+    public async Task<ActionResult<ApiResponse<PagedTasksResult>>> GetTasks([FromQuery] DateTime? date, [FromQuery] bool? completed, [FromQuery] int? page, [FromQuery] int? pageSize, [FromQuery] int? priority, [FromQuery] string? tag, [FromQuery] string? sortOrder)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var result = await _taskService.GetTasksAsync(userId, date, completed, page, pageSize);
+        var result = await _taskService.GetTasksAsync(userId, date, completed, page, pageSize, priority, tag, sortOrder);
         return Ok(result);
     }
 

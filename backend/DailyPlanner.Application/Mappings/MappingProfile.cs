@@ -10,7 +10,7 @@ public class MappingProfile : Profile
     {
         CreateMap<ApplicationUser, UserDto>();
         CreateMap<DailyTask, DailyTaskDto>()
-            .ForMember(d => d.Tags, o => o.MapFrom(s => s.Tags ?? new List<string>()));
+            .ForMember(d => d.Tags, o => o.MapFrom(s => s.Tags != null ? s.Tags.ToList() : new List<string>()));
         CreateMap<MainDailyGoal, MainDailyGoalDto>();
         CreateMap<LongTermGoal, LongTermGoalDto>();
         CreateMap<GoalMilestone, GoalMilestoneDto>();

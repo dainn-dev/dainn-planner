@@ -4,7 +4,7 @@ namespace DailyPlanner.Application.Interfaces;
 
 public interface IDailyTaskService
 {
-    Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize);
+    Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize, int? priority = null, string? tag = null, string? sortOrder = null);
     Task<ApiResponse<DailyTaskDto>> CreateTaskAsync(string userId, CreateDailyTaskRequest request);
     Task<ApiResponse<DailyTaskDto>> UpdateTaskAsync(string userId, Guid taskId, UpdateDailyTaskRequest request);
     Task<ApiResponse<object>> DeleteTaskAsync(string userId, Guid taskId);

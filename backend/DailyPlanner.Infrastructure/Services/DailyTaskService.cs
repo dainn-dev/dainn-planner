@@ -21,7 +21,7 @@ public class DailyTaskService : IDailyTaskService
         _mapper = mapper;
     }
 
-    public async Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize)
+    public async Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize, int? priority = null, string? tag = null, string? sortOrder = null)
     {
         var query = _context.DailyTasks.Where(t => t.UserId == userId);
 
@@ -36,12 +36,26 @@ public class DailyTaskService : IDailyTaskService
             query = query.Where(t => t.IsCompleted == completed.Value);
         }
 
+        if (priority.HasValue)
+        {
+            query = query.Where(t => t.Priority == priority.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            var tagValue = tag.Trim();
+            query = query.Where(t => t.Tags != null && t.Tags.Contains(tagValue));
+        }
+
         int pageNum = page ?? 1;
         int size = pageSize ?? 10;
 
         int totalCount = await query.CountAsync();
 
-        var ordered = query.OrderByDescending(t => t.Date).ThenBy(t => t.Priority);
+        var isAsc = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        var ordered = isAsc
+            ? query.OrderBy(t => t.Date).ThenBy(t => t.Priority)
+            : query.OrderByDescending(t => t.Date).ThenBy(t => t.Priority);
         var tasks = await ordered.Skip((pageNum - 1) * size).Take(size).ToListAsync();
 
         return new ApiResponse<PagedTasksResult>
@@ -69,7 +83,7 @@ public class DailyTaskService : IDailyTaskService
             Priority = request.Priority,
             Recurrence = request.Recurrence,
             ReminderTime = request.ReminderTime,
-            Tags = request.Tags != null ? new List<string>(request.Tags) : new List<string>(),
+            Tags = request.Tags != null ? request.Tags.ToArray() : null,
             IsCompleted = false
         };
 
@@ -109,7 +123,7 @@ public class DailyTaskService : IDailyTaskService
         if (request.ReminderTime != null)
             task.ReminderTime = request.ReminderTime;
         if (request.Tags != null)
-            task.Tags = new List<string>(request.Tags);
+            task.Tags = request.Tags.ToArray();
 
         task.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
