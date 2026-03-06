@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { eventsAPI, notificationsAPI } from '../services/api';
+import { isStoredAdmin } from '../utils/auth';
 import {
   getColorClasses,
   getTextColorClasses,
@@ -48,6 +49,7 @@ const mapNotificationFromApi = (n) => ({
 const MOBILE_BREAKPOINT = 640;
 
 const CalendarPage = () => {
+  const isAdmin = isStoredAdmin();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState(() =>
     (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT) ? 'Ngày' : 'Tuần'
@@ -1334,6 +1336,35 @@ const CalendarPage = () => {
           <h1 className="text-slate-800 text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
+          {isAdmin && (
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">people</span>
+                <span>Users</span>
+              </Link>
+              <Link
+                to="/admin/logs"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">description</span>
+                <span>Logs</span>
+              </Link>
+              <div className="my-2 border-t border-slate-100" />
+            </>
+          )}
           <Link 
             to="/daily" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-medium transition-colors"

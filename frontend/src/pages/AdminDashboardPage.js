@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { adminAPI } from '../services/api';
+import { isStoredAdmin } from '../utils/auth';
 
 const AdminDashboardPage = () => {
+  const isAdmin = isStoredAdmin();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -269,6 +271,35 @@ const AdminDashboardPage = () => {
           </button>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
+          {isAdmin && (
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined fill-1">dashboard</span>
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">people</span>
+                <span>Users</span>
+              </Link>
+              <Link
+                to="/admin/logs"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">description</span>
+                <span>Logs</span>
+              </Link>
+              <div className="my-2 border-t border-gray-100" />
+            </>
+          )}
           <Link 
             to="/daily" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"

@@ -23,7 +23,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<List<LongTermGoalDto>>> GetGoalsAsync(string userId, string? status, string? category, int page = 1, int pageSize = 10)
     {
         var query = _context.LongTermGoals
-            .Include(g => g.Milestones)
+            .Include(g => g.Milestones.OrderBy(m => m.CreatedAt))
             .Include(g => g.Tasks)
             .Where(g => g.UserId == userId);
 
@@ -33,6 +33,7 @@ public class LongTermGoalService : ILongTermGoalService
             query = query.Where(g => g.Category == category);
 
         var goals = await query
+            .AsSplitQuery()
             .OrderByDescending(g => g.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -48,8 +49,9 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<LongTermGoalDto>> GetGoalByIdAsync(string userId, Guid goalId)
     {
         var goal = await _context.LongTermGoals
-            .Include(g => g.Milestones)
+            .Include(g => g.Milestones.OrderBy(m => m.CreatedAt))
             .Include(g => g.Tasks)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(g => g.Id == goalId && g.UserId == userId);
 
         if (goal == null)
@@ -128,6 +130,7 @@ public class LongTermGoalService : ILongTermGoalService
             {
                 if (!item.Id.HasValue || item.Id.Value == Guid.Empty)
                 {
+                    var isCompleted = item.IsCompleted ?? false;
                     var newMilestone = new GoalMilestone
                     {
                         Id = Guid.NewGuid(),
@@ -135,7 +138,8 @@ public class LongTermGoalService : ILongTermGoalService
                         Title = item.Title ?? string.Empty,
                         Description = item.Description,
                         TargetDate = item.TargetDate.HasValue ? ToUtc(item.TargetDate.Value) : (DateTime?)null,
-                        IsCompleted = item.IsCompleted ?? false
+                        IsCompleted = isCompleted,
+                        CompletedDate = isCompleted ? DateTime.UtcNow : null
                     };
                     _context.GoalMilestones.Add(newMilestone);
                 }
@@ -151,7 +155,10 @@ public class LongTermGoalService : ILongTermGoalService
                         if (item.TargetDate.HasValue)
                             milestone.TargetDate = ToUtc(item.TargetDate.Value);
                         if (item.IsCompleted.HasValue)
+                        {
                             milestone.IsCompleted = item.IsCompleted.Value;
+                            milestone.CompletedDate = item.IsCompleted.Value ? DateTime.UtcNow : null;
+                        }
                         milestone.UpdatedAt = DateTime.UtcNow;
                     }
                 }
@@ -168,8 +175,9 @@ public class LongTermGoalService : ILongTermGoalService
         await _context.SaveChangesAsync();
 
         var updatedGoal = await _context.LongTermGoals
-            .Include(g => g.Milestones)
+            .Include(g => g.Milestones.OrderBy(m => m.CreatedAt))
             .Include(g => g.Tasks)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(g => g.Id == goalId);
 
         return new ApiResponse<LongTermGoalDto>
@@ -311,6 +319,7 @@ public class LongTermGoalService : ILongTermGoalService
         }
 
         milestone.IsCompleted = !milestone.IsCompleted;
+        milestone.CompletedDate = milestone.IsCompleted ? DateTime.UtcNow : null;
         milestone.UpdatedAt = DateTime.UtcNow;
         await RecalculateProgressAsync(goalId);
         await _context.SaveChangesAsync();
@@ -446,7 +455,7 @@ public class LongTermGoalService : ILongTermGoalService
     private async Task RecalculateProgressAsync(Guid goalId)
     {
         var goal = await _context.LongTermGoals
-            .Include(g => g.Milestones)
+            .Include(g => g.Milestones.OrderBy(m => m.CreatedAt))
             .FirstOrDefaultAsync(g => g.Id == goalId);
 
         if (goal == null || !goal.Milestones.Any())

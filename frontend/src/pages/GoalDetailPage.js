@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
+import { isStoredAdmin } from '../utils/auth';
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -18,12 +19,18 @@ const mapGoalDetailFromApi = (g) => {
   const dueDate = g.targetDate
     ? new Date(g.targetDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '';
-  const milestones = (g.milestones || []).map(m => ({
-    id: m.id,
-    title: m.title,
-    completed: m.isCompleted ?? m.completed,
-    date: m.targetDate ? new Date(m.targetDate).toLocaleDateString('vi-VN') : '',
-  }));
+  const milestones = (g.milestones || []).map(m => {
+    const targetDateObj = m.targetDate ? new Date(m.targetDate) : null;
+    const completedDateObj = m.completedDate ? new Date(m.completedDate) : null;
+    return {
+      id: m.id,
+      title: m.title,
+      completed: m.isCompleted ?? m.completed,
+      date: targetDateObj ? targetDateObj.toLocaleDateString('vi-VN') : '',
+      targetDateObj,
+      completedDateObj,
+    };
+  });
   const tasks = (g.tasks || []).map(t => ({
     id: t.id,
     text: t.title,
@@ -89,6 +96,7 @@ const mapNotificationFromApi = (n) => ({
 const GoalDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isAdmin = isStoredAdmin();
   const [goal, setGoal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -98,6 +106,7 @@ const GoalDetailPage = () => {
   const [saveError, setSaveError] = useState(null);
   const [goalTasks, setGoalTasks] = useState([]);
   const [togglingTaskId, setTogglingTaskId] = useState(null);
+  const [togglingMilestoneId, setTogglingMilestoneId] = useState(null);
 
   const handleToggleGoalTask = async (taskId) => {
     if (togglingTaskId) return;
@@ -249,6 +258,21 @@ const GoalDetailPage = () => {
     });
   };
 
+  const handleMilestoneToggleView = async (milestoneId) => {
+    if (togglingMilestoneId || !id) return;
+    setTogglingMilestoneId(milestoneId);
+    try {
+      await goalsAPI.toggleMilestone(id, milestoneId);
+      const goalData = await goalsAPI.getGoal(id);
+      const mapped = mapGoalDetailFromApi(goalData?.data ?? goalData);
+      setGoal(mapped);
+    } catch (err) {
+      console.error('Failed to toggle milestone:', err);
+    } finally {
+      setTogglingMilestoneId(null);
+    }
+  };
+
   const handleAddMilestone = () => {
     const newMilestone = {
       id: Date.now(),
@@ -305,6 +329,12 @@ const GoalDetailPage = () => {
       </div>
     );
   }
+
+  // Tiến độ tổng thể: luôn tính từ số mốc hoàn thành / tổng số mốc
+  const displayMilestones = isEditing && editedGoal ? (editedGoal.milestones ?? []) : (goal.milestones ?? []);
+  const totalMilestones = displayMilestones.length;
+  const completedMilestones = displayMilestones.filter(m => m.completed).length;
+  const overallProgress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
   return (
     <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
@@ -518,38 +548,24 @@ const GoalDetailPage = () => {
               )}
               <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tiến độ tổng thể</span>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  {isEditing ? (
-                    <>
-                      <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
-                        <div 
-                          className="h-full rounded-full bg-primary transition-all duration-300" 
-                          style={{ width: `${editedGoal.progress}%` }}
-                          role="progressbar"
-                          aria-valuenow={editedGoal.progress}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                          aria-label={`Tiến độ ${editedGoal.progress}%`}
-                        />
-                      </div>
-                      <span className="text-sm font-bold text-[#111418] shrink-0">{editedGoal.progress}%</span>
-                      <span className="hidden sm:inline text-xs text-gray-400">(tự động)</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
-                        <div 
-                          className="h-full rounded-full bg-primary transition-all duration-300" 
-                          style={{ width: `${goal.progress}%` }}
-                          role="progressbar"
-                          aria-valuenow={goal.progress}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                          aria-label={`Tiến độ mục tiêu ${goal.progress}%`}
-                        />
-                      </div>
-                      <span className="text-sm font-bold text-[#111418] shrink-0">{goal.progress}%</span>
-                    </>
+                <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+                  <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
+                    <div 
+                      className="h-full rounded-full bg-primary transition-all duration-300" 
+                      style={{ width: `${overallProgress}%` }}
+                      role="progressbar"
+                      aria-valuenow={overallProgress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Tiến độ tổng thể ${overallProgress}%`}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-[#111418] shrink-0">{overallProgress}%</span>
+                  {isEditing && (
+                    <span className="hidden sm:inline text-xs text-gray-400">(tự động)</span>
+                  )}
+                  {totalMilestones > 0 && (
+                    <span className="text-xs text-gray-400 shrink-0">{completedMilestones}/{totalMilestones} mốc</span>
                   )}
                 </div>
               </div>
@@ -604,17 +620,24 @@ const GoalDetailPage = () => {
                           )}
                         </button>
                       ) : (
-                        <div className={`min-w-[44px] min-h-[44px] size-8 rounded-full flex items-center justify-center border-2 shrink-0 ${
-                          milestone.completed 
-                            ? 'bg-primary border-primary text-white' 
-                            : 'bg-white border-gray-300 text-gray-400'
-                        }`}>
+                        <button
+                          type="button"
+                          onClick={() => handleMilestoneToggleView(milestone.id)}
+                          disabled={!!togglingMilestoneId}
+                          className={`min-w-[44px] min-h-[44px] size-8 rounded-full flex items-center justify-center border-2 shrink-0 transition-colors touch-manipulation disabled:opacity-50 ${
+                            milestone.completed
+                              ? 'bg-primary border-primary text-white hover:bg-primary/90 active:bg-primary/80'
+                              : 'bg-white border-gray-300 text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 active:bg-primary/10'
+                          }`}
+                          aria-label={milestone.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
+                          title={milestone.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
+                        >
                           {milestone.completed ? (
                             <span className="material-symbols-outlined text-sm">check</span>
                           ) : (
                             <span className="text-xs font-bold">{index + 1}</span>
                           )}
-                        </div>
+                        </button>
                       )}
                        {index < (isEditing ? editedGoal.milestones : goal.milestones).length - 1 && (
                          <div className={`w-0.5 h-6 sm:h-8 mt-2 ${
@@ -662,12 +685,17 @@ const GoalDetailPage = () => {
                               <p className={`text-sm font-medium break-words ${milestone.completed ? 'text-gray-500 line-through' : 'text-[#111418]'}`}>
                                 {milestone.title}
                               </p>
-                              <p className="text-xs text-gray-500 mt-1">{milestone.date}</p>
+                              <p className={`text-xs mt-1 ${(() => {
+                                if (!milestone.completed || !milestone.completedDateObj || !milestone.targetDateObj) return 'text-gray-500';
+                                const cDay = new Date(milestone.completedDateObj); cDay.setHours(0, 0, 0, 0);
+                                const tDay = new Date(milestone.targetDateObj); tDay.setHours(0, 0, 0, 0);
+                                return cDay > tDay ? 'text-red-600' : 'text-green-600';
+                              })()}`}>{milestone.date}</p>
                             </div>
                           )}
                         </div>
                         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                          {!isEditing && (
+                          {!isEditing && !milestone.completed && (
                             <button
                               type="button"
                               onClick={() => navigate('/daily', {
@@ -684,7 +712,7 @@ const GoalDetailPage = () => {
                               })}
                               className="min-h-[44px] min-w-[44px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                               aria-label={`Thêm nhiệm vụ ngày từ mốc: ${milestone.title}`}
-                              title="Thêm nhiệm vụ ngày"
+                              title="Thêm nhiệm vụ"
                             >
                               <span className="material-symbols-outlined text-xl">task_alt</span>
                             </button>
@@ -734,28 +762,35 @@ const GoalDetailPage = () => {
                                     {task.title}
                                   </span>
                                   {task.date && (
-                                    <span className="text-xs text-gray-400 shrink-0 hidden sm:inline">{formatTaskDate(task.date)}</span>
+                                    <span className={`text-xs shrink-0 hidden sm:inline ${(() => {
+                                      if (!task.isCompleted || !task.completedDate || !task.date) return 'text-gray-400';
+                                      const cDay = new Date(task.completedDate); cDay.setHours(0, 0, 0, 0);
+                                      const dDay = new Date(task.date); dDay.setHours(0, 0, 0, 0);
+                                      return cDay > dDay ? 'text-red-600' : 'text-green-600';
+                                    })()}`}>{formatTaskDate(task.date)}</span>
                                   )}
-                                  <div className="flex items-center gap-0.5 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
-                                      className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                                      aria-label={`Chỉnh sửa: ${task.title}`}
-                                      title="Chỉnh sửa"
-                                    >
-                                      <span className="material-symbols-outlined text-lg">edit</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteGoalTask(task.id)}
-                                      className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                                      aria-label={`Xóa: ${task.title}`}
-                                      title="Xóa"
-                                    >
-                                      <span className="material-symbols-outlined text-lg">delete</span>
-                                    </button>
-                                  </div>
+                                  {!task.isCompleted && (
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
+                                        className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                        aria-label={`Chỉnh sửa: ${task.title}`}
+                                        title="Chỉnh sửa"
+                                      >
+                                        <span className="material-symbols-outlined text-lg">edit</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteGoalTask(task.id)}
+                                        className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                        aria-label={`Xóa: ${task.title}`}
+                                        title="Xóa"
+                                      >
+                                        <span className="material-symbols-outlined text-lg">delete</span>
+                                      </button>
+                                    </div>
+                                  )}
                                 </li>
                               ))}
                             </ul>
@@ -795,6 +830,35 @@ const GoalDetailPage = () => {
           </button>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
+          {isAdmin && (
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">people</span>
+                <span>Users</span>
+              </Link>
+              <Link
+                to="/admin/logs"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">description</span>
+                <span>Logs</span>
+              </Link>
+              <div className="my-2 border-t border-gray-100" />
+            </>
+          )}
           <Link 
             to="/daily" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"

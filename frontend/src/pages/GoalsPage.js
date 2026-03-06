@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { validateTitle, validateCategory, validateDate } from '../utils/formValidation';
-import { goalsAPI, notificationsAPI } from '../services/api';
+import { goalsAPI, notificationsAPI, authAPI } from '../services/api';
+import { isStoredAdmin } from '../utils/auth';
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -44,10 +45,16 @@ const mapNotificationFromApi = (n) => ({
   iconColor: n.iconColor || 'text-primary',
 });
 
+const LIST_FILTER_ALL = 'all';
+const LIST_FILTER_ACTIVE = 'active';
+const LIST_FILTER_COMPLETED = 'completed';
+
 const GoalsPage = () => {
   const navigate = useNavigate();
+  const isAdmin = isStoredAdmin();
   const [goals, setGoals] = useState([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
+  const [listFilter, setListFilter] = useState(LIST_FILTER_ALL); // all | active | completed
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -88,6 +95,13 @@ const GoalsPage = () => {
   const averageProgress = goals.length > 0 
     ? Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length)
     : 0;
+
+  const filteredGoals =
+    listFilter === LIST_FILTER_ACTIVE
+      ? goals.filter(g => g.status === 'active')
+      : listFilter === LIST_FILTER_COMPLETED
+        ? goals.filter(g => g.status === 'completed')
+        : goals;
 
   const handleDeleteClick = (goal) => {
     setGoalToDelete(goal);
@@ -160,10 +174,14 @@ const GoalsPage = () => {
 
   const handleGoalFormChange = (field, value) => {
     setGoalForm(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (goalFormErrors[field]) {
       setGoalFormErrors(prev => ({ ...prev, [field]: null }));
     }
+  };
+
+  const handleCategorySelect = (option) => {
+    setGoalForm(prev => ({ ...prev, category: option.label, icon: option.value }));
+    if (goalFormErrors.category) setGoalFormErrors(prev => ({ ...prev, category: null }));
   };
 
   const handleGoalFormBlur = (field, value) => {
@@ -186,7 +204,7 @@ const GoalsPage = () => {
     setGoalFormErrors(prev => ({ ...prev, [field]: error }));
   };
 
-  const iconOptions = [
+  const categoryOptions = [
     { value: 'flag', label: 'Mục tiêu' },
     { value: 'code', label: 'Kỹ năng' },
     { value: 'savings', label: 'Tài chính' },
@@ -194,7 +212,7 @@ const GoalsPage = () => {
     { value: 'school', label: 'Học tập' },
     { value: 'work', label: 'Công việc' },
     { value: 'home', label: 'Gia đình' },
-    { value: 'flight', label: 'Du lịch' }
+    { value: 'flight', label: 'Du lịch' },
   ];
 
   return (
@@ -210,7 +228,10 @@ const GoalsPage = () => {
           actionButton={{
             text: 'Thêm mục tiêu',
             icon: 'add',
-            onClick: () => setAddGoalModalOpen(true)
+            onClick: () => {
+              setGoalFormErrors(prev => ({ ...prev, submit: null }));
+              setAddGoalModalOpen(true);
+            }
           }}
           notifications={notifications}
           onNotificationsChange={setNotifications}
@@ -227,83 +248,145 @@ const GoalsPage = () => {
             </p>
           </div>
 
-          {/* Stats Cards - inline on mobile (icon + label + number), stacked on sm+ */}
+          {/* Stats Cards - subtle color accents, clear hierarchy */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-background-light border border-border-light rounded-xl md:rounded-lg shadow-sm transition-colors hover:border-zinc-300 active:scale-[0.99]">
-              <span className="material-symbols-outlined text-zinc-400 text-[20px] select-none shrink-0 order-first" aria-hidden>bolt</span>
-              <p className="text-secondary text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đang thực hiện</p>
-              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-light tracking-tight shrink-0 order-last sm:mt-1">{activeGoals}</p>
+            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-blue-50/60 border border-blue-100 rounded-xl shadow-sm transition-all hover:border-blue-200 hover:shadow-md active:scale-[0.99]">
+              <span className="material-symbols-outlined text-blue-500 text-[20px] select-none shrink-0 order-first" aria-hidden>bolt</span>
+              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đang thực hiện</p>
+              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight shrink-0 order-last sm:mt-1">{activeGoals}</p>
             </div>
-            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-background-light border border-border-light rounded-xl md:rounded-lg shadow-sm transition-colors hover:border-zinc-300 active:scale-[0.99]">
-              <span className="material-symbols-outlined text-zinc-400 text-[20px] select-none shrink-0 order-first" aria-hidden>check</span>
-              <p className="text-secondary text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đã hoàn thành</p>
-              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-light tracking-tight shrink-0 order-last sm:mt-1">{completedGoals}</p>
+            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-emerald-50/60 border border-emerald-100 rounded-xl shadow-sm transition-all hover:border-emerald-200 hover:shadow-md active:scale-[0.99]">
+              <span className="material-symbols-outlined text-emerald-600 text-[20px] select-none shrink-0 order-first" aria-hidden>check_circle</span>
+              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đã hoàn thành</p>
+              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight shrink-0 order-last sm:mt-1">{completedGoals}</p>
             </div>
-            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-background-light border border-border-light rounded-xl md:rounded-lg shadow-sm transition-colors hover:border-zinc-300 active:scale-[0.99]">
-              <span className="material-symbols-outlined text-zinc-400 text-[20px] select-none shrink-0 order-first" aria-hidden>trending_up</span>
-              <p className="text-secondary text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Tiến độ TB</p>
-              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-light tracking-tight shrink-0 order-last sm:mt-1">{averageProgress}%</p>
+            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-amber-50/60 border border-amber-100 rounded-xl shadow-sm transition-all hover:border-amber-200 hover:shadow-md active:scale-[0.99]">
+              <span className="material-symbols-outlined text-amber-600 text-[20px] select-none shrink-0 order-first" aria-hidden>trending_up</span>
+              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Tiến độ TB</p>
+              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight shrink-0 order-last sm:mt-1">{averageProgress}%</p>
             </div>
           </div>
 
           {/* Goals List */}
           <div className="flex flex-col gap-4 md:gap-6">
-            <div className="flex items-center justify-between border-b border-border-light pb-3 md:pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border-light pb-3 md:pb-4">
               <h3 className="text-zinc-900 text-base md:text-lg font-medium tracking-tight">Danh sách mục tiêu</h3>
-              <button type="button" className="min-h-[44px] min-w-[44px] flex items-center justify-center py-2 px-3 -mr-2 text-xs font-semibold text-zinc-500 hover:text-zinc-900 uppercase tracking-wider transition-colors rounded-lg hover:bg-zinc-100 active:bg-zinc-200">
-                Xem tất cả
-              </button>
+              {/* Filter tabs */}
+              <div className="flex rounded-lg bg-zinc-100 p-1 gap-0.5" role="tablist" aria-label="Lọc mục tiêu">
+                {[
+                  { value: LIST_FILTER_ALL, label: 'Tất cả', count: goals.length },
+                  { value: LIST_FILTER_ACTIVE, label: 'Đang thực hiện', count: activeGoals },
+                  { value: LIST_FILTER_COMPLETED, label: 'Hoàn thành', count: completedGoals },
+                ].map(({ value, label, count }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={listFilter === value}
+                    aria-label={`${label}: ${count} mục tiêu`}
+                    className={`min-h-[40px] px-3 py-2 rounded-md text-sm font-medium transition-colors touch-manipulation ${
+                      listFilter === value
+                        ? 'bg-white text-zinc-900 shadow-sm'
+                        : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
+                    }`}
+                    onClick={() => setListFilter(value)}
+                  >
+                    {label}
+                    <span className="ml-1.5 text-xs opacity-80">({count})</span>
+                  </button>
+                ))}
+              </div>
             </div>
             {goalsLoading ? (
-              <p className="text-zinc-500 text-sm py-4">Đang tải...</p>
-            ) : (
-            goals.map((goal) => (
-              <div 
-                key={goal.id} 
-                className="group flex flex-col sm:flex-row sm:items-center gap-4 md:gap-5 bg-background-light p-4 md:p-5 rounded-xl md:rounded-lg border border-border-light transition-all hover:border-zinc-400 hover:shadow-sm active:scale-[0.99] cursor-pointer touch-manipulation"
-                onClick={() => navigate(`/goals/${goal.id}`)}
-              >
-                <div className="flex items-start sm:items-center gap-4 md:gap-5 flex-1 min-w-0">
-                  <div className="flex items-center justify-center rounded-xl md:rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-100 shrink-0 size-11 md:size-12">
-                    <span className="material-symbols-outlined text-[20px] md:text-[22px]">{goal.icon}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                    <p className="text-zinc-900 text-sm font-semibold leading-snug truncate">{goal.title}</p>
-                    <p className="text-zinc-500 text-xs font-normal leading-normal">{goal.category} • {goal.dueDate}</p>
-                  </div>
-                </div>
-                <div className="flex flex-row sm:flex-col sm:items-end items-center gap-3 sm:gap-2 w-full sm:w-auto sm:min-w-[180px]">
-                  <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
-                    <div className="flex justify-between w-full sm:justify-end gap-2">
-                      <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Tiến độ</span>
-                      <span className="text-[10px] font-bold text-zinc-900">{goal.progress}%</span>
+              <div className="flex flex-col gap-4" aria-busy="true" aria-label="Đang tải mục tiêu">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 md:p-5 rounded-xl border border-border-light bg-background-light animate-pulse">
+                    <div className="size-11 md:size-12 rounded-xl bg-zinc-200 shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="h-4 bg-zinc-200 rounded w-3/4 max-w-[200px]" />
+                      <div className="h-3 bg-zinc-100 rounded w-1/2 max-w-[140px]" />
                     </div>
-                    <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                      <div 
-                        className="h-full rounded-full bg-zinc-800 transition-all duration-300" 
-                        style={{ width: `${goal.progress}%` }}
-                        role="progressbar"
-                        aria-valuenow={goal.progress}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-label={`Tiến độ: ${goal.progress}%`}
-                      />
-                    </div>
+                    <div className="w-24 h-2 rounded-full bg-zinc-200 shrink-0" />
                   </div>
-                  <button 
-                    type="button"
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 sm:p-2 text-zinc-300 hover:text-zinc-600 transition-colors rounded-full hover:bg-zinc-100 active:bg-red-50 touch-manipulation shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick(goal);
-                    }}
-                    aria-label={`Xóa mục tiêu: ${goal.title}`}
-                  >
-                    <span className="material-symbols-outlined text-red-500 text-[20px]">delete</span>
-                  </button>
-                </div>
+                ))}
               </div>
-            ))
+            ) : filteredGoals.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 text-center">
+                <span className="material-symbols-outlined text-5xl text-zinc-300 mb-3" aria-hidden>flag</span>
+                <p className="text-zinc-600 font-medium mb-1">
+                  {goals.length === 0 ? 'Chưa có mục tiêu nào' : 'Không có mục tiêu nào phù hợp'}
+                </p>
+                <p className="text-zinc-500 text-sm mb-4 max-w-xs">
+                  {goals.length === 0
+                    ? 'Tạo mục tiêu dài hạn đầu tiên để bắt đầu theo dõi tiến độ.'
+                    : 'Thử đổi bộ lọc để xem các mục tiêu khác.'}
+                </p>                
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-4 list-none p-0 m-0">
+                {filteredGoals.map((goal) => (
+                  <li key={goal.id}>
+                    <div 
+                      className="group flex flex-col sm:flex-row sm:items-center gap-4 md:gap-5 bg-white p-4 md:p-5 rounded-xl border border-zinc-200 transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.995] cursor-pointer touch-manipulation"
+                      onClick={() => navigate(`/goals/${goal.id}`)}
+                    >
+                      <div className="flex items-start sm:items-center gap-4 md:gap-5 flex-1 min-w-0">
+                        <div className="flex items-center justify-center rounded-xl bg-zinc-100 text-zinc-700 border border-zinc-100 shrink-0 size-11 md:size-12 group-hover:bg-zinc-50">
+                          <span className="material-symbols-outlined text-[20px] md:text-[22px]">{goal.icon}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-zinc-900 text-sm font-semibold leading-snug truncate">{goal.title}</p>
+                            <span
+                              className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider ${
+                                goal.status === 'completed'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}
+                            >
+                              {goal.status === 'completed' ? 'Hoàn thành' : 'Đang thực hiện'}
+                            </span>
+                          </div>
+                          <p className="text-zinc-500 text-xs leading-normal">{goal.category} {goal.dueDate && `• ${goal.dueDate}`}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-row sm:flex-col sm:items-end items-center gap-3 sm:gap-2 w-full sm:w-auto sm:min-w-[180px]">
+                        <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
+                          <div className="flex justify-between w-full sm:justify-end gap-2">
+                            <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Tiến độ</span>
+                            <span className="text-[10px] font-bold text-zinc-900">{goal.progress}%</span>
+                          </div>
+                          <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                goal.progress >= 100 ? 'bg-emerald-500' : goal.progress >= 50 ? 'bg-blue-500' : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${Math.min(goal.progress, 100)}%` }}
+                              role="progressbar"
+                              aria-valuenow={goal.progress}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-label={`Tiến độ: ${goal.progress}%`}
+                            />
+                          </div>
+                        </div>
+                        <button 
+                          type="button"
+                          className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors touch-manipulation shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(goal);
+                          }}
+                          aria-label={`Xóa mục tiêu: ${goal.title}`}
+                          title="Xóa mục tiêu"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
@@ -340,6 +423,35 @@ const GoalsPage = () => {
             </button>
           </div>
           <nav className="flex flex-col gap-1">
+            {isAdmin && (
+              <>
+                <Link
+                  to="/admin/dashboard"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors group"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>dashboard</span>
+                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Dashboard</p>
+                </Link>
+                <Link
+                  to="/admin/users"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors group"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>people</span>
+                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Users</p>
+                </Link>
+                <Link
+                  to="/admin/logs"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors group"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>description</span>
+                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Logs</p>
+                </Link>
+                <div className="my-2 border-t border-zinc-100" />
+              </>
+            )}
             <Link 
               to="/daily" 
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors group"
@@ -376,8 +488,13 @@ const GoalsPage = () => {
           <div className="mt-auto flex flex-col gap-2">
             <button 
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors text-left w-full group"
-              onClick={() => {
-                window.location.href = '/login';
+              onClick={async () => {
+                try {
+                  await authAPI.logout();
+                } catch (e) {
+                  console.error('Logout error:', e);
+                }
+                navigate('/login');
               }}
             >
               <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>logout</span>
@@ -440,20 +557,26 @@ const GoalsPage = () => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-2">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Danh mục</label>
-                      <input
-                        className={`w-full rounded-lg bg-white text-zinc-900 px-4 py-2.5 text-sm focus:bg-white focus:ring-0 placeholder:text-zinc-400 transition-all font-medium shadow-sm hover:border-zinc-300 ${
-                          goalFormErrors.category ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 focus:border-zinc-400'
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider" htmlFor="add-goal-category">Danh mục</label>
+                      <select
+                        id="add-goal-category"
+                        className={`w-full rounded-lg bg-white text-zinc-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 border transition-all font-medium cursor-pointer ${
+                          goalFormErrors.category ? 'border-red-500' : 'border-zinc-200 hover:border-zinc-300'
                         }`}
-                        placeholder="Ví dụ: Kỹ năng"
-                        type="text"
-                        value={goalForm.category}
-                        onChange={(e) => handleGoalFormChange('category', e.target.value)}
-                        onBlur={(e) => handleGoalFormBlur('category', e.target.value)}
+                        value={goalForm.category || ''}
+                        onChange={(e) => {
+                          const option = categoryOptions.find(o => o.label === e.target.value);
+                          if (option) handleCategorySelect(option);
+                        }}
                         required
                         aria-invalid={goalFormErrors.category ? 'true' : 'false'}
                         aria-describedby={goalFormErrors.category ? 'category-error' : undefined}
-                      />
+                      >
+                        <option value="">Chọn danh mục</option>
+                        {categoryOptions.map((opt) => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                      </select>
                       {goalFormErrors.category && (
                         <p id="category-error" className="text-xs text-red-500 mt-1" role="alert">
                           {goalFormErrors.category}
@@ -461,12 +584,13 @@ const GoalsPage = () => {
                       )}
                     </div>
                     <div className="flex flex-col gap-2">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Ngày đến hạn</label>
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider" htmlFor="add-goal-due">Ngày đến hạn</label>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 text-[18px] pointer-events-none">event</span>
                         <input
-                          className={`w-full rounded-lg bg-white text-zinc-900 pl-10 pr-4 py-2.5 text-sm focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-zinc-50 shadow-sm ${
-                            goalFormErrors.dueDate ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 focus:border-zinc-400'
+                          id="add-goal-due"
+                          className={`w-full rounded-lg bg-white text-zinc-900 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 border transition-all cursor-pointer hover:bg-zinc-50 ${
+                            goalFormErrors.dueDate ? 'border-red-500' : 'border-zinc-200 hover:border-zinc-300'
                           }`}
                           type="date"
                           value={goalForm.dueDate}
@@ -484,27 +608,33 @@ const GoalsPage = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Biểu tượng</label>
+                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Biểu tượng</span>
                     <div className="flex flex-wrap gap-2">
-                      {iconOptions.map((icon) => (
+                      {categoryOptions.map((opt) => (
                         <button
-                          key={icon.value}
+                          key={opt.value}
                           type="button"
-                          className={`flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border transition-all touch-manipulation ${
-                            goalForm.icon === icon.value
+                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg border transition-all touch-manipulation ${
+                            goalForm.icon === opt.value
                               ? 'bg-zinc-900 border-zinc-900 text-white'
                               : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
                           }`}
-                          onClick={() => setGoalForm(prev => ({ ...prev, icon: icon.value }))}
+                          onClick={() => handleCategorySelect(opt)}
+                          title={opt.label}
+                          aria-label={opt.label}
                         >
-                          <span className="material-symbols-outlined text-lg">{icon.value}</span>
-                          <span className="text-xs font-medium">{icon.label}</span>
+                          <span className="material-symbols-outlined text-lg">{opt.value}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
+              {goalFormErrors.submit && (
+                <p className="px-4 sm:px-6 pt-2 text-sm text-red-600" role="alert">
+                  {goalFormErrors.submit}
+                </p>
+              )}
               <div className="bg-zinc-50/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100 gap-3 sm:gap-0">
                 <button
                   type="submit"

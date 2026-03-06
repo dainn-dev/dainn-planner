@@ -13,6 +13,7 @@ import {
   validateText,
   validateDescription,
 } from '../utils/formValidation';
+import { isStoredAdmin } from '../utils/auth';
 import {
   INITIAL_PROFILE_FORM,
   INITIAL_SETTINGS,
@@ -28,6 +29,7 @@ import { userAPI, notificationsAPI } from '../services/api';
 
 const SettingsPage = () => {
   const location = useLocation();
+  const isAdmin = isStoredAdmin();
   const [activeTab, setActiveTab] = useState('profile');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadImageModalOpen, setUploadImageModalOpen] = useState(false);
@@ -1613,6 +1615,35 @@ const SettingsPage = () => {
           </button>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
+          {isAdmin && (
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">people</span>
+                <span>Users</span>
+              </Link>
+              <Link
+                to="/admin/logs"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">description</span>
+                <span>Logs</span>
+              </Link>
+              <div className="my-2 border-t border-gray-100" />
+            </>
+          )}
           <Link 
             to="/daily" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"

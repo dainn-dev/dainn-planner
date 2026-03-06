@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { DEFAULT_TAGS } from '../constants/tasks';
 import { tasksAPI, notificationsAPI, eventsAPI } from '../services/api';
+import { isStoredAdmin } from '../utils/auth';
 
 const toDateOnly = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
 const mapEventForDaily = (e) => {
@@ -49,24 +50,31 @@ const dateToDatetimeLocal = (dateVal) => {
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${y}-${m}-${day}T${h}:${min}`;
 };
-const mapTaskFromApi = (t) => ({
-  id: t.id,
-  text: t.title ?? t.text,
-  title: t.title,
-  description: t.description,
-  date: t.date,
-  completed: t.isCompleted ?? t.completed,
-  isCompleted: t.isCompleted ?? t.completed,
-  priority: typeof t.priority === 'number' ? (t.priority === 2 ? 'Cao' : t.priority === 1 ? 'Trung bình' : 'Thấp') : t.priority,
-  recurrence: t.recurrence ?? 0,
-  recurrenceLabel: RECURRENCE_TO_LABEL[t.recurrence] ?? 'Không',
-  reminderTime: t.reminderTime ?? '',
-  tags: t.tags ?? [],
-  goalMilestoneId: t.goalMilestoneId ?? null,
-  goalId: t.goalId ?? null,
-});
+const mapTaskFromApi = (t) => {
+  const dateObj = t.date ? new Date(t.date) : null;
+  const completedDateObj = t.completedDate ? new Date(t.completedDate) : null;
+  return {
+    id: t.id,
+    text: t.title ?? t.text,
+    title: t.title,
+    description: t.description,
+    date: t.date,
+    completed: t.isCompleted ?? t.completed,
+    isCompleted: t.isCompleted ?? t.completed,
+    dateObj,
+    completedDateObj,
+    priority: typeof t.priority === 'number' ? (t.priority === 2 ? 'Cao' : t.priority === 1 ? 'Trung bình' : 'Thấp') : t.priority,
+    recurrence: t.recurrence ?? 0,
+    recurrenceLabel: RECURRENCE_TO_LABEL[t.recurrence] ?? 'Không',
+    reminderTime: t.reminderTime ?? '',
+    tags: t.tags ?? [],
+    goalMilestoneId: t.goalMilestoneId ?? null,
+    goalId: t.goalId ?? null,
+  };
+};
 
 const DailyPage = () => {
+  const isAdmin = isStoredAdmin();
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
   const [mainGoal, setMainGoal] = useState(null);
@@ -217,7 +225,13 @@ const DailyPage = () => {
   }, [addTaskModalOpen, taskForm.description]);
 
   const applyDescriptionFormat = (command, value = null) => {
-    document.execCommand(command, false, value);
+    if (command === 'createLink') {
+      const url = value != null ? value : window.prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+      if (url == null || url.trim() === '' || url === 'https://') return;
+      document.execCommand('createLink', false, url.trim());
+    } else {
+      document.execCommand(command, false, value);
+    }
     descriptionEditorRef.current?.focus();
     if (descriptionEditorRef.current) {
       setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
@@ -323,9 +337,11 @@ const DailyPage = () => {
     const priorityInt = priorityMap[taskForm.priority] ?? 0;
     const recurrenceMap = { none: 0, daily: 1, weekly: 2, monthly: 3 };
     const recurrence = recurrenceMap[taskForm.repeat] ?? 0;
+    const descriptionFromEditor =
+      (descriptionEditorRef.current && descriptionEditorRef.current.innerHTML) ?? taskForm.description ?? '';
     const payload = {
       title: taskForm.name.trim(),
-      description: taskForm.description || undefined,
+      description: descriptionFromEditor,
       date: datePayload,
       priority: priorityInt,
       recurrence,
@@ -822,7 +838,12 @@ const DailyPage = () => {
                             {task.text || task.title}
                           </p>
                           {formatDeadline(task.date) && (
-                            <p className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-500">
+                            <p className={`flex items-center gap-1.5 text-[11px] sm:text-xs ${(() => {
+                              if (!(task.completed ?? task.isCompleted) || !task.completedDateObj || !task.dateObj) return 'text-gray-500';
+                              const cDay = new Date(task.completedDateObj); cDay.setHours(0, 0, 0, 0);
+                              const dDay = new Date(task.dateObj); dDay.setHours(0, 0, 0, 0);
+                              return cDay > dDay ? 'text-red-600' : 'text-green-600';
+                            })()}`}>
                               <span className="material-symbols-outlined text-[12px] sm:text-[14px]">event</span>
                               <span>Đến hạn: {formatDeadline(task.date)}</span>
                             </p>
@@ -948,8 +969,8 @@ const DailyPage = () => {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Mô tả
                   </label>
-                  <div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-all overflow-hidden">
-                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
+                    <div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-all overflow-hidden">
+                    <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('bold')}
@@ -970,12 +991,59 @@ const DailyPage = () => {
                       </button>
                       <button
                         type="button"
+                        onClick={() => applyDescriptionFormat('underline')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Gạch chân"
+                        aria-label="Gạch chân"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_underlined</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('strikeThrough')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Gạch ngang"
+                        aria-label="Gạch ngang"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_strikethrough</span>
+                      </button>
+                      <span className="w-px h-5 bg-gray-200 mx-0.5" aria-hidden />
+                      <button
+                        type="button"
                         onClick={() => applyDescriptionFormat('insertUnorderedList')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Danh sách"
-                        aria-label="Danh sách"
+                        title="Danh sách gạch đầu dòng"
+                        aria-label="Danh sách gạch đầu dòng"
                       >
                         <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('insertOrderedList')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Danh sách đánh số"
+                        aria-label="Danh sách đánh số"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_list_numbered</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('createLink')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Chèn liên kết"
+                        aria-label="Chèn liên kết"
+                      >
+                        <span className="material-symbols-outlined text-lg">link</span>
+                      </button>
+                      <span className="w-px h-5 bg-gray-200 mx-0.5" aria-hidden />
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('removeFormat')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Xóa định dạng"
+                        aria-label="Xóa định dạng"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_clear</span>
                       </button>
                     </div>
                     <div
@@ -1195,6 +1263,35 @@ const DailyPage = () => {
           </button>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
+          {isAdmin && (
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">people</span>
+                <span>Users</span>
+              </Link>
+              <Link
+                to="/admin/logs"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">description</span>
+                <span>Logs</span>
+              </Link>
+              <div className="my-2 border-t border-gray-100" />
+            </>
+          )}
           <Link 
             to="/daily" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"

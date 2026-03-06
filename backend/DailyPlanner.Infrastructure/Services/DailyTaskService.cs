@@ -247,6 +247,7 @@ public class DailyTaskService : IDailyTaskService
         }
 
         task.IsCompleted = !task.IsCompleted;
+        task.CompletedDate = task.IsCompleted ? DateTime.UtcNow : null;
         task.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 

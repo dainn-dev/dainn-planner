@@ -8,6 +8,7 @@ public class GoalMilestone
     public string? Description { get; set; }
     public DateTime? TargetDate { get; set; }
     public bool IsCompleted { get; set; }
+    public DateTime? CompletedDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

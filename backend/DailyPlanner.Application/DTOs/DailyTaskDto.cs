@@ -7,6 +7,7 @@ public class DailyTaskDto
     public string? Description { get; set; }
     public DateTime Date { get; set; }
     public bool IsCompleted { get; set; }
+    public DateTime? CompletedDate { get; set; }
     public int Priority { get; set; }
     public int Recurrence { get; set; }
     public string? ReminderTime { get; set; }

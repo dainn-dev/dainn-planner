@@ -4,6 +4,9 @@
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
+// In-flight GET request de-dupe (prevents duplicate GETs in React StrictMode/dev)
+const inflightGetRequests = new Map();
+
 // Helper function to get auth token
 const getAuthToken = () => {
   return localStorage.getItem('token');
@@ -39,7 +42,12 @@ const apiRequest = async (endpoint, options = {}) => {
     delete config.headers['Content-Type'];
   }
 
-  try {
+  const method = String(config.method || 'GET').toUpperCase();
+  const inflightKey = method === 'GET' && config.body == null
+    ? `${url}::${config.headers?.Authorization || ''}`
+    : null;
+
+  const doRequest = async () => {
     const response = await fetch(url, config);
     
     // Check if we were redirected to a login page (302 redirects are automatically followed by fetch)
@@ -124,6 +132,26 @@ const apiRequest = async (endpoint, options = {}) => {
 
     // Automatically unwrap response.data if present, otherwise return the full response
     return data.data !== undefined ? data.data : data;
+  };
+
+  if (inflightKey) {
+    const existing = inflightGetRequests.get(inflightKey);
+    if (existing) return await existing;
+
+    const p = (async () => {
+      try {
+        return await doRequest();
+      } finally {
+        inflightGetRequests.delete(inflightKey);
+      }
+    })();
+
+    inflightGetRequests.set(inflightKey, p);
+    return await p;
+  }
+
+  try {
+    return await doRequest();
   } catch (error) {
     throw error;
   }
@@ -290,6 +318,12 @@ export const goalsAPI = {
   deleteGoal: async (goalId) => {
     return await apiRequest(`/goals/${goalId}`, {
       method: 'DELETE',
+    });
+  },
+
+  toggleMilestone: async (goalId, milestoneId) => {
+    return await apiRequest(`/goals/${goalId}/milestones/${milestoneId}/toggle`, {
+      method: 'PATCH',
     });
   },
 };
