@@ -95,6 +95,7 @@ builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 builder.Services.AddHangfireServer();
 builder.Services.AddScoped<RecurringTaskRenewalJob>();
+builder.Services.AddScoped<OldDailyTaskCleanupJob>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
@@ -175,6 +176,10 @@ RecurringJob.AddOrUpdate<RecurringTaskRenewalJob>(
     "renew-recurring-tasks",
     j => j.ExecuteAsync(CancellationToken.None),
     "0 0 * * *"); // daily at midnight UTC
+RecurringJob.AddOrUpdate<OldDailyTaskCleanupJob>(
+    "cleanup-old-daily-tasks",
+    j => j.ExecuteAsync(CancellationToken.None),
+    "0 1 * * *"); // daily at 01:00 UTC (tasks older than 7 days)
 
 // Ensure database is created, roles exist, and seed data
 using (var scope = app.Services.CreateScope())

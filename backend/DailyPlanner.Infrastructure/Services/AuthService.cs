@@ -76,6 +76,7 @@ public class AuthService : IAuthService
         var refreshToken = _jwtService.GenerateRefreshToken();
         await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
 
+        var userDto = await MapUserWithRoleAsync(user);
         return new ApiResponse<AuthResponse>
         {
             Success = true,
@@ -84,7 +85,7 @@ public class AuthService : IAuthService
             {
                 Token = token,
                 RefreshToken = refreshToken,
-                User = _mapper.Map<UserDto>(user)
+                User = userDto
             }
         };
     }
@@ -114,6 +115,7 @@ public class AuthService : IAuthService
         var token = await _jwtService.GenerateTokenAsync(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
         await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+        var userDto = await MapUserWithRoleAsync(user);
 
         return new ApiResponse<AuthResponse>
         {
@@ -123,7 +125,7 @@ public class AuthService : IAuthService
             {
                 Token = token,
                 RefreshToken = refreshToken,
-                User = _mapper.Map<UserDto>(user)
+                User = userDto
             }
         };
     }
@@ -175,6 +177,7 @@ public class AuthService : IAuthService
         var newToken = await _jwtService.GenerateTokenAsync(user);
         var newRefreshToken = _jwtService.GenerateRefreshToken();
         await _jwtService.SaveRefreshTokenAsync(user.Id, newRefreshToken);
+        var userDto = await MapUserWithRoleAsync(user);
 
         return new ApiResponse<AuthResponse>
         {
@@ -184,9 +187,17 @@ public class AuthService : IAuthService
             {
                 Token = newToken,
                 RefreshToken = newRefreshToken,
-                User = _mapper.Map<UserDto>(user)
+                User = userDto
             }
         };
+    }
+
+    private async Task<UserDto> MapUserWithRoleAsync(ApplicationUser user)
+    {
+        var userDto = _mapper.Map<UserDto>(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        userDto.Role = roles.Contains("Admin") ? "Admin" : (roles.Count > 0 ? roles[0] : "User");
+        return userDto;
     }
 
     public async Task<ApiResponse<object>> ForgotPasswordAsync(ForgotPasswordRequest request)
@@ -330,6 +341,7 @@ public class AuthService : IAuthService
             var token = await _jwtService.GenerateTokenAsync(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
             await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+            var userDto = await MapUserWithRoleAsync(user);
 
             return new ApiResponse<AuthResponse>
             {
@@ -339,7 +351,7 @@ public class AuthService : IAuthService
                 {
                     Token = token,
                     RefreshToken = refreshToken,
-                    User = _mapper.Map<UserDto>(user)
+                    User = userDto
                 }
             };
         }
@@ -600,6 +612,7 @@ public class AuthService : IAuthService
             var token = await _jwtService.GenerateTokenAsync(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
             await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+            var userDto = await MapUserWithRoleAsync(user);
 
             return new ApiResponse<AuthResponse>
             {
@@ -609,7 +622,7 @@ public class AuthService : IAuthService
                 {
                     Token = token,
                     RefreshToken = refreshToken,
-                    User = _mapper.Map<UserDto>(user)
+                    User = userDto
                 }
             };
         }

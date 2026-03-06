@@ -10,5 +10,7 @@ public class UserDto
     public string? AvatarUrl { get; set; }
     public string Timezone { get; set; } = string.Empty;
     public string Language { get; set; } = string.Empty;
+    /// <summary>User's role (e.g. "Admin", "User") for auth and UI.</summary>
+    public string Role { get; set; } = "User";
 }
 

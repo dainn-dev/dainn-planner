@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IRecurringTaskRenewalService, RecurringTaskRenewalService>();
+        services.AddScoped<IOldDailyTaskCleanupService, OldDailyTaskCleanupService>();
 
         return services;
     }
