@@ -12,6 +12,8 @@ public class LongTermGoalService : ILongTermGoalService
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
 
+    private static DateTime ToUtc(DateTime d) => d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
+
     public LongTermGoalService(ApplicationDbContext context, IMapper mapper)
     {
         _context = context;
@@ -76,8 +78,8 @@ public class LongTermGoalService : ILongTermGoalService
             Description = request.Description,
             Category = request.Category,
             Status = "Active",
-            StartDate = request.StartDate,
-            TargetDate = request.TargetDate,
+            StartDate = request.StartDate.HasValue ? ToUtc(request.StartDate.Value) : (DateTime?)null,
+            TargetDate = request.TargetDate.HasValue ? ToUtc(request.TargetDate.Value) : (DateTime?)null,
             Progress = 0
         };
 
@@ -113,14 +115,56 @@ public class LongTermGoalService : ILongTermGoalService
         if (!string.IsNullOrEmpty(request.Status))
             goal.Status = request.Status;
         if (request.StartDate.HasValue)
-            goal.StartDate = request.StartDate;
+            goal.StartDate = ToUtc(request.StartDate.Value);
         if (request.TargetDate.HasValue)
-            goal.TargetDate = request.TargetDate;
+            goal.TargetDate = ToUtc(request.TargetDate.Value);
 
-        // Recalculate progress
-        await RecalculateProgressAsync(goalId);
+        if (request.Milestones != null)
+        {
+            var existingMilestones = await _context.GoalMilestones.Where(m => m.GoalId == goalId).ToListAsync();
+            var idsInRequest = request.Milestones.Where(m => m.Id.HasValue && m.Id.Value != Guid.Empty).Select(m => m.Id!.Value).ToHashSet();
+
+            foreach (var item in request.Milestones)
+            {
+                if (!item.Id.HasValue || item.Id.Value == Guid.Empty)
+                {
+                    var newMilestone = new GoalMilestone
+                    {
+                        Id = Guid.NewGuid(),
+                        GoalId = goalId,
+                        Title = item.Title ?? string.Empty,
+                        Description = item.Description,
+                        TargetDate = item.TargetDate.HasValue ? ToUtc(item.TargetDate.Value) : (DateTime?)null,
+                        IsCompleted = item.IsCompleted ?? false
+                    };
+                    _context.GoalMilestones.Add(newMilestone);
+                }
+                else
+                {
+                    var milestone = existingMilestones.FirstOrDefault(m => m.Id == item.Id.Value);
+                    if (milestone != null)
+                    {
+                        if (item.Title != null)
+                            milestone.Title = item.Title;
+                        if (item.Description != null)
+                            milestone.Description = item.Description;
+                        if (item.TargetDate.HasValue)
+                            milestone.TargetDate = ToUtc(item.TargetDate.Value);
+                        if (item.IsCompleted.HasValue)
+                            milestone.IsCompleted = item.IsCompleted.Value;
+                        milestone.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+            }
+
+            foreach (var existing in existingMilestones.Where(m => !idsInRequest.Contains(m.Id)))
+            {
+                _context.GoalMilestones.Remove(existing);
+            }
+        }
 
         goal.UpdatedAt = DateTime.UtcNow;
+        await RecalculateProgressAsync(goalId);
         await _context.SaveChangesAsync();
 
         var updatedGoal = await _context.LongTermGoals
@@ -176,7 +220,7 @@ public class LongTermGoalService : ILongTermGoalService
             GoalId = goalId,
             Title = request.Title,
             Description = request.Description,
-            TargetDate = request.TargetDate,
+            TargetDate = request.TargetDate.HasValue ? ToUtc(request.TargetDate.Value) : (DateTime?)null,
             IsCompleted = false
         };
 
@@ -195,6 +239,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<GoalMilestoneDto>> UpdateMilestoneAsync(string userId, Guid goalId, Guid milestoneId, UpdateGoalMilestoneRequest request)
     {
         var milestone = await _context.GoalMilestones
+            .Include(m => m.Goal)
             .FirstOrDefaultAsync(m => m.Id == milestoneId && m.GoalId == goalId && m.Goal.UserId == userId);
         if (milestone == null)
         {
@@ -210,7 +255,7 @@ public class LongTermGoalService : ILongTermGoalService
         if (request.Description != null)
             milestone.Description = request.Description;
         if (request.TargetDate.HasValue)
-            milestone.TargetDate = request.TargetDate;
+            milestone.TargetDate = ToUtc(request.TargetDate.Value);
         if (request.IsCompleted.HasValue)
             milestone.IsCompleted = request.IsCompleted.Value;
 
@@ -229,6 +274,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<object>> DeleteMilestoneAsync(string userId, Guid goalId, Guid milestoneId)
     {
         var milestone = await _context.GoalMilestones
+            .Include(m => m.Goal)
             .FirstOrDefaultAsync(m => m.Id == milestoneId && m.GoalId == goalId && m.Goal.UserId == userId);
         if (milestone == null)
         {
@@ -253,6 +299,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<GoalMilestoneDto>> ToggleMilestoneAsync(string userId, Guid goalId, Guid milestoneId)
     {
         var milestone = await _context.GoalMilestones
+            .Include(m => m.Goal)
             .FirstOrDefaultAsync(m => m.Id == milestoneId && m.GoalId == goalId && m.Goal.UserId == userId);
         if (milestone == null)
         {
@@ -313,6 +360,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<GoalTaskDto>> UpdateGoalTaskAsync(string userId, Guid goalId, Guid taskId, UpdateGoalTaskRequest request)
     {
         var task = await _context.GoalTasks
+            .Include(t => t.Goal)
             .FirstOrDefaultAsync(t => t.Id == taskId && t.GoalId == goalId && t.Goal.UserId == userId);
         if (task == null)
         {
@@ -348,6 +396,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<object>> DeleteGoalTaskAsync(string userId, Guid goalId, Guid taskId)
     {
         var task = await _context.GoalTasks
+            .Include(t => t.Goal)
             .FirstOrDefaultAsync(t => t.Id == taskId && t.GoalId == goalId && t.Goal.UserId == userId);
         if (task == null)
         {
@@ -371,6 +420,7 @@ public class LongTermGoalService : ILongTermGoalService
     public async Task<ApiResponse<GoalTaskDto>> ToggleGoalTaskAsync(string userId, Guid goalId, Guid taskId)
     {
         var task = await _context.GoalTasks
+            .Include(t => t.Goal)
             .FirstOrDefaultAsync(t => t.Id == taskId && t.GoalId == goalId && t.Goal.UserId == userId);
         if (task == null)
         {

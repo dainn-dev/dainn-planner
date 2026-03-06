@@ -12,5 +12,7 @@ public class DailyTaskDto
     public string? ReminderTime { get; set; }
     public List<string> Tags { get; set; } = new();
     public DateTime CreatedAt { get; set; }
+    public Guid? GoalMilestoneId { get; set; }
+    public Guid? GoalId { get; set; }
 }
 

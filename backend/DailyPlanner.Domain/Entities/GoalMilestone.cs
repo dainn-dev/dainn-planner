@@ -11,7 +11,8 @@ public class GoalMilestone
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
-    // Navigation property
+    // Navigation properties
     public LongTermGoal Goal { get; set; } = null!;
+    public ICollection<DailyTask> DailyTasks { get; set; } = new List<DailyTask>();
 }
 

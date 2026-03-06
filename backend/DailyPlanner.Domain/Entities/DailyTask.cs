@@ -14,8 +14,12 @@ public class DailyTask
     public string[]? Tags { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    public Guid? GoalMilestoneId { get; set; }
+    public Guid? GoalId { get; set; }
 
-    // Navigation property
+    // Navigation properties
     public ApplicationUser User { get; set; } = null!;
+    public GoalMilestone? Milestone { get; set; }
+    public LongTermGoal? Goal { get; set; }
 }
 

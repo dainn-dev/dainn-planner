@@ -51,7 +51,7 @@ const Header = ({
             </div>
           </div>
           {customContent || (
-            <h2 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">{title}</h2>
+            <h2 className="text-[#111418] text-sm sm:text-base md:text-lg font-bold leading-tight tracking-[-0.015em] truncate max-w-[60vw] sm:max-w-none">{title}</h2>
           )}
         </div>
         <div className="flex items-center gap-4">

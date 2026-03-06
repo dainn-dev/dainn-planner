@@ -15,7 +15,6 @@ const toISODateTime = (dateStr, timeStr) => (dateStr && timeStr ? `${dateStr}T${
 
 const mapEventFromApi = (e) => {
   const start = new Date(e.startDate);
-  const end = e.endDate ? new Date(e.endDate) : start;
   const isAllDay = e.isAllDay ?? e.allDay;
   const timeFrom = !isAllDay && e.startDate ? e.startDate.slice(11, 16) : null;
   const timeTo = !isAllDay && e.endDate ? e.endDate.slice(11, 16) : null;
@@ -46,12 +45,26 @@ const mapNotificationFromApi = (n) => ({
   iconColor: n.iconColor || 'text-indigo-600',
 });
 
+const MOBILE_BREAKPOINT = 640;
+
 const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('Tuần');
+  const [viewMode, setViewMode] = useState(() =>
+    (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT) ? 'Ngày' : 'Tuần'
+  );
   const [weekStartDay, setWeekStartDay] = useState('monday');
+
+  // On mobile only Ngày and Tuần are shown; switch from Tháng to Ngày when resizing to mobile
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+      if (mobile && viewMode === 'Tháng') setViewMode('Ngày');
+    };
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [viewMode]);
   const [events, setEvents] = useState([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
+  const [, setEventsLoading] = useState(false);
 
   const [addEventModalOpen, setAddEventModalOpen] = useState(false);
   const [eventDetailModalOpen, setEventDetailModalOpen] = useState(false);
@@ -76,6 +89,11 @@ const CalendarPage = () => {
   useEffect(() => {
     let cancelled = false;
     const getRange = () => {
+      if (viewMode === 'Ngày') {
+        const d = new Date(currentDate);
+        const dayStr = toDateOnly(d);
+        return { startDate: dayStr, endDate: dayStr };
+      }
       if (viewMode === 'Tuần') {
         const d = new Date(currentDate);
         const day = d.getDay();
@@ -139,6 +157,14 @@ const CalendarPage = () => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
       newDate.setDate(prev.getDate() + (direction * 7));
+      return newDate;
+    });
+  };
+
+  const changeDay = (direction) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(prev.getDate() + direction);
       return newDate;
     });
   };
@@ -445,15 +471,20 @@ const CalendarPage = () => {
     }
   };
 
-  const weekDays = getWeekDays();
-
-  const calendarDays = viewMode === 'Tuần' ? generateWeek() : generateCalendar();
-  const today = new Date();
-  const isToday = (date) => {
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+  const getWeekDaysShort = () => {
+    if (weekStartDay === 'sunday') {
+      return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    } else {
+      return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    }
   };
+
+  const weekDays = getWeekDays();
+  const weekDaysShort = getWeekDaysShort();
+
+  const generateDay = () => [new Date(currentDate)];
+
+  const calendarDays = viewMode === 'Ngày' ? generateDay() : viewMode === 'Tuần' ? generateWeek() : generateCalendar();
 
   const isCurrentMonth = (date) => {
     return date.getMonth() === currentDate.getMonth() &&
@@ -495,6 +526,8 @@ const CalendarPage = () => {
     }
   };
 
+  const getDayTitle = () => formatDate(currentDate);
+
   const weekNumber = getWeekNumber(currentDate);
 
   const handleMarkAllAsRead = () => {
@@ -515,50 +548,65 @@ const CalendarPage = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col bg-slate-50 h-full relative overflow-hidden">
         <header className="flex flex-col bg-white border-b border-gray-200 z-10 sticky top-0 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-3">
-            <div className="flex items-center gap-4 text-[#111418]">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2 sm:py-3">
+            <div className="flex items-center gap-2 sm:gap-4 text-[#111418] min-w-0">
                   <button
-                className="lg:hidden p-1 -ml-1 rounded-md text-gray-600 hover:bg-gray-100"
+                className="lg:hidden min-h-[44px] min-w-[44px] p-2 -ml-1 rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 touch-manipulation flex items-center justify-center"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 aria-label="Toggle menu"
               >
-                <span className="material-symbols-outlined">menu</span>
+                <span className="material-symbols-outlined text-xl">menu</span>
                   </button>
-              <div className="lg:hidden flex items-center gap-2">
+              <div className="lg:hidden flex items-center shrink-0">
                 <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
                   <span className="material-symbols-outlined text-xl">calendar_month</span>
             </div>
           </div>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-3">
-                  <h2 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">
-                  {viewMode === 'Tuần' ? getWeekRange() : `${getMonthName(currentDate)}, ${currentDate.getFullYear()}`}
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <h2 className="text-[#111418] text-sm sm:text-base md:text-lg font-bold leading-tight tracking-[-0.015em] truncate">
+                  {viewMode === 'Ngày' ? getDayTitle() : viewMode === 'Tuần' ? getWeekRange() : `${getMonthName(currentDate)}, ${currentDate.getFullYear()}`}
                 </h2>
-                  <div className="hidden sm:flex items-center">
+                  <div className="flex items-center shrink-0">
                   <button 
-                    onClick={() => viewMode === 'Tuần' ? changeWeek(-1) : changeMonth(-1)}
-                      className="size-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-                    aria-label={viewMode === 'Tuần' ? 'Previous week' : 'Previous month'}
+                    onClick={() => viewMode === 'Ngày' ? changeDay(-1) : viewMode === 'Tuần' ? changeWeek(-1) : changeMonth(-1)}
+                      className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 active:bg-gray-200 hover:text-gray-800 transition-colors touch-manipulation"
+                    aria-label={viewMode === 'Ngày' ? 'Ngày trước' : viewMode === 'Tuần' ? 'Tuần trước' : 'Tháng trước'}
                   >
-                      <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                      <span className="material-symbols-outlined text-[22px]">chevron_left</span>
                   </button>
                   <button 
-                    onClick={() => viewMode === 'Tuần' ? changeWeek(1) : changeMonth(1)}
-                      className="size-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-                    aria-label={viewMode === 'Tuần' ? 'Next week' : 'Next month'}
+                    onClick={() => viewMode === 'Ngày' ? changeDay(1) : viewMode === 'Tuần' ? changeWeek(1) : changeMonth(1)}
+                      className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 active:bg-gray-200 hover:text-gray-800 transition-colors touch-manipulation"
+                    aria-label={viewMode === 'Ngày' ? 'Ngày sau' : viewMode === 'Tuần' ? 'Tuần sau' : 'Tháng sau'}
                   >
-                      <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                      <span className="material-symbols-outlined text-[22px]">chevron_right</span>
                   </button>
                 </div>
               </div>
-                <p className="text-gray-500 text-xs hidden sm:block">Tuần {weekNumber} • Các sự kiện quan trọng</p>
+                <p className="text-gray-500 text-[11px] sm:text-xs hidden sm:block">{viewMode === 'Ngày' ? 'Sự kiện trong ngày' : `Tuần ${weekNumber} • Các sự kiện quan trọng`}</p>
             </div>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Calendar Controls */}
-              <div className="hidden md:flex items-center gap-2">
-                <div className="flex p-1 bg-gray-50 rounded-lg border border-gray-200">
-                  <label className={`cursor-pointer relative px-3 py-1.5 text-sm transition-colors rounded-md ${
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+              {/* Calendar Controls - visible on mobile */}
+              <div className="flex items-center gap-2">
+                <div className="flex p-0.5 sm:p-1 bg-gray-50 rounded-lg border border-gray-200">
+                  <label className={`cursor-pointer relative px-2 sm:px-3 py-1.5 min-h-[36px] flex items-center justify-center text-xs sm:text-sm transition-colors rounded-md touch-manipulation ${
+                  viewMode === 'Ngày' 
+                      ? 'bg-white shadow-sm text-gray-800 font-semibold' 
+                      : 'font-medium text-gray-500 hover:text-gray-800'
+                }`}>
+                  <span>Ngày</span>
+                  <input 
+                    className="hidden" 
+                    name="view_mode" 
+                    type="radio" 
+                    value="Ngày"
+                    checked={viewMode === 'Ngày'}
+                    onChange={() => setViewMode('Ngày')}
+                  />
+                </label>
+                  <label className={`cursor-pointer relative px-2 sm:px-3 py-1.5 min-h-[36px] flex items-center justify-center text-xs sm:text-sm transition-colors rounded-md touch-manipulation ${
                   viewMode === 'Tuần' 
                       ? 'bg-white shadow-sm text-gray-800 font-semibold' 
                       : 'font-medium text-gray-500 hover:text-gray-800'
@@ -573,7 +621,7 @@ const CalendarPage = () => {
                     onChange={() => setViewMode('Tuần')}
                   />
                 </label>
-                  <label className={`cursor-pointer relative px-3 py-1.5 text-sm transition-colors rounded-md ${
+                  <label className={`cursor-pointer relative px-2 sm:px-3 py-1.5 min-h-[36px] flex items-center justify-center text-xs sm:text-sm transition-colors rounded-md touch-manipulation hidden sm:flex ${
                   viewMode === 'Tháng' 
                       ? 'bg-white shadow-sm text-gray-800 font-semibold' 
                       : 'font-medium text-gray-500 hover:text-gray-800'
@@ -591,13 +639,13 @@ const CalendarPage = () => {
               </div>
               <button 
                 onClick={goToToday}
-                  className="flex items-center justify-center rounded-lg px-4 py-2 bg-white border border-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-100 transition-all"
+                  className="min-h-[40px] px-3 sm:px-4 py-2 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-800 text-xs sm:text-sm font-medium hover:bg-gray-100 active:bg-gray-200 transition-all touch-manipulation"
               >
                 Hôm nay
               </button>
               </div>
               
-              {/* Action Button */}
+              {/* Action Button - desktop */}
               <button 
                 onClick={handleOpenAddEventModal}
                 className="hidden sm:flex h-10 cursor-pointer items-center justify-center rounded-lg bg-[#1380ec] px-4 text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-blue-600 transition-colors"
@@ -609,7 +657,7 @@ const CalendarPage = () => {
               {/* Notifications Dropdown */}
               <div className="relative group">
                 <button
-                  className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-blue-50 text-primary hover:bg-blue-100 transition-colors relative"
+                  className="flex min-h-[44px] min-w-[44px] size-10 cursor-pointer items-center justify-center rounded-lg bg-blue-50 text-primary hover:bg-blue-100 active:bg-blue-200 transition-colors relative touch-manipulation"
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
                   aria-label="Notifications"
                   aria-expanded={notificationsOpen}
@@ -698,7 +746,7 @@ const CalendarPage = () => {
               </div>
 
               <div 
-                className="bg-center bg-no-repeat bg-cover rounded-full size-10 cursor-pointer ring-2 ring-transparent hover:ring-primary transition-all" 
+                className="bg-center bg-no-repeat bg-cover rounded-full size-10 min-h-[44px] min-w-[44px] cursor-pointer ring-2 ring-transparent hover:ring-primary transition-all touch-manipulation" 
                 style={{
                   backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBr3X7Z7D9oVzqv59WsWDkRyy7yyUi86zJzG0vYqzFaaGh60Qw5psjFjeEh7oCRNQMb9pV2RNcGZ7LdYuSCCXKNFvIuW_u3KWXWL45QWH4DESIVyRG1t2l4Li_LiWgFjDjzgpaGbmp6v-bJBrouwxbq731SsEPCb6dMx0HOmrZjFpR4YJZ2PZr9ckec2y5gpszHLn_zL10DWuQkfb2ocg5mZ2rT7WUFuO8euRXp4-mErpqaeriYEsTgIevz0gS-hwFDr7N3T-y6mNpV")'
                 }}
@@ -709,94 +757,71 @@ const CalendarPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-7 border-t border-slate-200 bg-white">
-            {weekDays.map((day, idx) => {
-              // Highlight weekend days (Saturday and Sunday)
-              // If week starts on Sunday: idx 0 (Sunday) and idx 6 (Saturday)
-              // If week starts on Monday: idx 5 (Saturday) and idx 6 (Sunday)
-              const isWeekend = weekStartDay === 'sunday' 
-                ? (idx === 0 || idx === 6) 
-                : (idx === 5 || idx === 6);
-              
-              return (
-                <div key={idx} className="py-3 px-4 text-center border-r border-slate-200 last:border-r-0">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${
-                    isWeekend ? 'text-indigo-600' : 'text-slate-500'
-                  }`}>
-                    {day}
-                  </span>
-                </div>
-              );
-            })}
+          <div className={`grid border-t border-slate-200 bg-white ${viewMode === 'Ngày' ? 'grid-cols-1' : 'grid-cols-7'}`}>
+            {viewMode !== 'Ngày' && (
+              weekDays.map((day, idx) => {
+                const isWeekend = weekStartDay === 'sunday' 
+                  ? (idx === 0 || idx === 6) 
+                  : (idx === 5 || idx === 6);
+                return (
+                  <div key={idx} className="py-2 sm:py-3 px-1 sm:px-4 text-center border-r border-slate-200 last:border-r-0">
+                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${
+                      isWeekend ? 'text-indigo-600' : 'text-slate-500'
+                    }`}>
+                      <span className="sm:hidden">{weekDaysShort[idx]}</span>
+                      <span className="hidden sm:inline">{day}</span>
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto bg-white">
-          <div className={`grid grid-cols-7 ${viewMode === 'Tuần' ? 'grid-rows-1' : 'grid-rows-5'} min-h-[800px] h-full`}>
+        <div className="flex-1 overflow-y-auto bg-white overflow-x-hidden">
+          <div className={`grid ${viewMode === 'Ngày' ? 'grid-cols-1 grid-rows-1' : viewMode === 'Tuần' ? 'grid-cols-7 grid-rows-1' : 'grid-cols-7 grid-rows-5'} min-h-[min(800px,calc(100vh-180px))] sm:min-h-[800px] h-full`}>
             {calendarDays.map((day, idx) => {
               const dayEvents = getEventsForDate(day);
-              const isCurrentDay = isToday(day);
               const isOtherMonth = viewMode === 'Tháng' && !isCurrentMonth(day);
-              const isSelected = viewMode === 'Tháng' && day.getDate() === 5 && isCurrentMonth(day); // Example: day 5 is selected
+              const isSelected = viewMode === 'Tháng' && day.getDate() === 5 && isCurrentMonth(day);
 
               return (
                 <div
                   key={idx}
-                  className={`border-b border-r border-slate-200 p-3 ${viewMode === 'Tuần' ? 'min-h-[calc(100vh-200px)]' : 'min-h-[140px]'} group hover:bg-gray-50 transition-colors relative ${
+                  className={`border-b border-r border-slate-200 p-1.5 sm:p-3 ${viewMode === 'Ngày' ? 'min-h-[calc(100vh-180px)]' : viewMode === 'Tuần' ? 'min-h-[calc(100vh-180px)] sm:min-h-[calc(100vh-200px)]' : 'min-h-[100px] sm:min-h-[140px]'} group hover:bg-gray-50 active:bg-gray-100 transition-colors relative ${
                     isSelected ? 'bg-indigo-50' : isOtherMonth ? 'bg-gray-50/50' : ''
                   }`}
                 >
                   <div className="flex flex-col items-start gap-0.5">
-                    <span className={`font-medium text-sm inline-block size-7 text-center leading-7 rounded-full ${
-                      isOtherMonth ? 'text-gray-300' : isCurrentDay ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/30' : 'text-slate-800 font-semibold'
-                    }`}>
-                      {day.getDate()}
-                    </span>
                     {!isOtherMonth && (
-                      <span className="text-[9px] text-slate-400 font-medium leading-tight">
+                      <span className="text-[8px] sm:text-[9px] text-slate-400 font-medium leading-tight hidden sm:block">
                         {convertToLunar(day).display}
                       </span>
                     )}
                   </div>
-                  <button 
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-indigo-600 transition-all p-1 hover:bg-white rounded-full"
-                    aria-label="Add event"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">add</span>
-                  </button>
-                  <div className="mt-2 flex flex-col gap-2">
+                  <div className="mt-1.5 sm:mt-2 flex flex-col gap-1 sm:gap-2 min-w-0">
                     {dayEvents.map((event) => (
                       <div
                         key={event.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => handleShowEventDetail(event)}
-                        className={`w-full rounded-lg px-3 py-2 cursor-pointer transition-all duration-200 shadow-sm relative group/item ${getColorClasses(event.color)}`}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleShowEventDetail(event); }}
+                        className={`w-full rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 cursor-pointer transition-all duration-200 shadow-sm relative group/item min-h-[44px] flex flex-col justify-center touch-manipulation ${getColorClasses(event.color)}`}
                       >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteEvent(event.id);
-                          }}
-                          className="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-all duration-200 z-10"
-                          aria-label={`Xóa sự kiện: ${event.title}`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">close</span>
-                        </button>
                         {!event.allDay && (
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className={`flex items-center gap-1.5 mb-0.5 ${viewMode === 'Tuần' ? 'hidden sm:flex' : ''}`}>
                             {event.color !== 'emerald' && (
-                              <div className={`size-1.5 rounded-full ${getDotColorClasses(event.color)}`}></div>
+                              <div className={`size-1 sm:size-1.5 rounded-full shrink-0 ${getDotColorClasses(event.color)}`}></div>
                             )}
-                            <span className={`text-[10px] font-bold tracking-wide ${getTimeColorClasses(event.color)}`}>
-                              {event.timeFrom && event.timeTo 
-                                ? `${event.timeFrom} - ${event.timeTo}`
-                                : event.timeFrom 
-                                ? event.timeFrom
-                                : event.time || ''
-                              }
+                            <span className={`text-[9px] sm:text-[10px] font-bold tracking-wide ${getTimeColorClasses(event.color)}`}>
+                              {viewMode === 'Tuần' || viewMode === 'Tháng'
+                                ? (event.timeFrom || event.time || '')
+                                : (event.timeFrom && event.timeTo ? `${event.timeFrom} - ${event.timeTo}` : event.timeFrom || event.time || '')}
                             </span>
                           </div>
                         )}
-                        <p className={`text-xs font-medium truncate ${getTextColorClasses(event.color)} ${event.allDay ? 'flex items-center gap-1.5' : ''}`}>
-                          {event.allDay && <span className="text-base">🌴</span>}
+                        <p className={`text-[11px] sm:text-xs font-medium truncate ${getTextColorClasses(event.color)} ${event.allDay ? 'flex items-center gap-1.5' : ''}`}>
+                          {event.allDay && <span className="text-sm sm:text-base shrink-0">🌴</span>}
                           {event.title}
                         </p>
                       </div>
@@ -812,7 +837,7 @@ const CalendarPage = () => {
         <button
           type="button"
           onClick={handleOpenAddEventModal}
-          className="lg:hidden fixed bottom-6 right-6 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 hover:bg-primary/90 active:scale-95 transition-all"
+          className="lg:hidden fixed bottom-6 right-6 z-40 flex size-14 min-h-[56px] min-w-[56px] items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 hover:bg-primary/90 active:scale-95 transition-all touch-manipulation"
           aria-label="Thêm sự kiện"
         >
           <span className="material-symbols-outlined text-[28px]">add</span>
@@ -830,20 +855,12 @@ const CalendarPage = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <form onSubmit={handleAddEvent}>
-              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4 max-h-[85vh] overflow-y-auto">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-zinc-900" id="add-event-title">Thêm Lịch Trình Mới</h3>
-                    <p className="text-sm text-zinc-500 mt-1">Tạo một sự kiện mới trong lịch của bạn.</p>
+                    <h3 className="text-base sm:text-lg font-semibold text-zinc-900" id="add-event-title">Thêm Lịch Trình Mới</h3>
+                    <p className="text-xs sm:text-sm text-zinc-500 mt-1">Tạo một sự kiện mới trong lịch của bạn.</p>
                   </div>
-                  <button
-                    type="button"
-                    className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 transition-colors focus:outline-none"
-                    onClick={handleCloseAddEventModal}
-                    aria-label="Đóng"
-                  >
-                    <span className="material-symbols-outlined text-zinc-400 hover:text-zinc-600 text-[24px]">close</span>
-                  </button>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -856,7 +873,7 @@ const CalendarPage = () => {
                       required
                       value={eventForm.title}
                       onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                      className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                       placeholder="Nhập tiêu đề sự kiện..."
                     />
                   </div>
@@ -871,19 +888,19 @@ const CalendarPage = () => {
                       required
                       value={eventForm.date}
                       onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                      className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 min-h-[44px]">
                     <input
                       type="checkbox"
                       id="event-all-day"
                       checked={eventForm.allDay}
                       onChange={(e) => setEventForm({ ...eventForm, allDay: e.target.checked, timeFrom: e.target.checked ? '' : eventForm.timeFrom, timeTo: e.target.checked ? '' : eventForm.timeTo })}
-                      className="h-4 w-4 text-zinc-900 border-zinc-300 rounded focus:ring-zinc-900 cursor-pointer"
+                      className="size-5 sm:size-4 text-zinc-900 border-zinc-300 rounded focus:ring-zinc-900 cursor-pointer touch-manipulation"
                     />
-                    <label htmlFor="event-all-day" className="text-sm font-medium text-zinc-700 cursor-pointer">
+                    <label htmlFor="event-all-day" className="text-sm font-medium text-zinc-700 cursor-pointer touch-manipulation">
                       Cả ngày
                     </label>
                   </div>
@@ -899,7 +916,7 @@ const CalendarPage = () => {
                           id="event-time-from"
                           value={eventForm.timeFrom}
                           onChange={(e) => setEventForm({ ...eventForm, timeFrom: e.target.value })}
-                          className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                          className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                         />
                       </div>
                       <div>
@@ -911,7 +928,7 @@ const CalendarPage = () => {
                           id="event-time-to"
                           value={eventForm.timeTo}
                           onChange={(e) => setEventForm({ ...eventForm, timeTo: e.target.value })}
-                          className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                          className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                         />
                       </div>
                     </div>
@@ -923,25 +940,25 @@ const CalendarPage = () => {
                     </label>
                     <div className="space-y-3">
                       <div className="flex gap-3">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                        <label className="flex items-center gap-2 cursor-pointer min-h-[44px] touch-manipulation">
                           <input
                             type="radio"
                             name="add-locationType"
                             value="online"
                             checked={eventForm.locationType === 'online'}
                             onChange={(e) => setEventForm({ ...eventForm, locationType: e.target.value, address: '' })}
-                            className="h-4 w-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
+                            className="size-5 sm:size-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
                           />
                           <span className="text-sm text-zinc-700">Online</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
+                        <label className="flex items-center gap-2 cursor-pointer min-h-[44px] touch-manipulation">
                           <input
                             type="radio"
                             name="add-locationType"
                             value="offline"
                             checked={eventForm.locationType === 'offline'}
                             onChange={(e) => setEventForm({ ...eventForm, locationType: e.target.value, platform: '' })}
-                            className="h-4 w-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
+                            className="size-5 sm:size-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
                           />
                           <span className="text-sm text-zinc-700">Offline</span>
                         </label>
@@ -950,7 +967,7 @@ const CalendarPage = () => {
                         <select
                           value={eventForm.platform || ''}
                           onChange={(e) => setEventForm({ ...eventForm, platform: e.target.value })}
-                          className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                          className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                         >
                           <option value="">Chọn nền tảng</option>
                           <option value="google-meet">Google Meet</option>
@@ -964,7 +981,7 @@ const CalendarPage = () => {
                           value={eventForm.address || ''}
                           onChange={(e) => setEventForm({ ...eventForm, address: e.target.value })}
                           placeholder="Nhập địa chỉ..."
-                          className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                          className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                         />
                       )}
                     </div>
@@ -974,37 +991,37 @@ const CalendarPage = () => {
                     <label htmlFor="event-color" className="block text-sm font-medium text-zinc-700 mb-1.5">
                       Màu sắc
                     </label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                       {EVENT_COLORS.map((color) => (
                         <button
                           key={color.value}
                           type="button"
                           onClick={() => setEventForm({ ...eventForm, color: color.value })}
-                          className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
+                          className={`flex flex-col items-center gap-1 p-2 min-h-[44px] rounded-lg border-2 transition-all touch-manipulation ${
                             eventForm.color === color.value
                               ? 'border-zinc-900 bg-zinc-50'
-                              : 'border-zinc-200 hover:border-zinc-300'
+                              : 'border-zinc-200 hover:border-zinc-300 active:bg-zinc-100'
                           }`}
                         >
-                          <div className={`size-6 rounded-full ${color.bg}`}></div>
-                          <span className="text-[10px] font-medium text-zinc-600">{color.label}</span>
+                          <div className={`size-5 sm:size-6 rounded-full ${color.bg}`}></div>
+                          <span className="text-[9px] sm:text-[10px] font-medium text-zinc-600">{color.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-zinc-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse sm:gap-3">
+              <div className="bg-zinc-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse sm:gap-3 gap-2 flex flex-col">
                 <button
                   type="submit"
-                  className="w-full sm:w-auto inline-flex justify-center items-center rounded-lg px-4 py-2 bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors shadow-sm"
+                  className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 active:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors shadow-sm touch-manipulation"
                 >
                   Thêm lịch trình
                 </button>
                 <button
                   type="button"
                   onClick={handleCloseAddEventModal}
-                  className="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center items-center rounded-lg px-4 py-2 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors border border-zinc-300 shadow-sm"
+                  className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors border border-zinc-300 shadow-sm touch-manipulation"
                 >
                   Hủy
                 </button>
@@ -1017,39 +1034,39 @@ const CalendarPage = () => {
       {/* Event Detail Modal */}
       {eventDetailModalOpen && selectedEvent && editedEvent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-zinc-900/20 backdrop-blur-sm transition-all duration-300"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:p-6 bg-zinc-900/20 backdrop-blur-sm transition-all duration-300"
           onClick={handleCloseEventDetail}
         >
           <div
-            className="relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-zinc-100 max-h-[90vh] overflow-y-auto"
+            className="relative transform overflow-hidden rounded-t-2xl sm:rounded-xl bg-white text-left shadow-2xl transition-all w-full sm:my-8 sm:max-w-lg border border-zinc-100 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex-1 min-w-0">
                   {isEditingEvent ? (
                     <input
                       type="text"
                       value={editedEvent.title}
                       onChange={(e) => handleFieldChange('title', e.target.value)}
-                      className="w-full text-xl font-semibold text-zinc-900 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                      className="w-full text-lg sm:text-xl font-semibold text-zinc-900 bg-white border border-zinc-300 rounded-lg px-3 py-2.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-zinc-900 touch-manipulation"
                     />
                   ) : (
                     <div className="flex items-center gap-3 mb-2">
-                      <div className={`size-3 rounded-full ${getDotColorClasses(selectedEvent.color) || 'bg-gray-500'}`}></div>
-                      <h3 className="text-xl font-semibold text-zinc-900" id="event-detail-title">
+                      <div className={`size-3 rounded-full shrink-0 ${getDotColorClasses(selectedEvent.color) || 'bg-gray-500'}`}></div>
+                      <h3 className="text-lg sm:text-xl font-semibold text-zinc-900 break-words" id="event-detail-title">
                         {selectedEvent.title}
                       </h3>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {isEditingEvent ? (
                     <>
                       <button
                         type="button"
                         onClick={handleSaveEvent}
-                        className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+                        className="min-h-[44px] px-4 py-2.5 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 active:bg-zinc-700 transition-colors touch-manipulation"
                         aria-label="Lưu"
                       >
                         Lưu
@@ -1057,31 +1074,21 @@ const CalendarPage = () => {
                       <button
                         type="button"
                         onClick={handleCancelEdit}
-                        className="px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg border border-zinc-300 hover:bg-zinc-50 transition-colors"
+                        className="min-h-[44px] px-4 py-2.5 bg-white text-zinc-900 text-sm font-medium rounded-lg border border-zinc-300 hover:bg-zinc-50 active:bg-zinc-100 transition-colors touch-manipulation"
                         aria-label="Hủy"
                       >
                         Hủy
                       </button>
                     </>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleStartEdit}
-                        className="p-2 rounded-full hover:bg-zinc-100 transition-colors focus:outline-none"
-                        aria-label="Chỉnh sửa"
-                      >
-                        <span className="material-symbols-outlined text-zinc-400 hover:text-zinc-600 text-[20px]">edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="p-2 -mr-2 rounded-full hover:bg-zinc-100 transition-colors focus:outline-none"
-                        onClick={handleCloseEventDetail}
-                        aria-label="Đóng"
-                      >
-                        <span className="material-symbols-outlined text-zinc-400 hover:text-zinc-600 text-[24px]">close</span>
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="min-h-[44px] min-w-[44px] p-2.5 rounded-full hover:bg-zinc-100 active:bg-zinc-200 transition-colors focus:outline-none flex items-center justify-center touch-manipulation"
+                      aria-label="Chỉnh sửa"
+                    >
+                      <span className="material-symbols-outlined text-zinc-400 hover:text-zinc-600 text-[20px]">edit</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -1103,7 +1110,7 @@ const CalendarPage = () => {
                         const [year, month, day] = e.target.value.split('-').map(Number);
                         handleFieldChange('date', new Date(year, month - 1, day));
                       }}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                      className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 touch-manipulation"
                     />
                   ) : (
                     <p className="text-sm text-zinc-900 ml-7">{formatDate(selectedEvent.date)}</p>
@@ -1132,7 +1139,7 @@ const CalendarPage = () => {
                             type="time"
                             value={editedEvent.timeFrom || ''}
                             onChange={(e) => handleFieldChange('timeFrom', e.target.value)}
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                            className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 touch-manipulation"
                           />
                         </div>
                         <div>
@@ -1141,7 +1148,7 @@ const CalendarPage = () => {
                             type="time"
                             value={editedEvent.timeTo || ''}
                             onChange={(e) => handleFieldChange('timeTo', e.target.value)}
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                            className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 touch-manipulation"
                           />
                         </div>
                       </div>
@@ -1252,20 +1259,20 @@ const CalendarPage = () => {
                 {isEditingEvent ? (
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1.5">Màu sắc</label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                       {EVENT_COLORS.map((color) => (
                         <button
                           key={color.value}
                           type="button"
                           onClick={() => handleFieldChange('color', color.value)}
-                          className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
+                          className={`flex flex-col items-center gap-1 p-2 min-h-[44px] rounded-lg border-2 transition-all touch-manipulation ${
                             editedEvent.color === color.value
                               ? 'border-zinc-900 bg-zinc-50'
-                              : 'border-zinc-200 hover:border-zinc-300'
+                              : 'border-zinc-200 hover:border-zinc-300 active:bg-zinc-100'
                           }`}
                         >
-                          <div className={`size-6 rounded-full ${color.bg}`}></div>
-                          <span className="text-[10px] font-medium text-zinc-600">{color.label}</span>
+                          <div className={`size-5 sm:size-6 rounded-full ${color.bg}`}></div>
+                          <span className="text-[9px] sm:text-[10px] font-medium text-zinc-600">{color.label}</span>
                         </button>
                       ))}
                     </div>
@@ -1287,14 +1294,14 @@ const CalendarPage = () => {
               </div>
             </div>
             {!isEditingEvent && (
-              <div className="bg-zinc-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse sm:gap-3">
+              <div className="bg-zinc-50 px-4 py-3 sm:px-6 flex flex-col-reverse sm:flex-row sm:flex-row-reverse gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteEvent(selectedEvent.id);
                   }}
-                  className="w-full sm:w-auto inline-flex justify-center items-center rounded-lg px-4 py-2 bg-red-600 text-white text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition-colors shadow-sm"
+                  className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-red-600 text-white text-sm font-medium hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition-colors shadow-sm touch-manipulation"
                 >
                   <span className="material-symbols-outlined text-[18px] mr-2">delete</span>
                   Xóa sự kiện
@@ -1302,7 +1309,7 @@ const CalendarPage = () => {
                 <button
                   type="button"
                   onClick={handleCloseEventDetail}
-                  className="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center items-center rounded-lg px-4 py-2 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors border border-zinc-300 shadow-sm"
+                  className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors border border-zinc-300 shadow-sm touch-manipulation"
                 >
                   Đóng
                 </button>
@@ -1325,13 +1332,6 @@ const CalendarPage = () => {
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
           <h1 className="text-slate-800 text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
-          <button 
-            className="ml-auto p-1 rounded-md text-slate-600 hover:bg-slate-100"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
           <Link 

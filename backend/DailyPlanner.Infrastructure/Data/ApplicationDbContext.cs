@@ -49,6 +49,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(u => u.DailyTasks)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Milestone)
+                .WithMany(m => m.DailyTasks)
+                .HasForeignKey(e => e.GoalMilestoneId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Goal)
+                .WithMany()
+                .HasForeignKey(e => e.GoalId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure MainDailyGoal

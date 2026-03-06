@@ -21,7 +21,7 @@ public class DailyTaskService : IDailyTaskService
         _mapper = mapper;
     }
 
-    public async Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize, int? priority = null, string? tag = null, string? sortOrder = null)
+    public async Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize, int? priority = null, string? tag = null, string? sortOrder = null, Guid? goalId = null)
     {
         var query = _context.DailyTasks.Where(t => t.UserId == userId);
 
@@ -34,6 +34,11 @@ public class DailyTaskService : IDailyTaskService
         if (completed.HasValue)
         {
             query = query.Where(t => t.IsCompleted == completed.Value);
+        }
+
+        if (goalId.HasValue)
+        {
+            query = query.Where(t => t.GoalId == goalId.Value);
         }
 
         if (priority.HasValue)
@@ -73,6 +78,38 @@ public class DailyTaskService : IDailyTaskService
 
     public async Task<ApiResponse<DailyTaskDto>> CreateTaskAsync(string userId, CreateDailyTaskRequest request)
     {
+        Guid? goalId = null;
+        if (request.GoalMilestoneId.HasValue)
+        {
+            var milestone = await _context.GoalMilestones
+                .Include(m => m.Goal)
+                .FirstOrDefaultAsync(m => m.Id == request.GoalMilestoneId.Value);
+            if (milestone == null || milestone.Goal.UserId != userId)
+            {
+                return new ApiResponse<DailyTaskDto>
+                {
+                    Success = false,
+                    Message = "Milestone not found or access denied"
+                };
+            }
+            goalId = milestone.GoalId;
+        }
+
+        if (!goalId.HasValue && request.GoalId.HasValue)
+        {
+            var goal = await _context.LongTermGoals
+                .FirstOrDefaultAsync(g => g.Id == request.GoalId.Value && g.UserId == userId);
+            if (goal == null)
+            {
+                return new ApiResponse<DailyTaskDto>
+                {
+                    Success = false,
+                    Message = "Goal not found or access denied"
+                };
+            }
+            goalId = goal.Id;
+        }
+
         var task = new DailyTask
         {
             Id = Guid.NewGuid(),
@@ -84,7 +121,9 @@ public class DailyTaskService : IDailyTaskService
             Recurrence = request.Recurrence,
             ReminderTime = request.ReminderTime,
             Tags = request.Tags != null ? request.Tags.ToArray() : null,
-            IsCompleted = false
+            IsCompleted = false,
+            GoalMilestoneId = request.GoalMilestoneId,
+            GoalId = goalId
         };
 
         _context.DailyTasks.Add(task);
@@ -124,6 +163,43 @@ public class DailyTaskService : IDailyTaskService
             task.ReminderTime = request.ReminderTime;
         if (request.Tags != null)
             task.Tags = request.Tags.ToArray();
+
+        if (request.GoalMilestoneId.HasValue)
+        {
+            var milestone = await _context.GoalMilestones
+                .Include(m => m.Goal)
+                .FirstOrDefaultAsync(m => m.Id == request.GoalMilestoneId.Value);
+            if (milestone == null || milestone.Goal.UserId != userId)
+            {
+                return new ApiResponse<DailyTaskDto>
+                {
+                    Success = false,
+                    Message = "Milestone not found or access denied"
+                };
+            }
+            task.GoalMilestoneId = milestone.Id;
+            task.GoalId = milestone.GoalId;
+        }
+        else if (request.GoalId.HasValue)
+        {
+            var goal = await _context.LongTermGoals
+                .FirstOrDefaultAsync(g => g.Id == request.GoalId.Value && g.UserId == userId);
+            if (goal == null)
+            {
+                return new ApiResponse<DailyTaskDto>
+                {
+                    Success = false,
+                    Message = "Goal not found or access denied"
+                };
+            }
+            task.GoalMilestoneId = null;
+            task.GoalId = goal.Id;
+        }
+        else
+        {
+            task.GoalMilestoneId = null;
+            task.GoalId = null;
+        }
 
         task.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { goalsAPI, notificationsAPI } from '../services/api';
+import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -47,6 +47,33 @@ const mapGoalDetailFromApi = (g) => {
   };
 };
 
+/** Format vi-VN date string (d/m/yyyy) to yyyy-mm-dd for input[type="date"], or return '' if invalid/empty */
+const toDateInputValue = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const parts = dateStr.trim().split('/').filter(Boolean);
+  if (parts.length !== 3) return '';
+  const [d, m, y] = parts.map((p) => parseInt(p, 10));
+  if (Number.isNaN(d) || Number.isNaN(m) || Number.isNaN(y)) return '';
+  const month = String(m).padStart(2, '0');
+  const day = String(d).padStart(2, '0');
+  const year = String(y);
+  if (year.length !== 4) return '';
+  return `${year}-${month}-${day}`;
+};
+
+/** Parse vi-VN (d/m/yyyy) or yyyy-mm-dd to Date; return null if invalid */
+const parseGoalDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const trimmed = dateStr.trim();
+  const iso = toDateInputValue(trimmed);
+  if (iso) {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
 const mapNotificationFromApi = (n) => ({
   id: n.id,
   type: n.type || 'system',
@@ -68,6 +95,45 @@ const GoalDetailPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedGoal, setEditedGoal] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [saveError, setSaveError] = useState(null);
+  const [goalTasks, setGoalTasks] = useState([]);
+  const [togglingTaskId, setTogglingTaskId] = useState(null);
+
+  const handleToggleGoalTask = async (taskId) => {
+    if (togglingTaskId) return;
+    setTogglingTaskId(taskId);
+    try {
+      await tasksAPI.completeTask(taskId);
+      const items = await loadGoalTasks(id);
+      setGoalTasks(items ?? []);
+    } catch (err) {
+      console.error('Failed to toggle task:', err);
+    } finally {
+      setTogglingTaskId(null);
+    }
+  };
+
+  const handleDeleteGoalTask = async (taskId) => {
+    if (!window.confirm('Xóa nhiệm vụ này?')) return;
+    try {
+      await tasksAPI.deleteTask(taskId);
+      const items = await loadGoalTasks(id);
+      setGoalTasks(items ?? []);
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+    }
+  };
+
+  const loadGoalTasks = React.useCallback(async (goalId) => {
+    if (!goalId) return;
+    try {
+      const res = await tasksAPI.getTasks({ goalId, pageSize: 100 });
+      return res?.items ?? [];
+    } catch (err) {
+      console.error('Failed to load goal tasks:', err);
+      return [];
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +154,8 @@ const GoalDetailPage = () => {
         setEditedGoal({ ...mapped });
         const notifList = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []);
         setNotifications(notifList.map(mapNotificationFromApi));
+        const items = await loadGoalTasks(id);
+        if (!cancelled) setGoalTasks(items);
       } catch (error) {
         if (!cancelled) {
           console.error('Failed to load goal:', error);
@@ -102,6 +170,7 @@ const GoalDetailPage = () => {
   }, [id, navigate]);
 
   const handleEdit = () => {
+    setSaveError(null);
     setIsEditing(true);
     setEditedGoal({ ...goal });
   };
@@ -111,20 +180,47 @@ const GoalDetailPage = () => {
     setEditedGoal({ ...goal });
   };
 
+  const isGuid = (id) => {
+    if (id == null) return false;
+    const s = typeof id === 'string' ? id : String(id);
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  };
+
   const handleSave = async () => {
+    setSaveError(null);
     try {
-      const targetDate = editedGoal.dueDate ? new Date(editedGoal.dueDate).toISOString() : null;
-      await goalsAPI.updateGoal(goal.id, {
+      const parsedDue = parseGoalDate(editedGoal.dueDate);
+      const targetDate = parsedDue ? parsedDue.toISOString() : null;
+      const milestones = (editedGoal.milestones || []).map((m) => {
+        const parsedMilestoneDate = parseGoalDate(m.date);
+        return {
+          id: isGuid(m.id) ? m.id : null,
+          title: m.title ?? '',
+          description: null,
+          targetDate: parsedMilestoneDate ? parsedMilestoneDate.toISOString() : null,
+          isCompleted: !!m.completed,
+        };
+      });
+      const res = await goalsAPI.updateGoal(goal.id, {
         title: editedGoal.title,
         description: editedGoal.description,
         category: editedGoal.category,
         targetDate,
-        status: editedGoal.status === 'completed' ? 'Completed' : 'InProgress',
+        status: editedGoal.status === 'completed' ? 'Completed' : 'Active',
+        milestones,
       });
-      setGoal(editedGoal);
+      const updatedGoalData = res?.data ?? res;
+      if (updatedGoalData && typeof updatedGoalData === 'object') {
+        const mapped = mapGoalDetailFromApi(updatedGoalData);
+        setGoal(mapped);
+        setEditedGoal({ ...mapped });
+      } else {
+        setGoal(editedGoal);
+      }
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to update goal:', error);
+      setSaveError(error?.message || 'Không thể lưu thay đổi. Vui lòng thử lại.');
     }
   };
 
@@ -151,15 +247,6 @@ const GoalDetailPage = () => {
         progress: newProgress
       };
     });
-  };
-
-  const handleTaskToggle = (taskId) => {
-    setEditedGoal(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(t => 
-        t.id === taskId ? { ...t, completed: !t.completed } : t
-      )
-    }));
   };
 
   const handleAddMilestone = () => {
@@ -200,26 +287,6 @@ const GoalDetailPage = () => {
     });
   };
 
-  const handleAddTask = () => {
-    const newTask = {
-      id: Date.now(),
-      text: 'Nhiệm vụ mới',
-      completed: false,
-      date: new Date().toLocaleDateString('vi-VN')
-    };
-    setEditedGoal(prev => ({
-      ...prev,
-      tasks: [...prev.tasks, newTask]
-    }));
-  };
-
-  const handleDeleteTask = (taskId) => {
-    setEditedGoal(prev => ({
-      ...prev,
-      tasks: prev.tasks.filter(t => t.id !== taskId)
-    }));
-  };
-
   const iconOptions = [
     { value: 'flag', label: 'Mục tiêu' },
     { value: 'code', label: 'Kỹ năng' },
@@ -233,19 +300,11 @@ const GoalDetailPage = () => {
 
   if (loading || !goal) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-zinc-500">Đang tải...</p>
+      <div className="flex items-center justify-center h-screen bg-[#f6f7f8]">
+        <p className="text-gray-500">Đang tải...</p>
       </div>
     );
   }
-
-  const displayMilestones = isEditing ? editedGoal?.milestones : goal?.milestones;
-  const displayTasks = isEditing ? editedGoal?.tasks : goal?.tasks;
-  
-  const completedMilestones = displayMilestones?.filter(m => m.completed).length || 0;
-  const totalMilestones = displayMilestones?.length || 0;
-  const completedTasks = displayTasks?.filter(t => t.completed).length || 0;
-  const totalTasks = displayTasks?.length || 0;
 
   return (
     <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
@@ -262,37 +321,72 @@ const GoalDetailPage = () => {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
-          <div className="max-w-[1024px] flex-1 flex flex-col gap-8 w-full">
-          {/* Back Button */}
+        {/* Main Content Area - mobile-friendly padding and spacing */}
+        <div className="flex-1 flex justify-center py-4 sm:py-6 px-3 sm:px-4 md:px-8 overflow-y-auto">
+          <div className="max-w-[1024px] flex-1 flex flex-col gap-5 sm:gap-8 w-full">
+          {/* Back Button - larger touch target on mobile */}
           <button
+            type="button"
             onClick={() => navigate('/goals')}
-            className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition-colors text-sm font-medium self-start"
+            className="flex items-center gap-2 min-h-[44px] py-2 -ml-1 pl-1 pr-3 text-gray-500 hover:text-[#111418] active:bg-gray-100 rounded-lg transition-colors text-sm font-medium self-start touch-manipulation"
+            aria-label="Quay lại danh sách mục tiêu"
           >
-            <span className="material-symbols-outlined text-lg">arrow_back</span>
-            <span>Quay lại danh sách mục tiêu</span>
+            <span className="material-symbols-outlined text-xl sm:text-lg">arrow_back</span>
+            <span className="sm:hidden">Quay lại</span>
+            <span className="hidden sm:inline">Quay lại danh sách mục tiêu</span>
           </button>
 
           {/* Goal Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start gap-6 bg-background-light p-6 rounded-lg border border-border-light shadow-sm">
-            <div className="flex flex-col items-center gap-3 shrink-0">
-              <div className="flex items-center justify-center rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-100 size-16">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 bg-white p-4 sm:p-6 rounded-xl sm:rounded-lg border border-gray-200 shadow-sm">
+            {/* Mobile: icon inline with title + actions */}
+            <div className="flex sm:hidden items-center gap-3 w-full min-w-0">
+              <div className="flex items-center justify-center rounded-xl bg-gray-50 text-gray-900 border border-gray-200 size-12 shrink-0">
+                <span className="material-symbols-outlined text-2xl">{isEditing ? editedGoal.icon : goal.icon}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedGoal.title}
+                    onChange={(e) => handleFieldChange('title', e.target.value)}
+                    className="w-full text-xl font-semibold text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm touch-manipulation"
+                  />
+                ) : (
+                  <h2 className="text-xl font-semibold text-[#111418] break-words line-clamp-2">{goal.title}</h2>
+                )}
+              </div>
+              <div className="shrink-0 flex items-center gap-1">
+                {isEditing ? (
+                  <>
+                    <button onClick={handleSave} type="button" className="min-h-[40px] px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg touch-manipulation" aria-label="Lưu">Lưu</button>
+                    <button onClick={handleCancel} type="button" className="min-h-[40px] px-3 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 touch-manipulation" aria-label="Hủy">Hủy</button>
+                  </>
+                ) : (
+                  <button onClick={handleEdit} type="button" className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label="Chỉnh sửa">
+                    <span className="material-symbols-outlined text-[22px]">edit</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* Desktop: icon column */}
+            <div className="hidden sm:flex flex-col items-center gap-3 shrink-0">
+              <div className="flex items-center justify-center rounded-lg bg-gray-50 text-gray-900 border border-gray-200 size-16">
                 <span className="material-symbols-outlined text-4xl">{isEditing ? editedGoal.icon : goal.icon}</span>
               </div>
               {isEditing && (
-                <div className="flex flex-wrap gap-2 justify-center max-w-[200px]">
+                <div className="flex flex-wrap gap-2 justify-center w-full max-w-[200px] overflow-x-auto pb-1">
                   {iconOptions.map((icon) => (
                     <button
                       key={icon.value}
                       type="button"
                       onClick={() => handleFieldChange('icon', icon.value)}
-                      className={`flex items-center justify-center size-10 rounded-lg border transition-all ${
+                      className={`flex items-center justify-center min-w-[44px] min-h-[44px] size-10 rounded-lg border transition-all touch-manipulation shrink-0 ${
                         (isEditing ? editedGoal.icon : goal.icon) === icon.value
-                          ? 'bg-zinc-900 border-zinc-900 text-white'
-                          : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
+                          ? 'bg-primary border-primary text-white'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 active:bg-gray-100'
                       }`}
                       title={icon.label}
+                      aria-label={icon.label}
                     >
                       <span className="material-symbols-outlined text-xl">{icon.value}</span>
                     </button>
@@ -300,174 +394,208 @@ const GoalDetailPage = () => {
                 </div>
               )}
             </div>
-            <div className="flex-1">
-              <div className="flex items-start justify-between gap-4 mb-2">
-                <div className="flex-1">
+            <div className="flex-1 min-w-0">
+              {/* Desktop: title row + actions */}
+              <div className="hidden sm:flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-2">
+                <div className="flex-1 min-w-0">
                   {isEditing ? (
                     <div className="space-y-3">
                       <input
                         type="text"
                         value={editedGoal.title}
                         onChange={(e) => handleFieldChange('title', e.target.value)}
-                        className="w-full text-2xl font-semibold text-zinc-900 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                        className="w-full text-2xl font-semibold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[48px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <input
                           type="text"
                           value={editedGoal.category}
                           onChange={(e) => handleFieldChange('category', e.target.value)}
-                          className="w-full text-sm text-zinc-500 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                          className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
                           placeholder="Danh mục"
                         />
                         <input
                           type="date"
-                          value={editedGoal.dueDate.split('/').reverse().join('-')}
+                          value={toDateInputValue(editedGoal.dueDate)}
                           onChange={(e) => {
                             const date = new Date(e.target.value);
                             const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                             handleFieldChange('dueDate', formattedDate);
                           }}
-                          className="w-full text-sm text-zinc-500 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                          className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
                         />
                       </div>
                     </div>
                   ) : (
-                    <div>
-                      <h2 className="text-2xl font-semibold text-zinc-900 mb-1">{goal.title}</h2>
-                      <p className="text-zinc-500 text-sm">{goal.category} • Đến hạn: {goal.dueDate}</p>
+                    <div className="min-w-0">
+                      <h2 className="text-2xl font-semibold text-[#111418] mb-1 break-words">{goal.title}</h2>
+                      <p className="text-gray-500 text-sm break-words">{goal.category} </p> 
+                      <p className="text-gray-500 text-sm break-words">Đến hạn: {goal.dueDate}</p>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-row items-center gap-2 shrink-0">
+                  {saveError && (
+                    <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100" role="alert">
+                      {saveError}
+                    </p>
+                  )}
                   {isEditing ? (
-                    <>
-                      <button
-                        onClick={handleSave}
-                        className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors"
-                        aria-label="Save changes"
-                      >
-                        Lưu
-                      </button>
-                      <button
-                        onClick={handleCancel}
-                        className="px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg border border-zinc-300 hover:bg-zinc-50 transition-colors"
-                        aria-label="Cancel editing"
-                      >
-                        Hủy
-                      </button>
-                    </>
+                    <div className="flex gap-2">
+                      <button onClick={handleSave} type="button" className="min-h-[44px] px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors touch-manipulation" aria-label="Lưu thay đổi">Lưu</button>
+                      <button onClick={handleCancel} type="button" className="min-h-[44px] px-4 py-2.5 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors touch-manipulation" aria-label="Hủy chỉnh sửa">Hủy</button>
+                    </div>
                   ) : (
-                    <button
-                      onClick={handleEdit}
-                      className="p-2 text-zinc-300 hover:text-zinc-600 transition-colors rounded-full hover:bg-zinc-100"
-                      aria-label="Edit goal"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
+                    <button onClick={handleEdit} type="button" className="min-h-[44px] min-w-[44px] p-2.5 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label="Chỉnh sửa mục tiêu">
+                      <span className="material-symbols-outlined text-[22px]">edit</span>
                     </button>
                   )}
                 </div>
+              </div>
+              {/* Mobile: category, date (and when editing: title row already above, so show category/date + icon picker) */}
+              <div className="sm:hidden space-y-3 mt-1">
+                {saveError && (
+                  <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100" role="alert">
+                    {saveError}
+                  </p>
+                )}
+                {isEditing && (
+                  <div className="flex flex-wrap gap-1.5 justify-start w-full overflow-x-auto pb-1">
+                    {iconOptions.map((icon) => (
+                      <button
+                        key={icon.value}
+                        type="button"
+                        onClick={() => handleFieldChange('icon', icon.value)}
+                        className={`flex items-center justify-center min-w-[32px] min-h-[32px] size-8 rounded-md border transition-all touch-manipulation shrink-0 ${
+                          (isEditing ? editedGoal.icon : goal.icon) === icon.value
+                            ? 'bg-primary border-primary text-white'
+                            : 'bg-white border-gray-200 text-gray-600'
+                        }`}
+                        title={icon.label}
+                        aria-label={icon.label}
+                      >
+                        <span className="material-symbols-outlined text-base">{icon.value}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {isEditing ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    <input
+                      type="text"
+                      value={editedGoal.category}
+                      onChange={(e) => handleFieldChange('category', e.target.value)}
+                      className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 touch-manipulation"
+                      placeholder="Danh mục"
+                    />
+                    <input
+                      type="date"
+                      value={toDateInputValue(editedGoal.dueDate)}
+                      onChange={(e) => {
+                        const date = new Date(e.target.value);
+                        const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+                        handleFieldChange('dueDate', formattedDate);
+                      }}
+                      className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 touch-manipulation"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-500 text-sm break-words">{goal.category}</p>
+                    <p className="text-gray-500 text-sm break-words">Đến hạn: {goal.dueDate}</p>
+                  </>
+                )}
               </div>
               {isEditing ? (
                 <textarea
                   value={editedGoal.description}
                   onChange={(e) => handleFieldChange('description', e.target.value)}
-                  className="w-full mt-3 text-sm text-zinc-600 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none min-h-[80px] leading-relaxed"
+                  className="w-full mt-3 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[90px] focus:outline-none focus:border-gray-400 focus:ring-0 resize-none leading-relaxed shadow-sm hover:border-gray-300 transition-all placeholder:text-gray-400 touch-manipulation"
                   placeholder="Mô tả mục tiêu..."
                 />
               ) : (
-                <p className="text-zinc-600 text-sm leading-relaxed mt-3">{goal.description}</p>
+                <p className="text-gray-600 text-sm leading-relaxed mt-3 break-words">{goal.description}</p>
               )}
-              <div className="mt-4 flex items-center gap-4">
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-1">Tiến độ tổng thể</span>
-                  <div className="flex items-center gap-3">
-                    {isEditing ? (
-                      <div className="flex items-center gap-3">
-                        <div className="w-48 h-2 rounded-full bg-zinc-100 overflow-hidden">
-                          <div 
-                            className="h-full rounded-full bg-zinc-800 transition-all duration-300" 
-                            style={{ width: `${editedGoal.progress}%` }}
-                            role="progressbar"
-                            aria-valuenow={editedGoal.progress}
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                          />
-                        </div>
-                        <span className="text-sm font-bold text-zinc-900">{editedGoal.progress}%</span>
-                        <span className="text-xs text-zinc-400">(tự động)</span>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tiến độ tổng thể</span>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {isEditing ? (
+                    <>
+                      <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
+                        <div 
+                          className="h-full rounded-full bg-primary transition-all duration-300" 
+                          style={{ width: `${editedGoal.progress}%` }}
+                          role="progressbar"
+                          aria-valuenow={editedGoal.progress}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                          aria-label={`Tiến độ ${editedGoal.progress}%`}
+                        />
                       </div>
-                    ) : (
-                      <>
-                        <div className="w-48 h-2 rounded-full bg-zinc-100 overflow-hidden">
-                          <div 
-                            className="h-full rounded-full bg-zinc-800 transition-all duration-300" 
-                            style={{ width: `${goal.progress}%` }}
-                            role="progressbar"
-                            aria-valuenow={goal.progress}
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                          />
-                        </div>
-                        <span className="text-sm font-bold text-zinc-900">{goal.progress}%</span>
-                      </>
-                    )}
-                  </div>
+                      <span className="text-sm font-bold text-[#111418] shrink-0">{editedGoal.progress}%</span>
+                      <span className="hidden sm:inline text-xs text-gray-400">(tự động)</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
+                        <div 
+                          className="h-full rounded-full bg-primary transition-all duration-300" 
+                          style={{ width: `${goal.progress}%` }}
+                          role="progressbar"
+                          aria-valuenow={goal.progress}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                          aria-label={`Tiến độ mục tiêu ${goal.progress}%`}
+                        />
+                      </div>
+                      <span className="text-sm font-bold text-[#111418] shrink-0">{goal.progress}%</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2 p-4 bg-background-light border border-border-light rounded-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-500 text-sm font-medium">Mốc quan trọng</span>
-                <span className={`material-symbols-outlined ${totalMilestones > 0 && completedMilestones === totalMilestones ? 'text-red-500' : 'text-zinc-400'}`} style={{ fontSize: '20px' }}>flag</span>
-              </div>
-              <p className="text-2xl font-light text-zinc-900">{completedMilestones}/{totalMilestones}</p>
-              <p className="text-xs text-zinc-400">đã hoàn thành</p>
-            </div>
-            <div className="flex flex-col gap-2 p-4 bg-background-light border border-border-light rounded-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-500 text-sm font-medium">Nhiệm vụ</span>
-                <span className={`material-symbols-outlined ${totalTasks > 0 && completedTasks === totalTasks ? 'text-green-500' : 'text-zinc-400'}`} style={{ fontSize: '20px' }}>check_circle</span>
-              </div>
-              <p className="text-2xl font-light text-zinc-900">{completedTasks}/{totalTasks}</p>
-              <p className="text-xs text-zinc-400">đã hoàn thành</p>
-            </div>
-          </div>
-
           {/* Milestones Section */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-zinc-900">Mốc quan trọng</h3>
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-medium text-[#111418]">Mốc quan trọng</h3>
               {isEditing && (
                 <button
+                  type="button"
                   onClick={handleAddMilestone}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-900 bg-white border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors"
+                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-xl sm:rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors shadow-sm touch-manipulation w-full sm:w-auto"
                 >
-                  <span className="material-symbols-outlined text-lg">add</span>
+                  <span className="material-symbols-outlined text-xl">add</span>
                   <span>Thêm mốc</span>
                 </button>
               )}
             </div>
-            <div className="flex flex-col gap-3">
-              {(isEditing ? editedGoal.milestones : goal.milestones).map((milestone, index) => {
+            <div className="flex flex-col gap-2 sm:gap-3">
+              {(isEditing ? editedGoal.milestones : goal.milestones).length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 px-4 bg-white border border-gray-200 border-dashed rounded-lg text-center">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">flag</span>
+                  <p className="text-sm text-gray-500 font-medium">Chưa có mốc quan trọng</p>
+                  <p className="text-xs text-gray-400 mt-1">Thêm mốc để theo dõi tiến độ</p>
+                </div>
+              ) : (isEditing ? editedGoal.milestones : goal.milestones).map((milestone, index) => {
                 const currentMilestone = milestone;
                 return (
                   <div
                     key={milestone.id}
-                    className="flex items-start gap-4 p-4 bg-background-light border border-border-light rounded-lg hover:border-zinc-300 transition-colors"
+                    className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-gray-200 rounded-xl sm:rounded-lg hover:border-gray-300 transition-colors shadow-sm"
                   >
                     <div className="flex flex-col items-center shrink-0">
                       {isEditing ? (
                         <button
+                          type="button"
                           onClick={() => handleMilestoneToggle(milestone.id)}
-                          className={`size-8 rounded-full flex items-center justify-center border-2 transition-colors ${
+                          className={`min-w-[44px] min-h-[44px] size-8 sm:size-8 rounded-full flex items-center justify-center border-2 transition-colors touch-manipulation ${
                             currentMilestone.completed 
-                              ? 'bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800' 
-                              : 'bg-white border-zinc-300 text-zinc-400 hover:border-zinc-400'
+                              ? 'bg-primary border-primary text-white hover:bg-primary/90 active:bg-primary/80' 
+                              : 'bg-white border-gray-300 text-gray-400 hover:border-gray-400 active:bg-gray-50'
                           }`}
+                          aria-label={currentMilestone.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
                         >
                           {currentMilestone.completed ? (
                             <span className="material-symbols-outlined text-sm">check</span>
@@ -476,10 +604,10 @@ const GoalDetailPage = () => {
                           )}
                         </button>
                       ) : (
-                        <div className={`size-8 rounded-full flex items-center justify-center border-2 ${
+                        <div className={`min-w-[44px] min-h-[44px] size-8 rounded-full flex items-center justify-center border-2 shrink-0 ${
                           milestone.completed 
-                            ? 'bg-zinc-900 border-zinc-900 text-white' 
-                            : 'bg-white border-zinc-300 text-zinc-400'
+                            ? 'bg-primary border-primary text-white' 
+                            : 'bg-white border-gray-300 text-gray-400'
                         }`}>
                           {milestone.completed ? (
                             <span className="material-symbols-outlined text-sm">check</span>
@@ -489,14 +617,14 @@ const GoalDetailPage = () => {
                         </div>
                       )}
                        {index < (isEditing ? editedGoal.milestones : goal.milestones).length - 1 && (
-                         <div className={`w-0.5 h-8 mt-2 ${
-                           currentMilestone.completed ? 'bg-zinc-900' : 'bg-zinc-200'
+                         <div className={`w-0.5 h-6 sm:h-8 mt-2 ${
+                           currentMilestone.completed ? 'bg-primary' : 'bg-gray-200'
                          }`} />
                        )}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 min-w-0">
+                        <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <div className="space-y-2">
                               <input
@@ -510,12 +638,12 @@ const GoalDetailPage = () => {
                                     )
                                   }));
                                 }}
-                                className="w-full text-sm font-medium text-zinc-900 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                                className="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all placeholder:text-gray-400 touch-manipulation"
                                 placeholder="Tên mốc quan trọng"
                               />
                               <input
                                 type="date"
-                                value={currentMilestone.date.split('/').reverse().join('-')}
+                                value={toDateInputValue(currentMilestone.date)}
                                 onChange={(e) => {
                                   const date = new Date(e.target.value);
                                   const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
@@ -526,33 +654,114 @@ const GoalDetailPage = () => {
                                     )
                                   }));
                                 }}
-                                className="w-full text-xs text-zinc-400 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                                className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
                               />
                             </div>
                           ) : (
-                            <div>
-                              <p className={`text-sm font-medium ${milestone.completed ? 'text-zinc-500 line-through' : 'text-zinc-900'}`}>
+                            <div className="min-w-0">
+                              <p className={`text-sm font-medium break-words ${milestone.completed ? 'text-gray-500 line-through' : 'text-[#111418]'}`}>
                                 {milestone.title}
                               </p>
-                              <p className="text-xs text-zinc-400 mt-1">{milestone.date}</p>
+                              <p className="text-xs text-gray-500 mt-1">{milestone.date}</p>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                          {!isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => navigate('/daily', {
+                                state: {
+                                  openAddTaskFromMilestone: true,
+                                  returnTo: `/goals/${id}`,
+                                  milestone: {
+                                    id: milestone.id,
+                                    title: milestone.title,
+                                    date: toDateInputValue(milestone.date) || new Date().toISOString().slice(0, 10),
+                                    goalId: goal.id,
+                                  },
+                                },
+                              })}
+                              className="min-h-[44px] min-w-[44px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                              aria-label={`Thêm nhiệm vụ ngày từ mốc: ${milestone.title}`}
+                              title="Thêm nhiệm vụ ngày"
+                            >
+                              <span className="material-symbols-outlined text-xl">task_alt</span>
+                            </button>
+                          )}
                           {!isEditing && milestone.completed && (
-                            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">Hoàn thành</span>
+                            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 whitespace-nowrap">Hoàn thành</span>
                           )}
                           {isEditing && (
                             <button
+                              type="button"
                               onClick={() => handleDeleteMilestone(milestone.id)}
-                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                              className="min-h-[44px] min-w-[44px] p-2 text-red-500 hover:text-red-700 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                               aria-label={`Xóa mốc: ${milestone.title}`}
                             >
-                              <span className="material-symbols-outlined text-lg">delete</span>
+                              <span className="material-symbols-outlined text-xl">delete</span>
                             </button>
                           )}
                         </div>
                       </div>
+                      {!isEditing && (() => {
+                        const milestoneIdStr = milestone.id != null ? String(milestone.id) : '';
+                        const tasksForMilestone = goalTasks.filter(t => t.goalMilestoneId != null && String(t.goalMilestoneId) === milestoneIdStr);
+                        if (tasksForMilestone.length === 0) return null;
+                        const formatTaskDate = (d) => {
+                          if (!d) return '';
+                          const date = typeof d === 'string' ? new Date(d) : d;
+                          return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        };
+                        return (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Danh sách nhiệm vụ</p>
+                            <ul className="space-y-2">
+                              {tasksForMilestone.map((task) => (
+                                <li key={task.id} className="flex items-center gap-2 text-sm min-w-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleGoalTask(task.id)}
+                                    disabled={!!togglingTaskId}
+                                    className={`shrink-0 min-h-[40px] min-w-[40px] p-1.5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 touch-manipulation ${task.isCompleted ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-600 hover:text-primary hover:bg-primary/10'}`}
+                                    aria-label={task.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
+                                  >
+                                    <span className="material-symbols-outlined text-lg">
+                                      {task.isCompleted ? 'check_circle' : 'radio_button_unchecked'}
+                                    </span>
+                                  </button>
+                                  <span className={`flex-1 min-w-0 truncate ${task.isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                                    {task.title}
+                                  </span>
+                                  {task.date && (
+                                    <span className="text-xs text-gray-400 shrink-0 hidden sm:inline">{formatTaskDate(task.date)}</span>
+                                  )}
+                                  <div className="flex items-center gap-0.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
+                                      className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                      aria-label={`Chỉnh sửa: ${task.title}`}
+                                      title="Chỉnh sửa"
+                                    >
+                                      <span className="material-symbols-outlined text-lg">edit</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteGoalTask(task.id)}
+                                      className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                      aria-label={`Xóa: ${task.title}`}
+                                      title="Xóa"
+                                    >
+                                      <span className="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
@@ -560,94 +769,6 @@ const GoalDetailPage = () => {
             </div>
           </div>
 
-          {/* Tasks Section */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-zinc-900">Nhiệm vụ liên quan</h3>
-              {isEditing && (
-                <button
-                  onClick={handleAddTask}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-900 bg-white border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg">add</span>
-                  <span>Thêm nhiệm vụ</span>
-                </button>
-              )}
-            </div>
-             <div className="flex flex-col gap-2">
-               {(isEditing ? editedGoal.tasks : goal.tasks).map((task) => {
-                 const currentTask = task;
-                return (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 p-3 bg-background-light border border-border-light rounded-lg hover:border-zinc-300 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={currentTask.completed}
-                      onChange={() => isEditing && handleTaskToggle(task.id)}
-                      disabled={!isEditing}
-                      className="h-5 w-5 cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 disabled:cursor-not-allowed"
-                    />
-                    {isEditing ? (
-                      <div className="flex-1 flex flex-col gap-2">
-                        <input
-                          type="text"
-                          value={currentTask.text}
-                          onChange={(e) => {
-                            setEditedGoal(prev => ({
-                              ...prev,
-                              tasks: prev.tasks.map(t => 
-                                t.id === task.id ? { ...t, text: e.target.value } : t
-                              )
-                            }));
-                          }}
-                          className="w-full text-sm text-zinc-900 bg-white border border-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                          placeholder="Nhập nhiệm vụ..."
-                        />
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 text-[16px] pointer-events-none">event</span>
-                          <input
-                            type="date"
-                            value={currentTask.date ? currentTask.date.split('/').reverse().join('-') : ''}
-                            onChange={(e) => {
-                              const date = new Date(e.target.value);
-                              const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-                              setEditedGoal(prev => ({
-                                ...prev,
-                                tasks: prev.tasks.map(t => 
-                                  t.id === task.id ? { ...t, date: formattedDate } : t
-                                )
-                              }));
-                            }}
-                            className="w-full text-xs text-zinc-400 bg-white border border-zinc-300 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${task.completed ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
-                          {task.text}
-                        </p>
-                        {task.date && (
-                          <p className="text-xs text-zinc-400 mt-1">{task.date}</p>
-                        )}
-                      </div>
-                    )}
-                    {isEditing && (
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                        aria-label={`Xóa nhiệm vụ: ${task.text}`}
-                      >
-                        <span className="material-symbols-outlined text-lg">delete</span>
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </div>
       </div>

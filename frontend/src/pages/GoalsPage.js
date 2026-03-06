@@ -217,46 +217,42 @@ const GoalsPage = () => {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="w-full max-w-[1024px] mx-auto px-6 sm:px-10 py-10 flex flex-col gap-10">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+          <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10 flex flex-col gap-6 md:gap-10">
           {/* Header Section */}
-          <div className="flex flex-col gap-2">
-            <h2 className="text-zinc-900 text-3xl font-light tracking-tight">Mục tiêu dài hạn</h2>
+          <div className="flex flex-col gap-1.5 md:gap-2">
+            <h2 className="text-zinc-900 text-2xl md:text-3xl font-light tracking-tight">Mục tiêu dài hạn</h2>
             <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
               Theo dõi tiến độ, duy trì động lực và biến ước mơ thành hiện thực.
             </p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="flex flex-col justify-between h-32 p-6 bg-background-light border border-border-light rounded-lg shadow-sm transition-colors hover:border-zinc-300">
-              <div className="flex items-center justify-between">
-                <p className="text-secondary text-sm font-medium">Đang thực hiện</p>
-                <span className="material-symbols-outlined text-zinc-400" style={{ fontSize: '20px' }}>bolt</span>
-              </div>
-              <p className="text-zinc-900 text-4xl font-light tracking-tight">{activeGoals}</p>
+          {/* Stats Cards - inline on mobile (icon + label + number), stacked on sm+ */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-background-light border border-border-light rounded-xl md:rounded-lg shadow-sm transition-colors hover:border-zinc-300 active:scale-[0.99]">
+              <span className="material-symbols-outlined text-zinc-400 text-[20px] select-none shrink-0 order-first" aria-hidden>bolt</span>
+              <p className="text-secondary text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đang thực hiện</p>
+              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-light tracking-tight shrink-0 order-last sm:mt-1">{activeGoals}</p>
             </div>
-            <div className="flex flex-col justify-between h-32 p-6 bg-background-light border border-border-light rounded-lg shadow-sm transition-colors hover:border-zinc-300">
-              <div className="flex items-center justify-between">
-                <p className="text-secondary text-sm font-medium">Đã hoàn thành</p>
-                <span className="material-symbols-outlined text-zinc-400" style={{ fontSize: '20px' }}>check</span>
-              </div>
-              <p className="text-zinc-900 text-4xl font-light tracking-tight">{completedGoals}</p>
+            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-background-light border border-border-light rounded-xl md:rounded-lg shadow-sm transition-colors hover:border-zinc-300 active:scale-[0.99]">
+              <span className="material-symbols-outlined text-zinc-400 text-[20px] select-none shrink-0 order-first" aria-hidden>check</span>
+              <p className="text-secondary text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đã hoàn thành</p>
+              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-light tracking-tight shrink-0 order-last sm:mt-1">{completedGoals}</p>
             </div>
-            <div className="flex flex-col justify-between h-32 p-6 bg-background-light border border-border-light rounded-lg shadow-sm transition-colors hover:border-zinc-300">
-              <div className="flex items-center justify-between">
-                <p className="text-secondary text-sm font-medium">Tiến độ TB</p>
-                <span className="material-symbols-outlined text-zinc-400" style={{ fontSize: '20px' }}>trending_up</span>
-              </div>
-              <p className="text-zinc-900 text-4xl font-light tracking-tight">{averageProgress}%</p>
+            <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-background-light border border-border-light rounded-xl md:rounded-lg shadow-sm transition-colors hover:border-zinc-300 active:scale-[0.99]">
+              <span className="material-symbols-outlined text-zinc-400 text-[20px] select-none shrink-0 order-first" aria-hidden>trending_up</span>
+              <p className="text-secondary text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Tiến độ TB</p>
+              <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-light tracking-tight shrink-0 order-last sm:mt-1">{averageProgress}%</p>
             </div>
           </div>
 
           {/* Goals List */}
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b border-border-light pb-4">
-              <h3 className="text-zinc-900 text-lg font-medium tracking-tight">Danh sách mục tiêu</h3>
-              <button className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 uppercase tracking-wider transition-colors">Xem tất cả</button>
+          <div className="flex flex-col gap-4 md:gap-6">
+            <div className="flex items-center justify-between border-b border-border-light pb-3 md:pb-4">
+              <h3 className="text-zinc-900 text-base md:text-lg font-medium tracking-tight">Danh sách mục tiêu</h3>
+              <button type="button" className="min-h-[44px] min-w-[44px] flex items-center justify-center py-2 px-3 -mr-2 text-xs font-semibold text-zinc-500 hover:text-zinc-900 uppercase tracking-wider transition-colors rounded-lg hover:bg-zinc-100 active:bg-zinc-200">
+                Xem tất cả
+              </button>
             </div>
             {goalsLoading ? (
               <p className="text-zinc-500 text-sm py-4">Đang tải...</p>
@@ -264,45 +260,48 @@ const GoalsPage = () => {
             goals.map((goal) => (
               <div 
                 key={goal.id} 
-                className="group flex flex-col sm:flex-row sm:items-center gap-5 bg-background-light p-5 rounded-lg border border-border-light transition-all hover:border-zinc-400 hover:shadow-sm cursor-pointer"
+                className="group flex flex-col sm:flex-row sm:items-center gap-4 md:gap-5 bg-background-light p-4 md:p-5 rounded-xl md:rounded-lg border border-border-light transition-all hover:border-zinc-400 hover:shadow-sm active:scale-[0.99] cursor-pointer touch-manipulation"
                 onClick={() => navigate(`/goals/${goal.id}`)}
               >
-                <div className="flex items-start sm:items-center gap-5 flex-1">
-                  <div className="flex items-center justify-center rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-100 shrink-0 size-12">
-                    <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>{goal.icon}</span>
+                <div className="flex items-start sm:items-center gap-4 md:gap-5 flex-1 min-w-0">
+                  <div className="flex items-center justify-center rounded-xl md:rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-100 shrink-0 size-11 md:size-12">
+                    <span className="material-symbols-outlined text-[20px] md:text-[22px]">{goal.icon}</span>
                   </div>
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-zinc-900 text-sm font-semibold leading-normal">{goal.title}</p>
+                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                    <p className="text-zinc-900 text-sm font-semibold leading-snug truncate">{goal.title}</p>
                     <p className="text-zinc-500 text-xs font-normal leading-normal">{goal.category} • {goal.dueDate}</p>
                   </div>
                 </div>
-                <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto min-w-[180px]">
-                  <div className="flex justify-between w-full sm:justify-end gap-4 mb-1">
-                    <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Tiến độ</span>
-                    <span className="text-[10px] font-bold text-zinc-900">{goal.progress}%</span>
+                <div className="flex flex-row sm:flex-col sm:items-end items-center gap-3 sm:gap-2 w-full sm:w-auto sm:min-w-[180px]">
+                  <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
+                    <div className="flex justify-between w-full sm:justify-end gap-2">
+                      <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Tiến độ</span>
+                      <span className="text-[10px] font-bold text-zinc-900">{goal.progress}%</span>
+                    </div>
+                    <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full bg-zinc-800 transition-all duration-300" 
+                        style={{ width: `${goal.progress}%` }}
+                        role="progressbar"
+                        aria-valuenow={goal.progress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Tiến độ: ${goal.progress}%`}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                    <div 
-                      className="h-full rounded-full bg-zinc-800 transition-all duration-300" 
-                      style={{ width: `${goal.progress}%` }}
-                      role="progressbar"
-                      aria-valuenow={goal.progress}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      aria-label={`Tiến độ: ${goal.progress}%`}
-                    />
-                  </div>
+                  <button 
+                    type="button"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 sm:p-2 text-zinc-300 hover:text-zinc-600 transition-colors rounded-full hover:bg-zinc-100 active:bg-red-50 touch-manipulation shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(goal);
+                    }}
+                    aria-label={`Xóa mục tiêu: ${goal.title}`}
+                  >
+                    <span className="material-symbols-outlined text-red-500 text-[20px]">delete</span>
+                  </button>
                 </div>
-                <button 
-                  className="hidden sm:flex p-2 text-zinc-300 hover:text-zinc-600 transition-colors rounded-full hover:bg-zinc-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteClick(goal);
-                  }}
-                  aria-label={`Xóa mục tiêu: ${goal.title}`}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>more_horiz</span>
-                </button>
               </div>
             ))
             )}
@@ -439,7 +438,7 @@ const GoalsPage = () => {
                       </p>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-2">
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Danh mục</label>
                       <input
@@ -491,7 +490,7 @@ const GoalsPage = () => {
                         <button
                           key={icon.value}
                           type="button"
-                          className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+                          className={`flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border transition-all touch-manipulation ${
                             goalForm.icon === icon.value
                               ? 'bg-zinc-900 border-zinc-900 text-white'
                               : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
@@ -506,16 +505,16 @@ const GoalsPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="bg-zinc-50/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100">
+              <div className="bg-zinc-50/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100 gap-3 sm:gap-0">
                 <button
                   type="submit"
-                  className="inline-flex w-full justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 sm:ml-3 sm:w-auto transition-colors"
+                  className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 sm:ml-3 sm:w-auto transition-colors touch-manipulation"
                 >
                   Tạo mục tiêu
                 </button>
                 <button
                   type="button"
-                  className="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 sm:mt-0 sm:w-auto transition-colors"
+                  className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white px-4 py-3 text-sm font-medium text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 sm:mt-0 sm:w-auto transition-colors touch-manipulation"
                   onClick={handleCloseAddModal}
                 >
                   Hủy
@@ -563,16 +562,16 @@ const GoalsPage = () => {
                     </div>
                   </div>
                 </div>
-                <div className="bg-zinc-50/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100">
+                <div className="bg-zinc-50/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100 gap-3 sm:gap-0">
                   <button 
-                    className="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors" 
+                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-red-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors touch-manipulation" 
                     type="button"
                     onClick={handleConfirmDelete}
                   >
                     Xóa
                   </button>
                   <button 
-                    className="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 sm:mt-0 sm:w-auto transition-colors" 
+                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white px-3 py-3 text-sm font-medium text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 sm:w-auto transition-colors touch-manipulation" 
                     type="button"
                     onClick={handleCancelDelete}
                   >

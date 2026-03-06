@@ -1,9 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { DEFAULT_TAGS } from '../constants/tasks';
-import { tasksAPI, notificationsAPI } from '../services/api';
+import { tasksAPI, notificationsAPI, eventsAPI } from '../services/api';
+
+const toDateOnly = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
+const mapEventForDaily = (e) => {
+  const start = new Date(e.startDate);
+  const isAllDay = e.isAllDay ?? e.allDay;
+  const timeFrom = !isAllDay && e.startDate ? e.startDate.slice(11, 16) : null;
+  const timeTo = !isAllDay && e.endDate ? e.endDate.slice(11, 16) : null;
+  return {
+    id: e.id,
+    date: toDateOnly(start),
+    time_from: timeFrom,
+    time_to: timeTo,
+    title: e.title,
+    description: e.description || '',
+    address: e.location || '',
+    platform: e.platform || '',
+    location_type: e.locationType || (e.platform ? 'online' : ''),
+  };
+};
 
 // Map backend DailyTaskDto to frontend task shape (id, text, completed, priority display)
 const RECURRENCE_TO_LABEL = { 0: 'Không', 1: 'Mỗi ngày', 2: 'Mỗi tuần', 3: 'Mỗi tháng' };
@@ -43,13 +62,14 @@ const mapTaskFromApi = (t) => ({
   recurrenceLabel: RECURRENCE_TO_LABEL[t.recurrence] ?? 'Không',
   reminderTime: t.reminderTime ?? '',
   tags: t.tags ?? [],
+  goalMilestoneId: t.goalMilestoneId ?? null,
+  goalId: t.goalId ?? null,
 });
 
 const DailyPage = () => {
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
   const [mainGoal, setMainGoal] = useState(null);
-  const [newTask, setNewTask] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
@@ -62,20 +82,26 @@ const DailyPage = () => {
     priority: 'low', // 'low' | 'medium' | 'high' -> API: 0, 1, 2
     tags: []
   });
+  const [formGoalMilestoneId, setFormGoalMilestoneId] = useState(null);
+  const [formGoalId, setFormGoalId] = useState(null);
+  const [addTaskReturnTo, setAddTaskReturnTo] = useState(null);
+  const location = useLocation();
+  const navigateTo = useNavigate();
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
   const [taskPage, setTaskPage] = useState(1);
-  const [taskPageSize] = useState(5);
+  const [taskPageSize] = useState(4);
   const [taskTotalCount, setTaskTotalCount] = useState(0);
   const [taskTotalAll, setTaskTotalAll] = useState(0);   // all tasks (completed + incomplete) for progress
   const [taskCompletedCount, setTaskCompletedCount] = useState(0);
-  const [taskStatusFilter, setTaskStatusFilter] = useState(''); // '' = all, 'completed', 'incomplete'
+  const [taskStatusFilter, setTaskStatusFilter] = useState('incomplete'); // '' = all, 'completed', 'incomplete' — default: Việc cần làm
   const [taskPriorityFilter, setTaskPriorityFilter] = useState(''); // '' | '0' | '1' | '2'
   const [taskTagFilter, setTaskTagFilter] = useState(''); // '' or tag string
   const [taskSortOrder, setTaskSortOrder] = useState('desc'); // 'desc' | 'asc'
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [taskIdInProgress, setTaskIdInProgress] = useState(null); // task id showing 3s progress before toggle
   const [toggleProgressPercent, setToggleProgressPercent] = useState(0); // 0..100 for inline progress bar
+  const descriptionEditorRef = useRef(null);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -138,6 +164,66 @@ const DailyPage = () => {
     };
   }, [taskIdInProgress]);
 
+  // Open Add Task modal with pre-fill when navigated from GoalDetailPage (from milestone)
+  useEffect(() => {
+    const state = location.state;
+    if (!state?.openAddTaskFromMilestone || !state?.milestone) return;
+    const { id, title, date, goalId } = state.milestone;
+    const dueDateLocal = date ? `${String(date).slice(0, 10)}T12:00` : '';
+    setFormGoalMilestoneId(id || null);
+    setFormGoalId(goalId || null);
+    setAddTaskReturnTo(state.returnTo || null);
+    setTaskForm(prev => ({
+      ...prev,
+      name: title || prev.name,
+      dueDate: dueDateLocal,
+    }));
+    setEditingTaskId(null);
+    setAddTaskModalOpen(true);
+    navigateTo(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigateTo]);
+
+  // Open Add Task modal in edit mode when navigated from GoalDetailPage (edit task)
+  useEffect(() => {
+    const state = location.state;
+    const task = state?.editTask;
+    if (!task?.id) return;
+    const recurrenceToOption = { 0: 'none', 1: 'daily', 2: 'weekly', 3: 'monthly' };
+    const priorityNumToOption = { 0: 'low', 1: 'medium', 2: 'high' };
+    setFormGoalMilestoneId(task.goalMilestoneId ?? null);
+    setFormGoalId(task.goalId ?? null);
+    setAddTaskReturnTo(state.returnTo || null);
+    setEditingTaskId(task.id);
+    setTaskForm({
+      name: task.title || '',
+      description: task.description ?? '',
+      dueDate: dateToDatetimeLocal(task.date),
+      reminderTime: task.reminderTime ?? '',
+      repeat: recurrenceToOption[task.recurrence] ?? 'none',
+      priority: priorityNumToOption[task.priority] ?? 'low',
+      tags: task.tags ? [...task.tags] : [],
+    });
+    setAddTaskModalOpen(true);
+    navigateTo(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigateTo]);
+
+  // Sync description into simple editor when Add Task modal opens
+  useEffect(() => {
+    if (!addTaskModalOpen || !descriptionEditorRef.current) return;
+    const html = taskForm.description || '';
+    if (descriptionEditorRef.current.innerHTML !== html) {
+      descriptionEditorRef.current.innerHTML = html;
+    }
+  }, [addTaskModalOpen, taskForm.description]);
+
+  const applyDescriptionFormat = (command, value = null) => {
+    document.execCommand(command, false, value);
+    descriptionEditorRef.current?.focus();
+    if (descriptionEditorRef.current) {
+      setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
+    }
+  };
+
   const loadData = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -173,9 +259,16 @@ const DailyPage = () => {
         setTaskCompletedCount(0);
       }
       
-      // Events are not loaded here - they should only be loaded on the Calendar page
-      // Keeping events state empty for DailyPage
-      setEvents([]);
+      // Load events for today
+      try {
+        const todayStr = today;
+        const eventsData = await eventsAPI.getEvents({ startDate: todayStr, endDate: todayStr });
+        const list = Array.isArray(eventsData) ? eventsData : (eventsData?.data ?? eventsData?.Data ?? []);
+        setEvents(list.map(mapEventForDaily));
+      } catch (err) {
+        console.error('Failed to load events for today:', err);
+        setEvents([]);
+      }
       
       // Main goal is not loaded here - it should only be loaded on the Goals page
       // Keeping mainGoal state null for DailyPage
@@ -196,19 +289,6 @@ const DailyPage = () => {
   const totalTasks = taskTotalAll; // all tasks (isCompleted=true + isCompleted=false)
   const completedTasks = taskCompletedCount;
   const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  const handleTaskToggle = async (id) => {
-    try {
-      await tasksAPI.completeTask(id);
-      const wasCompleted = tasks.find(t => t.id === id)?.completed ?? tasks.find(t => t.id === id)?.isCompleted;
-      setTasks(tasks.map(task =>
-        task.id === id ? { ...task, completed: !task.completed, isCompleted: !(task.completed ?? task.isCompleted) } : task
-      ));
-      setTaskCompletedCount(prev => wasCompleted ? Math.max(0, prev - 1) : prev + 1);
-    } catch (error) {
-      console.error('Failed to complete task:', error);
-    }
-  };
 
   const handleTaskCheckboxChange = (taskId) => {
     setTaskIdInProgress(taskId);
@@ -252,6 +332,13 @@ const DailyPage = () => {
       reminderTime: taskForm.reminderTime || undefined,
       tags: taskForm.tags,
     };
+    if (editingTaskId) {
+      payload.goalMilestoneId = formGoalMilestoneId ?? null;
+      payload.goalId = formGoalId ?? null;
+    } else {
+      if (formGoalMilestoneId) payload.goalMilestoneId = formGoalMilestoneId;
+      if (formGoalId) payload.goalId = formGoalId;
+    }
     try {
       if (editingTaskId) {
         await tasksAPI.updateTask(editingTaskId, payload);
@@ -270,6 +357,9 @@ const DailyPage = () => {
         priority: 'low',
         tags: []
       });
+      setFormGoalMilestoneId(null);
+      setFormGoalId(null);
+      setAddTaskReturnTo(null);
       setAddTaskModalOpen(false);
     } catch (error) {
       console.error(editingTaskId ? 'Failed to update task:' : 'Failed to create task:', error);
@@ -280,6 +370,8 @@ const DailyPage = () => {
     const recurrenceToOption = { 0: 'none', 1: 'daily', 2: 'weekly', 3: 'monthly' };
     const priorityLabelToOption = { 'Cao': 'high', 'Trung bình': 'medium', 'Thấp': 'low' };
     setEditingTaskId(task.id);
+    setFormGoalMilestoneId(task.goalMilestoneId ?? null);
+    setFormGoalId(task.goalId ?? null);
     setTaskForm({
       name: task.text || task.title || '',
       description: task.description ?? '',
@@ -293,8 +385,12 @@ const DailyPage = () => {
   };
 
   const handleCloseModal = () => {
+    const returnTo = addTaskReturnTo;
     setAddTaskModalOpen(false);
     setEditingTaskId(null);
+    setFormGoalMilestoneId(null);
+    setFormGoalId(null);
+    setAddTaskReturnTo(null);
     setTaskForm({
       name: '',
       description: '',
@@ -306,6 +402,7 @@ const DailyPage = () => {
     });
     setShowNewTagInput(false);
     setNewTagValue('');
+    if (returnTo) navigateTo(returnTo);
   };
 
   const handleAddNewTag = () => {
@@ -363,8 +460,8 @@ const DailyPage = () => {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
+        {/* Main Content Area - min-h-0 lets flex shrink; overflow-y-auto only when content exceeds viewport */}
+        <div className="flex-1 flex justify-center min-h-0 py-6 px-4 md:px-8 overflow-y-auto overflow-x-hidden">
           <div className="max-w-[1200px] flex-1 flex flex-col gap-6 w-full">
             {/* Date and Progress Card */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -561,91 +658,127 @@ const DailyPage = () => {
                   )}
                     <button
                       type="button"
-                      onClick={() => setFilterExpanded((v) => !v)}
-                      className={`flex items-center gap-1.5 p-2 rounded-md transition-colors ${filterExpanded ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
+                      onClick={() => {
+                        if (filterExpanded) {
+                          setFilterExpanded(false);
+                          setTaskStatusFilter('incomplete');
+                          setTaskPage(1);
+                        } else {
+                          setFilterExpanded(true);
+                        }
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${filterExpanded ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-primary hover:bg-primary/5 border border-gray-200'}`}
                       aria-label={filterExpanded ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
                       aria-expanded={filterExpanded}
                     >
-                      <span className="material-symbols-outlined text-[20px]">
-                        {filterExpanded ? 'filter_list_off' : 'filter_list'}
+                      <span className="material-symbols-outlined text-[18px]">
+                        {filterExpanded ? 'expand_less' : 'filter_list'}
                       </span>
-                      <span className="text-sm font-medium hidden sm:inline">
-                        {filterExpanded ? 'Đóng bộ lọc' : 'Bộ lọc'}
-                      </span>
-                      {(taskStatusFilter || taskPriorityFilter || taskTagFilter) && (
-                        <span className="flex h-2 w-2 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                      )}
+                      <span className="hidden sm:inline">{filterExpanded ? 'Thu gọn' : 'Bộ lọc'}</span>
                     </button>
                   </div>
+                  {!filterExpanded && (
+                    <div className="flex items-center pt-1" role="group" aria-label="Trạng thái nhiệm vụ">
+                      <div className="inline-flex p-0.5 rounded-full bg-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => { setTaskStatusFilter('incomplete'); setTaskPage(1); }}
+                          aria-pressed={taskStatusFilter === 'incomplete'}
+                          className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${taskStatusFilter === 'incomplete' ? 'text-white' : 'text-gray-600 hover:text-gray-800'}`}
+                        >
+                          {taskStatusFilter === 'incomplete' && (
+                            <span className="absolute inset-0 rounded-full bg-primary shadow-sm z-0" aria-hidden="true" />
+                          )}
+                          <span className="relative z-10">Việc cần làm</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setTaskStatusFilter('completed'); setTaskPage(1); }}
+                          aria-pressed={taskStatusFilter === 'completed'}
+                          className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${taskStatusFilter === 'completed' ? 'text-white' : 'text-gray-600 hover:text-gray-800'}`}
+                        >
+                          {taskStatusFilter === 'completed' && (
+                            <span className="absolute inset-0 rounded-full bg-primary shadow-sm z-0" aria-hidden="true" />
+                          )}
+                          <span className="relative z-10">Hoàn thành</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {filterExpanded && (
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <span className="material-symbols-outlined text-[16px]">filter_list</span>
-                      <span className="shrink-0">Trạng thái:</span>
-                      <select
-                        value={taskStatusFilter}
-                        onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
-                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3 overflow-visible">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
+                        <span>Tùy chọn lọc & sắp xếp</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTaskStatusFilter('');
+                          setTaskPriorityFilter('');
+                          setTaskTagFilter('');
+                          setTaskSortOrder('desc');
+                          setTaskPage(1);
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200/80 transition-colors shrink-0"
                       >
-                        <option value="">Tất cả</option>
-                        <option value="completed">Hoàn thành</option>
-                        <option value="incomplete">Chưa hoàn thành</option>
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <span className="material-symbols-outlined text-[16px]">flag</span>
-                      <span className="shrink-0">Ưu tiên:</span>
-                      <select
-                        value={taskPriorityFilter}
-                        onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
-                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="">Tất cả</option>
-                        <option value="0">Thấp</option>
-                        <option value="1">Trung bình</option>
-                        <option value="2">Cao</option>
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <span className="material-symbols-outlined text-[16px]">label</span>
-                      <span className="shrink-0">Nhãn:</span>
-                      <select
-                        value={taskTagFilter}
-                        onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
-                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="">Tất cả</option>
-                        {DEFAULT_TAGS.map((tag) => (
-                          <option key={tag} value={tag}>{tag}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <span className="material-symbols-outlined text-[16px]">sort</span>
-                      <span className="shrink-0">Sắp xếp:</span>
-                      <select
-                        value={taskSortOrder}
-                        onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
-                        className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="desc">Mới nhất</option>
-                        <option value="asc">Cũ nhất</option>
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTaskStatusFilter('');
-                        setTaskPriorityFilter('');
-                        setTaskTagFilter('');
-                        setTaskSortOrder('desc');
-                        setTaskPage(1);
-                      }}
-                      className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#111418] px-2.5 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">clear_all</span>
-                      <span>Xóa bộ lọc</span>
-                    </button>
+                        <span className="material-symbols-outlined text-[18px]">refresh</span>
+                        <span>Đặt lại</span>
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3 mt-3">
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Trạng thái</label>
+                        <select
+                          value={taskStatusFilter}
+                          onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
+                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        >
+                          <option value="">Tất cả</option>
+                          <option value="completed">Hoàn thành</option>
+                          <option value="incomplete">Chưa hoàn thành</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ưu tiên</label>
+                        <select
+                          value={taskPriorityFilter}
+                          onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
+                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        >
+                          <option value="">Tất cả</option>
+                          <option value="0">Thấp</option>
+                          <option value="1">Trung bình</option>
+                          <option value="2">Cao</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nhãn</label>
+                        <select
+                          value={taskTagFilter}
+                          onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
+                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        >
+                          <option value="">Tất cả</option>
+                          {DEFAULT_TAGS.map((tag) => (
+                            <option key={tag} value={tag}>{tag}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="h-px w-px bg-gray-300 self-stretch hidden sm:block" aria-hidden="true" />
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sắp xếp</label>
+                        <select
+                          value={taskSortOrder}
+                          onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
+                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        >
+                          <option value="desc">Mới nhất trước</option>
+                          <option value="asc">Cũ nhất trước</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                   )}
                 </div>
@@ -664,7 +797,7 @@ const DailyPage = () => {
                       key={task.id} 
                       className="group flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden transition-all hover:bg-gray-50"
                     >
-                      <div className="flex items-center justify-between gap-4 p-4">
+                      <div className="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4">
                         <div className="flex items-start gap-4 flex-1">
                           <div className="relative flex items-center pt-1">
                             <input 
@@ -679,24 +812,24 @@ const DailyPage = () => {
                             <span className="material-symbols-outlined text-[16px] font-bold">check</span>
                           </span>
                         </div>
-                        <div className="flex flex-col gap-1 flex-1">                          
-                          <p className={`text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 line-through' : 'text-[#111418]'}`}>
+                        <div className="flex flex-col gap-1 flex-1 min-w-0">                          
+                          <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 line-through' : 'text-[#111418]'}`}>
                           {task.priority && (
-                              <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
+                              <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
                                 {task.priority}
                               </span>
                             )} 
                             {task.text || task.title}
                           </p>
                           {formatDeadline(task.date) && (
-                            <p className="flex items-center gap-1.5 text-xs text-gray-500">
-                              <span className="material-symbols-outlined text-[14px]">event</span>
+                            <p className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-500">
+                              <span className="material-symbols-outlined text-[12px] sm:text-[14px]">event</span>
                               <span>Đến hạn: {formatDeadline(task.date)}</span>
                             </p>
                           )}
-                          <div className="flex items-center gap-2 flex-wrap">                            
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">                            
                               {task.tags && task.tags.map((tag, idx) => (
-                              <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                              <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600">
                                 {tag}
                               </span>
                             ))}
@@ -815,12 +948,47 @@ const DailyPage = () => {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Mô tả
                   </label>
-                  <div className="relative group">
-                    <textarea
-                      className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 px-4 py-3 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 placeholder:text-gray-400 transition-all resize-none min-h-[90px] leading-relaxed shadow-sm hover:border-gray-300"
-                      placeholder="Thêm chi tiết về nhiệm vụ này..."
-                      value={taskForm.description}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                  <div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-all overflow-hidden">
+                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('bold')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Đậm"
+                        aria-label="Đậm"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_bold</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('italic')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Nghiêng"
+                        aria-label="Nghiêng"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_italic</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyDescriptionFormat('insertUnorderedList')}
+                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        title="Danh sách"
+                        aria-label="Danh sách"
+                      >
+                        <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
+                      </button>
+                    </div>
+                    <div
+                      ref={descriptionEditorRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 [&:empty::before]:content-[attr(data-placeholder)] [&:empty::before]:text-gray-400"
+                      data-placeholder="Thêm chi tiết về nhiệm vụ này..."
+                      onInput={() => {
+                        if (descriptionEditorRef.current) {
+                          setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
+                        }
+                      }}
                     />
                   </div>
                 </div>
