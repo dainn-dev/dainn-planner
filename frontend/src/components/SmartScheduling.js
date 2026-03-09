@@ -1,22 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const SmartScheduling = () => {
+  const { t } = useTranslation();
   const features = [
-    {
-      icon: 'drag_indicator',
-      title: 'Drag & Drop',
-      description: 'Rearrange your day in seconds. Move tasks between time slots or days with a simple click and hold.'
-    },
-    {
-      icon: 'sync',
-      title: 'Auto-Sync',
-      description: 'Changes update instantly across your phone, tablet, and desktop so you never miss a beat.'
-    },
-    {
-      icon: 'notifications_active',
-      title: 'Smart Alerts',
-      description: 'Get context-aware notifications that remind you when to start preparing, not just when to start.'
-    }
+    { icon: 'drag_indicator', titleKey: 'home.featureDragDrop', descKey: 'home.featureDragDropDesc' },
+    { icon: 'sync', titleKey: 'home.featureAutoSync', descKey: 'home.featureAutoSyncDesc' },
+    { icon: 'notifications_active', titleKey: 'home.featureSmartAlerts', descKey: 'home.featureSmartAlertsDesc' }
   ];
 
   return (
@@ -24,9 +14,9 @@ const SmartScheduling = () => {
       <div className="w-full max-w-[960px] px-4 py-16 mx-auto">
         <div className="flex flex-col gap-12">
           <div className="text-center max-w-[700px] mx-auto">
-            <h2 className="text-3xl font-bold tracking-tight mb-4 text-gray-900">Smart Scheduling</h2>
+            <h2 className="text-3xl font-bold tracking-tight mb-4 text-gray-900">{t('home.smartSchedulingTitle')}</h2>
             <p className="text-gray-600 text-lg">
-              Stop fighting with your calendar. Our intelligent system helps you organize your time efficiently without the hassle.
+              {t('home.smartSchedulingSubtitle')}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -36,9 +26,9 @@ const SmartScheduling = () => {
                   <span className="material-symbols-outlined text-3xl">{feature.icon}</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-gray-900">{feature.title}</h3>
+                  <h3 className="text-lg font-bold mb-2 text-gray-900">{t(feature.titleKey)}</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {feature.description}
+                    {t(feature.descKey)}
                   </p>
                 </div>
               </div>

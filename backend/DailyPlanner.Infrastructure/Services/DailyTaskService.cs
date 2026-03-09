@@ -311,5 +311,55 @@ public class DailyTaskService : IDailyTaskService
             Data = _mapper.Map<MainDailyGoalDto>(goal)
         };
     }
+
+    public async Task<ApiResponse<TagsWithUsageResult>> GetTagsWithUsageAsync(string userId, DateTime? dateFrom = null, DateTime? dateTo = null)
+    {
+        var query = _context.DailyTasks.Where(t => t.UserId == userId);
+
+        if (dateFrom.HasValue)
+        {
+            var fromUtc = ToUtc(dateFrom.Value);
+            query = query.Where(t => t.Date.Date >= fromUtc);
+        }
+
+        if (dateTo.HasValue)
+        {
+            var toUtc = ToUtc(dateTo.Value);
+            query = query.Where(t => t.Date.Date <= toUtc);
+        }
+
+        var tasks = await query.Select(t => t.Tags).ToListAsync();
+        var totalTasks = tasks.Count;
+
+        var tagCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tags in tasks)
+        {
+            if (tags == null) continue;
+            foreach (var key in tags.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                tagCounts[key] = tagCounts.GetValueOrDefault(key, 0) + 1;
+            }
+        }
+
+        var tagDtos = tagCounts
+            .Select(kv => new TagUsageDto
+            {
+                Tag = kv.Key,
+                TaskCount = kv.Value,
+                PercentUsage = totalTasks > 0 ? Math.Round((double)kv.Value / totalTasks * 100, 2) : 0
+            })
+            .OrderByDescending(t => t.TaskCount)
+            .ToList();
+
+        return new ApiResponse<TagsWithUsageResult>
+        {
+            Success = true,
+            Data = new TagsWithUsageResult
+            {
+                Tags = tagDtos,
+                TotalTasks = totalTasks
+            }
+        };
+    }
 }
 

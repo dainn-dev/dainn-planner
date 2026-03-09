@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
 import PasswordInput from '../components/PasswordInput';
 import ErrorMessage from '../components/ErrorMessage';
 import { validateEmail, validatePassword } from '../utils/formValidation';
-import { authAPI } from '../services/api';
+import { authAPI, userAPI } from '../services/api';
 
 const LoginPage = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -55,9 +57,16 @@ const LoginPage = () => {
       
       // Check if login was successful
       if (response.token || response.success) {
+        // Fetch and persist user settings to localStorage
+        try {
+          await userAPI.getSettings();
+        } catch (_) {
+          // Continue on failure; settings will load when user opens Settings page
+        }
+
         // Get user from response or localStorage
         const user = response.user || JSON.parse(localStorage.getItem('user') || '{}');
-        
+
         // Redirect based on user role
         if (user.role === 'Admin') {
           navigate('/admin/dashboard');
@@ -68,10 +77,10 @@ const LoginPage = () => {
           navigate('/daily');
         }
       } else {
-        setErrors({ submit: response.message || 'Đăng nhập thất bại. Vui lòng thử lại.' });
+        setErrors({ submit: response.message || t('auth.loginFail') });
       }
     } catch (error) {
-      setErrors({ submit: error.message || 'Đăng nhập thất bại. Vui lòng thử lại.' });
+      setErrors({ submit: error.message || t('auth.loginFail') });
     } finally {
       setIsSubmitting(false);
     }
@@ -83,9 +92,9 @@ const LoginPage = () => {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-[420px] flex flex-col gap-8 bg-surface-light md:p-10 p-6 rounded-2xl shadow-soft border border-white">
           <div className="flex flex-col gap-2 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-text-main">Đăng nhập</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-text-main">{t('auth.loginTitle')}</h1>
             <p className="text-text-muted text-sm font-normal">
-              Chào mừng trở lại! Tiếp tục hành trình của bạn.
+              {t('auth.loginSubtitle')}
             </p>
           </div>
           <div className="flex flex-col gap-3">
@@ -96,28 +105,28 @@ const LoginPage = () => {
                 <path d="M5.50253 14.3003C5.00236 12.8199 5.00236 11.1799 5.50253 9.69951V6.60861H1.51649C-0.18551 10.0056 -0.18551 13.9945 1.51649 17.3915L5.50253 14.3003Z" fill="#FBBC05"></path>
                 <path d="M12.2401 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.2401 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.60861L5.50264 9.69951C6.45064 6.85993 9.10947 4.74966 12.2401 4.74966Z" fill="#EA4335"></path>
               </svg>
-              <span className="text-sm">Tiếp tục với Google</span>
+              <span className="text-sm">{t('auth.continueWithGoogle')}</span>
             </button>
             <button className="btn-social group">
               <svg className="size-5 text-[#1877F2] mr-3 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M24 12.073C24 5.406 18.627 0 12 0C5.373 0 0 5.406 0 12.073C0 18.101 4.437 23.088 10.125 23.982V15.556H7.078V12.073H10.125V9.428C10.125 6.422 11.916 4.764 14.656 4.764C15.968 4.764 17.344 5 17.344 5V7.952H15.83C14.34 7.952 13.875 8.877 13.875 10.024V12.074H17.203L16.67 15.557H13.875V23.983C19.563 23.088 24 18.101 24 12.073Z"></path>
               </svg>
-              <span className="text-sm">Tiếp tục với Facebook</span>
+              <span className="text-sm">{t('auth.continueWithFacebook')}</span>
             </button>
           </div>
           <div className="relative flex items-center py-1">
             <div className="flex-grow border-t border-border-light"></div>
-            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase tracking-wide font-medium">Hoặc</span>
+            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase tracking-wide font-medium">{t('auth.or')}</span>
             <div className="flex-grow border-t border-border-light"></div>
           </div>
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-2">
-              <label className="text-text-main text-sm font-semibold" htmlFor="email">Email</label>
+              <label className="text-text-main text-sm font-semibold" htmlFor="email">{t('auth.email')}</label>
               <div className="relative group">
                 <input
                   className={`input-minimal ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''}`}
                   id="email"
-                  placeholder="name@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   type="email"
                   value={email}
                   onChange={(e) => {
@@ -142,9 +151,9 @@ const LoginPage = () => {
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
-                <label className="text-text-main text-sm font-semibold" htmlFor="password">Mật khẩu</label>
+                <label className="text-text-main text-sm font-semibold" htmlFor="password">{t('auth.password')}</label>
                 <Link to="/forgot-password" className="text-xs font-medium text-text-muted hover:text-primary-dark transition-colors">
-                  Quên mật khẩu?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
               <PasswordInput
@@ -157,7 +166,7 @@ const LoginPage = () => {
                     setErrors(prev => ({ ...prev, password: null }));
                   }
                 }}
-                placeholder="Nhập mật khẩu"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
                 error={errors.password}
               />
@@ -168,14 +177,14 @@ const LoginPage = () => {
               type="submit"
               disabled={isSubmitting}
             >
-              <span>{isSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}</span>
+              <span>{isSubmitting ? t('common.processing') : t('auth.login')}</span>
             </button>
           </form>
           <div className="text-center">
             <p className="text-text-muted text-sm">
-              Chưa có tài khoản?{' '}
+              {t('auth.noAccount')}{' '}
               <Link to="/register" className="text-primary-dark font-semibold hover:underline decoration-2 underline-offset-2 transition-all">
-                Đăng ký ngay
+                {t('auth.registerNow')}
               </Link>
             </p>
           </div>

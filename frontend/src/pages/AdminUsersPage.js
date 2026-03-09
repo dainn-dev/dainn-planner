@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { adminAPI } from '../services/api';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDate } from '../utils/dateFormat';
 
 const mapUserFromApi = (u) => ({
   id: u.id,
@@ -12,10 +14,11 @@ const mapUserFromApi = (u) => ({
   avatar: u.avatarUrl ?? u.avatar,
   role: (u.roles && u.roles[0]) ? u.roles[0] : 'User',
   status: u.emailConfirmed ? 'Active' : 'Pending',
-  joinedDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+  joinedDate: u.createdAt ? formatDate(u.createdAt) : '',
 });
 
 const AdminUsersPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isAdmin = isStoredAdmin();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,28 +30,108 @@ const AdminUsersPage = () => {
   const [sortOpen, setSortOpen] = useState(false);
   const [selectedSort, setSelectedSort] = useState('newest');
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [filters, setFilters] = useState({
     status: '',
     role: '',
     dateRange: ''
   });
   const [notifications, setNotifications] = useState([]);
+  const [userStats, setUserStats] = useState(null);
+  const [userStatsLoading, setUserStatsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const searchDebounceRef = useRef(null);
+
+  const isAllSelected = users.length > 0 && users.every((u) => selectedUserIds.includes(u.id));
+  const handleSelectAll = (e) => {
+    const ids = users.map((u) => u.id);
+    if (e.target.checked) {
+      setSelectedUserIds((prev) => [...new Set([...prev, ...ids])]);
+    } else {
+      setSelectedUserIds((prev) => prev.filter((id) => !ids.includes(id)));
+    }
+  };
+  const handleSelectOne = (id) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setUsersLoading(true);
+      const params = {
+        page,
+        pageSize,
+        ...(searchDebounced.trim() && { search: searchDebounced.trim() }),
+        ...(filters.status && { status: filters.status }),
+        ...(filters.role && { role: filters.role }),
+        ...(filters.dateRange && { dateRange: filters.dateRange }),
+        ...(selectedSort && { sort: selectedSort }),
+      };
+      const data = await adminAPI.getUsers(params);
+      const items = data?.items ?? (Array.isArray(data) ? data : []);
+      const total = data?.totalCount ?? items.length;
+      setUsers(items.map(mapUserFromApi));
+      setTotalCount(total);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      setUsers([]);
+      setTotalCount(0);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [page, pageSize, searchDebounced, filters.status, filters.role, filters.dateRange, selectedSort]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearchDebounced(searchQuery);
+      setPage(1);
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        setUsersLoading(true);
-        const data = await adminAPI.getUsers({ page: 1, pageSize: 50 });
-        setUsers(Array.isArray(data) ? data.map(mapUserFromApi) : []);
+        setUserStatsLoading(true);
+        const data = await adminAPI.getUserStats();
+        setUserStats(data);
       } catch (error) {
-        console.error('Failed to load users:', error);
-        setUsers([]);
+        console.error('Failed to load user stats:', error);
+        setUserStats(null);
       } finally {
-        setUsersLoading(false);
+        setUserStatsLoading(false);
       }
     };
     load();
   }, []);
+
+  const formatPercent = (value) => {
+    if (value == null) return '—';
+    const sign = value >= 0 ? '+' : '';
+    return `${sign}${value}%`;
+  };
+
+  const getPercentBadgeClass = (value) => {
+    if (value == null) return 'text-gray-500 bg-gray-100';
+    if (value > 0) return 'text-emerald-600 bg-emerald-50';
+    if (value < 0) return 'text-orange-600 bg-orange-50';
+    return 'text-gray-500 bg-gray-100';
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -89,7 +172,8 @@ const AdminUsersPage = () => {
     if (userToDelete) {
       try {
         await adminAPI.deleteUser(userToDelete.id);
-        setUsers(users.filter(u => u.id !== userToDelete.id));
+        setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+        setTotalCount((c) => Math.max(0, c - 1));
       } catch (error) {
         console.error('Failed to delete user:', error);
       }
@@ -104,18 +188,36 @@ const AdminUsersPage = () => {
   };
 
   const handleExportClick = () => {
+    setExportError('');
     setExportModalOpen(true);
   };
 
   const handleExportCancel = () => {
     setExportModalOpen(false);
+    setExportError('');
   };
 
-  const handleExport = (format) => {
-    // In a real app, you would export data in the selected format
-    console.log(`Exporting users as ${format}`);
-    setExportModalOpen(false);
-    // await exportUsers(format);
+  const handleExport = async (format) => {
+    const formatKey = format.toLowerCase();
+    if (formatKey !== 'csv' && formatKey !== 'excel' && formatKey !== 'pdf') return;
+    setExporting(true);
+    setExportError('');
+    try {
+      const params = {
+        format: formatKey,
+        ...(searchDebounced.trim() && { search: searchDebounced.trim() }),
+        ...(filters.status && { status: filters.status }),
+        ...(filters.role && { role: filters.role }),
+        ...(filters.dateRange && { dateRange: filters.dateRange }),
+        ...(selectedSort && { sort: selectedSort }),
+      };
+      await adminAPI.exportUsers(params);
+      setExportModalOpen(false);
+    } catch (err) {
+      setExportError(err.message || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleFilterChange = (field, value) => {
@@ -134,15 +236,14 @@ const AdminUsersPage = () => {
   };
 
   const handleApplyFilters = () => {
-    // In a real app, you would apply filters here
     setFilterOpen(false);
+    setPage(1);
   };
 
   const handleSortChange = (sortOption) => {
     setSelectedSort(sortOption);
     setSortOpen(false);
-    // In a real app, you would apply sorting here
-    // await sortUsers(sortOption);
+    setPage(1);
   };
 
   const getSortLabel = (sortOption) => {
@@ -169,8 +270,8 @@ const AdminUsersPage = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header 
-          title="User Management"
+        <Header
+          title={t('admin.userManagement')}
           icon="group"
           actionButton={{
             text: 'Add New User',
@@ -213,41 +314,77 @@ const AdminUsersPage = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-gray-500 text-sm font-medium">Total Users</p>
-                <div className="flex items-end gap-2">
-                  <p className="text-[#111418] text-2xl font-bold leading-none">12,450</p>
-                  <span className="text-emerald-600 bg-emerald-50 px-1.5 rounded text-xs font-bold mb-1">+5%</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-gray-500 text-sm font-medium">Active Users</p>
-                <div className="flex items-end gap-2">
-                  <p className="text-[#111418] text-2xl font-bold leading-none">11,200</p>
-                  <span className="text-emerald-600 bg-emerald-50 px-1.5 rounded text-xs font-bold mb-1">+2%</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-gray-500 text-sm font-medium">Pending Approval</p>
-                <div className="flex items-end gap-2">
-                  <p className="text-[#111418] text-2xl font-bold leading-none">1,150</p>
-                  <span className="text-orange-600 bg-orange-50 px-1.5 rounded text-xs font-bold mb-1">-10%</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-gray-500 text-sm font-medium">Banned Users</p>
-                <div className="flex items-end gap-2">
-                  <p className="text-[#111418] text-2xl font-bold leading-none">100</p>
-                  <span className="text-gray-500 bg-gray-100 px-1.5 rounded text-xs font-bold mb-1">0%</span>
-                </div>
-              </div>
+              {userStatsLoading ? (
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm animate-pulse">
+                    <div className="h-4 w-24 bg-gray-200 rounded" />
+                    <div className="flex items-end gap-2">
+                      <div className="h-8 w-16 bg-gray-200 rounded" />
+                      <div className="h-5 w-10 bg-gray-100 rounded mb-1" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <p className="text-gray-500 text-sm font-medium">{t('admin.totalUsers')}</p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-[#111418] text-2xl font-bold leading-none">
+                        {userStats ? userStats.totalUsers.toLocaleString() : '0'}
+                      </p>
+                      <span className={`px-1.5 rounded text-xs font-bold mb-1 ${getPercentBadgeClass(userStats?.percentChangeTotal)}`}>
+                        {formatPercent(userStats?.percentChangeTotal)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <p className="text-gray-500 text-sm font-medium">{t('admin.activeUsers')}</p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-[#111418] text-2xl font-bold leading-none">
+                        {userStats ? userStats.activeUsers.toLocaleString() : '0'}
+                      </p>
+                      <span className={`px-1.5 rounded text-xs font-bold mb-1 ${getPercentBadgeClass(userStats?.percentChangeActive)}`}>
+                        {formatPercent(userStats?.percentChangeActive)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <p className="text-gray-500 text-sm font-medium">{t('admin.pendingApproval')}</p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-[#111418] text-2xl font-bold leading-none">
+                        {userStats ? userStats.pendingUsers.toLocaleString() : '0'}
+                      </p>
+                      <span className={`px-1.5 rounded text-xs font-bold mb-1 ${getPercentBadgeClass(userStats?.percentChangePending)}`}>
+                        {formatPercent(userStats?.percentChangePending)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <p className="text-gray-500 text-sm font-medium">{t('admin.bannedUsers')}</p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-[#111418] text-2xl font-bold leading-none">
+                        {userStats ? userStats.bannedUsers.toLocaleString() : '0'}
+                      </p>
+                      <span className={`px-1.5 rounded text-xs font-bold mb-1 ${getPercentBadgeClass(userStats?.percentChangeBanned)}`}>
+                        {formatPercent(userStats?.percentChangeBanned)}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Filter and Search Controls */}
             <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl bg-white border border-gray-200 shadow-sm items-center">
               <div className="relative w-full sm:w-72 md:hidden">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-[20px]">search</span>
-                <input className="w-full bg-gray-50 text-[#111418] text-sm rounded-lg pl-10 pr-4 py-2 border-gray-200 focus:ring-2 focus:ring-primary focus:bg-white transition-all" placeholder="Search users..." type="text"/>
+                <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-50 text-[#111418] text-sm rounded-lg pl-10 pr-4 py-2 border-gray-200 focus:ring-2 focus:ring-primary focus:bg-white transition-all"
+                placeholder="Search users..."
+                type="text"
+              />
               </div>
               <div className="flex w-full sm:w-auto gap-3 items-center">
                 <div className="relative">
@@ -269,7 +406,7 @@ const AdminUsersPage = () => {
                         className="fixed inset-0 z-40"
                         onClick={() => setFilterOpen(false)}
                       />
-                      <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+                      <div className="absolute left-0 top-full mt-2 w-80 min-w-[280px] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
                         <div className="p-4 border-b border-gray-200">
                           <div className="flex items-center justify-between">
                             <h3 className="font-bold text-[#111418] text-sm">Filter Users</h3>
@@ -365,7 +502,7 @@ const AdminUsersPage = () => {
                         className="fixed inset-0 z-40"
                         onClick={() => setSortOpen(false)}
                       />
-                      <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+                      <div className="absolute left-0 top-full mt-2 w-64 min-w-[240px] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
                         <div className="p-4 border-b border-gray-200">
                           <div className="flex items-center justify-between">
                             <h3 className="font-bold text-[#111418] text-sm">Sort Users</h3>
@@ -437,7 +574,7 @@ const AdminUsersPage = () => {
                 </div>
               </div>
               <div className="hidden sm:flex flex-1 justify-end text-gray-500 text-sm font-medium">
-                Showing <span className="text-[#111418] mx-1 font-bold">1-10</span> of <span className="text-[#111418] ml-1 font-bold">12,450</span>
+                Showing <span className="text-[#111418] mx-1 font-bold">{totalCount === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)}</span> of <span className="text-[#111418] ml-1 font-bold">{totalCount}</span>
               </div>
             </div>
 
@@ -448,7 +585,14 @@ const AdminUsersPage = () => {
                   <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-4 w-10" scope="col">
-                        <input className="rounded border-gray-300 bg-white text-primary focus:ring-primary" type="checkbox"/>
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          onChange={handleSelectAll}
+                          disabled={users.length === 0}
+                          className="rounded border-gray-300 bg-white text-primary focus:ring-primary"
+                          aria-label="Select all users"
+                        />
                       </th>
                       <th className="px-6 py-4" scope="col">User</th>
                       <th className="px-6 py-4" scope="col">Role</th>
@@ -466,7 +610,13 @@ const AdminUsersPage = () => {
                     users.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="px-6 py-4">
-                          <input className="rounded border-gray-300 bg-white text-primary focus:ring-primary" type="checkbox"/>
+                          <input
+                            type="checkbox"
+                            checked={selectedUserIds.includes(user.id)}
+                            onChange={() => handleSelectOne(user.id)}
+                            className="rounded border-gray-300 bg-white text-primary focus:ring-primary"
+                            aria-label={`Select ${user.name}`}
+                          />
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -497,18 +647,18 @@ const AdminUsersPage = () => {
                         </td>
                         <td className="px-6 py-4 font-medium">{user.joinedDate}</td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex justify-end gap-1">
                             <button 
                               onClick={() => navigate(`/admin/users/${user.id}`)}
                               className="p-1.5 text-gray-500 hover:text-[#111418] hover:bg-gray-100 rounded-md transition-colors" 
-                              title="View Details"
+                              title={t('admin.viewDetails')}
                             >
                               <span className="material-symbols-outlined text-[20px]">visibility</span>
                             </button>
                             <button 
                               onClick={() => handleDeleteClick(user)}
                               className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" 
-                              title="Delete"
+                              title={t('common.delete')}
                             >
                               <span className="material-symbols-outlined text-[20px]">delete</span>
                             </button>
@@ -524,22 +674,60 @@ const AdminUsersPage = () => {
               <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500">Rows per page:</span>
-                  <select className="bg-white text-[#111418] text-sm rounded border border-gray-300 focus:ring-1 focus:ring-primary py-1 pl-2 pr-8">
-                    <option>10</option>
-                    <option>20</option>
-                    <option>50</option>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    className="bg-white text-[#111418] text-sm rounded border border-gray-300 focus:ring-1 focus:ring-primary py-1 pl-2 pr-8"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-[#111418] disabled:opacity-50 transition-colors shadow-sm">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-[#111418] disabled:opacity-50 transition-colors shadow-sm"
+                  >
                     <span className="material-symbols-outlined text-[16px]">chevron_left</span>
                   </button>
-                  <button className="flex size-8 items-center justify-center rounded border border-primary bg-primary text-white text-sm font-medium shadow-sm">1</button>
-                  <button className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 hover:text-[#111418] transition-colors shadow-sm">2</button>
-                  <button className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 hover:text-[#111418] transition-colors shadow-sm">3</button>
-                  <span className="text-gray-500 px-1">...</span>
-                  <button className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 text-sm font-medium hover:bg-gray-50 hover:text-[#111418] transition-colors shadow-sm">12</button>
-                  <button className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-[#111418] transition-colors shadow-sm">
+                  {(() => {
+                    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+                    const seen = new Set();
+                    const pages = [];
+                    const addPage = (p) => { if (p >= 1 && p <= totalPages && !seen.has(p)) { seen.add(p); pages.push(p); } };
+                    addPage(1);
+                    if (page > 3) pages.push('...');
+                    for (let p = Math.max(2, page - 1); p <= Math.min(totalPages - 1, page + 1); p++) addPage(p);
+                    if (page < totalPages - 2) pages.push('...');
+                    if (totalPages > 1) addPage(totalPages);
+                    return pages.map((p) =>
+                      p === '...' ? (
+                        <span key="ellipsis" className="text-gray-500 px-1">...</span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPage(p)}
+                          className={`flex size-8 items-center justify-center rounded border text-sm font-medium shadow-sm transition-colors ${
+                            p === page
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-[#111418]'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    );
+                  })()}
+                  <button
+                    type="button"
+                    disabled={page >= Math.ceil(totalCount / pageSize) || totalCount === 0}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="flex size-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-[#111418] disabled:opacity-50 transition-colors shadow-sm"
+                  >
                     <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                   </button>
                 </div>
@@ -717,10 +905,18 @@ const AdminUsersPage = () => {
                   <span className="material-symbols-outlined text-[24px]">close</span>
                 </button>
               </div>
-              <div className="space-y-2">
+              {exporting && (
+                <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
+                  <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                  <span>Exporting...</span>
+                </div>
+              )}
+              <div className={`space-y-2 ${exporting ? 'pointer-events-none opacity-60' : ''}`}>
                 <button
+                  type="button"
+                  disabled={exporting}
                   onClick={() => handleExport('CSV')}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors group"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors group disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-center size-10 rounded-lg bg-blue-50 group-hover:bg-primary/10">
                     <span className="material-symbols-outlined text-blue-600 group-hover:text-primary">description</span>
@@ -732,8 +928,10 @@ const AdminUsersPage = () => {
                   <span className="material-symbols-outlined text-gray-400">chevron_right</span>
                 </button>
                 <button
+                  type="button"
+                  disabled={exporting}
                   onClick={() => handleExport('Excel')}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors group"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors group disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-center size-10 rounded-lg bg-green-50 group-hover:bg-primary/10">
                     <span className="material-symbols-outlined text-green-600 group-hover:text-primary">table_chart</span>
@@ -745,8 +943,10 @@ const AdminUsersPage = () => {
                   <span className="material-symbols-outlined text-gray-400">chevron_right</span>
                 </button>
                 <button
+                  type="button"
+                  disabled={exporting}
                   onClick={() => handleExport('PDF')}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors group"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors group disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-center size-10 rounded-lg bg-red-50 group-hover:bg-primary/10">
                     <span className="material-symbols-outlined text-red-600 group-hover:text-primary">picture_as_pdf</span>
@@ -758,9 +958,13 @@ const AdminUsersPage = () => {
                   <span className="material-symbols-outlined text-gray-400">chevron_right</span>
                 </button>
               </div>
+              {exportError && (
+                <p className="mt-3 text-sm text-red-600" role="alert">{exportError}</p>
+              )}
             </div>
             <div className="px-6 py-4 bg-gray-50 flex items-center justify-end gap-3 border-t border-gray-200">
               <button
+                type="button"
                 onClick={handleExportCancel}
                 className="px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-gray-200 transition-colors text-sm"
               >

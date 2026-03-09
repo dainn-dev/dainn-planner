@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
 import PasswordInput from '../components/PasswordInput';
 import ErrorMessage from '../components/ErrorMessage';
@@ -8,6 +9,7 @@ import { validatePassword, validateConfirmPassword } from '../utils/formValidati
 import { authAPI } from '../services/api';
 
 const ResetPasswordPage = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -46,10 +48,10 @@ const ResetPasswordPage = () => {
   };
 
   const getPasswordStrengthLabel = () => {
-    if (passwordStrength < 25) return { label: 'Yếu', color: 'bg-red-500' };
-    if (passwordStrength < 50) return { label: 'Trung bình', color: 'bg-yellow-500' };
-    if (passwordStrength < 75) return { label: 'Khá', color: 'bg-blue-500' };
-    return { label: 'Mạnh', color: 'bg-green-500' };
+    if (passwordStrength < 25) return { labelKey: 'auth.passwordStrengthWeak', color: 'bg-red-500' };
+    if (passwordStrength < 50) return { labelKey: 'auth.passwordStrengthMedium', color: 'bg-yellow-500' };
+    if (passwordStrength < 75) return { labelKey: 'auth.passwordStrengthGood', color: 'bg-blue-500' };
+    return { labelKey: 'auth.passwordStrengthStrong', color: 'bg-green-500' };
   };
 
   const handleSubmit = async (e) => {
@@ -71,18 +73,18 @@ const ResetPasswordPage = () => {
 
     try {
       if (!token) {
-        setErrors({ submit: 'Token không hợp lệ. Vui lòng kiểm tra lại liên kết.' });
+        setErrors({ submit: t('auth.invalidToken') });
         return;
       }
 
       if (!email) {
-        setErrors({ submit: 'Email không hợp lệ. Vui lòng kiểm tra lại liên kết.' });
+        setErrors({ submit: t('auth.invalidEmail') });
         return;
       }
 
       const response = await authAPI.resetPassword(email, token, formData.password, formData.confirmPassword);
       if (response.success) {
-        setSuccessMessage(response.message || 'Mật khẩu đã được đặt lại thành công! Đang chuyển hướng...');
+        setSuccessMessage(response.message || t('auth.resetSuccess'));
         setTimeout(() => {
           navigate('/login');
         }, 1500);
@@ -91,7 +93,7 @@ const ResetPasswordPage = () => {
       if (error.errors) {
         setErrors(error.errors);
       } else {
-        setErrors({ submit: error.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.' });
+        setErrors({ submit: error.message || t('auth.resetFail') });
       }
     } finally {
       setIsSubmitting(false);
@@ -109,9 +111,9 @@ const ResetPasswordPage = () => {
             <div className="w-16 h-16 rounded-2xl bg-surface-reset border border-border-reset flex items-center justify-center mb-4 text-text-main-reset shadow-sm">
               <span className="material-symbols-outlined text-[30px]">lock_reset</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-main-reset">Đặt lại mật khẩu</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-text-main-reset">{t('auth.resetTitle')}</h1>
             <p className="text-text-secondary-reset text-[15px] font-normal leading-relaxed max-w-[360px]">
-              Vui lòng nhập mật khẩu mới cho tài khoản của bạn. Mật khẩu phải có ít nhất 8 ký tự.
+              {t('auth.resetSubtitle')}
             </p>
           </div>
           <form className="flex flex-col gap-6 w-full" onSubmit={handleSubmit}>
@@ -120,7 +122,7 @@ const ResetPasswordPage = () => {
             
             <div className="flex flex-col gap-5">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-main-reset ml-0.5">Mật khẩu mới</label>
+                <label className="text-sm font-medium text-text-main-reset ml-0.5">{t('auth.newPassword')}</label>
                 <div className="relative">
                   <PasswordInput
                     id="password"
@@ -130,7 +132,7 @@ const ResetPasswordPage = () => {
                       handleChange(e);
                       calculatePasswordStrength(e.target.value);
                     }}
-                    placeholder="Nhập mật khẩu mới"
+                    placeholder={t('auth.newPasswordPlaceholder')}
                     required
                     className="w-full h-[52px] pl-4 pr-12 rounded-lg bg-white border border-border-reset text-text-main-reset text-sm placeholder:text-gray-400 focus:outline-none focus:border-primary-reset focus:ring-1 focus:ring-primary-reset transition-all shadow-sm hover:border-gray-300"
                     error={errors.password}
@@ -146,21 +148,21 @@ const ResetPasswordPage = () => {
                         aria-valuenow={passwordStrength}
                         aria-valuemin="0"
                         aria-valuemax="100"
-                        aria-label={`Độ mạnh mật khẩu: ${strengthInfo.label}`}
+                        aria-label={`${t('auth.passwordStrengthLabel')}: ${t(strengthInfo.labelKey)}`}
                       ></div>
                     </div>
-                    <span className="text-xs font-medium text-text-main-reset">{strengthInfo.label}</span>
+                    <span className="text-xs font-medium text-text-main-reset">{t(strengthInfo.labelKey)}</span>
                   </div>
                 )}
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-main-reset ml-0.5">Xác nhận mật khẩu</label>
+                <label className="text-sm font-medium text-text-main-reset ml-0.5">{t('auth.confirmPassword')}</label>
                 <PasswordInput
                   id="confirmPassword"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  placeholder="Nhập lại mật khẩu mới"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
                   required
                   className="w-full h-[52px] pl-4 pr-12 rounded-lg bg-white border border-border-reset text-text-main-reset text-sm placeholder:text-gray-400 focus:outline-none focus:border-primary-reset focus:ring-1 focus:ring-primary-reset transition-all shadow-sm hover:border-gray-300"
                   error={errors.confirmPassword}
@@ -173,14 +175,14 @@ const ResetPasswordPage = () => {
                 type="submit"
                 disabled={isSubmitting || !!successMessage}
               >
-                {isSubmitting ? 'Đang xử lý...' : 'Đặt lại mật khẩu'}
+                {isSubmitting ? t('common.processing') : t('auth.resetTitle')}
               </button>
               <Link
                 to="/login"
                 className="flex items-center justify-center gap-2 text-sm font-medium text-text-secondary-reset hover:text-text-main-reset transition-colors py-2 group"
               >
                 <span className="material-symbols-outlined text-[18px] transition-transform group-hover:-translate-x-1">arrow_back</span>
-                <span>Quay lại đăng nhập</span>
+                <span>{t('auth.backToLogin')}</span>
               </Link>
             </div>
           </form>

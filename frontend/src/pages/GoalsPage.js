@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { validateTitle, validateCategory, validateDate } from '../utils/formValidation';
 import { goalsAPI, notificationsAPI, authAPI } from '../services/api';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDate, formatDateTime } from '../utils/dateFormat';
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -14,13 +16,31 @@ const categoryToIcon = {
   'Công việc': 'work',
   'Gia đình': 'home',
   'Du lịch': 'flight',
+  'Mục tiêu': 'flag',
 };
 
-const mapGoalFromApi = (g) => {
+/** Map API category label (Vietnamese) to i18n key for localized display */
+const CATEGORY_I18N_KEYS = {
+  'Mục tiêu': 'categoryGoal',
+  'Kỹ năng': 'categorySkill',
+  'Tài chính': 'categoryFinance',
+  'Sức khỏe': 'categoryHealth',
+  'Học tập': 'categoryLearning',
+  'Công việc': 'categoryWork',
+  'Gia đình': 'categoryFamily',
+  'Du lịch': 'categoryTravel',
+};
+
+const getCategoryLabel = (category, t) => {
+  const key = CATEGORY_I18N_KEYS[category];
+  return key ? t(`goals.${key}`) : (category || '');
+};
+
+const mapGoalFromApi = (g, formatDateFn) => {
   const statusLower = (g.status || '').toLowerCase();
   const isCompleted = statusLower === 'completed' || statusLower === 'done';
   const dueDate = g.targetDate
-    ? new Date(g.targetDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    ? formatDateFn(g.targetDate)
     : (g.dueDate || '');
   return {
     id: g.id,
@@ -38,7 +58,7 @@ const mapNotificationFromApi = (n) => ({
   type: n.type || 'system',
   title: n.title,
   message: n.message,
-  time: n.createdAt ? new Date(n.createdAt).toLocaleString('vi-VN') : '',
+  time: n.createdAt ? formatDateTime(n.createdAt) : '',
   unread: !n.isRead,
   icon: n.icon || 'notifications',
   iconBg: 'bg-blue-100',
@@ -50,6 +70,7 @@ const LIST_FILTER_ACTIVE = 'active';
 const LIST_FILTER_COMPLETED = 'completed';
 
 const GoalsPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isAdmin = isStoredAdmin();
   const [goals, setGoals] = useState([]);
@@ -75,7 +96,7 @@ const GoalsPage = () => {
         goalsAPI.getGoals(),
         notificationsAPI.getNotifications({ limit: 20 }),
       ]);
-      setGoals(Array.isArray(goalsData) ? goalsData.map(mapGoalFromApi) : []);
+      setGoals(Array.isArray(goalsData) ? goalsData.map((g) => mapGoalFromApi(g, formatDate)) : []);
       const notifList = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []);
       setNotifications(notifList.map(mapNotificationFromApi));
     } catch (error) {
@@ -151,13 +172,13 @@ const GoalsPage = () => {
         targetDate,
         startDate: null,
       });
-      setGoals([...goals, mapGoalFromApi(created)]);
+      setGoals([...goals, mapGoalFromApi(created, formatDate)]);
       setGoalForm({ title: '', category: '', dueDate: '', icon: 'flag' });
       setGoalFormErrors({});
       setAddGoalModalOpen(false);
     } catch (error) {
       console.error('Failed to create goal:', error);
-      setGoalFormErrors({ submit: error.message || 'Không thể tạo mục tiêu.' });
+      setGoalFormErrors({ submit: error.message || t('goals.createGoalFail') });
     }
   };
 
@@ -180,7 +201,7 @@ const GoalsPage = () => {
   };
 
   const handleCategorySelect = (option) => {
-    setGoalForm(prev => ({ ...prev, category: option.label, icon: option.value }));
+    setGoalForm(prev => ({ ...prev, category: option.apiCategory, icon: option.value }));
     if (goalFormErrors.category) setGoalFormErrors(prev => ({ ...prev, category: null }));
   };
 
@@ -205,14 +226,14 @@ const GoalsPage = () => {
   };
 
   const categoryOptions = [
-    { value: 'flag', label: 'Mục tiêu' },
-    { value: 'code', label: 'Kỹ năng' },
-    { value: 'savings', label: 'Tài chính' },
-    { value: 'fitness_center', label: 'Sức khỏe' },
-    { value: 'school', label: 'Học tập' },
-    { value: 'work', label: 'Công việc' },
-    { value: 'home', label: 'Gia đình' },
-    { value: 'flight', label: 'Du lịch' },
+    { value: 'flag', apiCategory: 'Mục tiêu', labelKey: 'categoryGoal' },
+    { value: 'code', apiCategory: 'Kỹ năng', labelKey: 'categorySkill' },
+    { value: 'savings', apiCategory: 'Tài chính', labelKey: 'categoryFinance' },
+    { value: 'fitness_center', apiCategory: 'Sức khỏe', labelKey: 'categoryHealth' },
+    { value: 'school', apiCategory: 'Học tập', labelKey: 'categoryLearning' },
+    { value: 'work', apiCategory: 'Công việc', labelKey: 'categoryWork' },
+    { value: 'home', apiCategory: 'Gia đình', labelKey: 'categoryFamily' },
+    { value: 'flight', apiCategory: 'Du lịch', labelKey: 'categoryTravel' },
   ];
 
   return (
@@ -222,11 +243,11 @@ const GoalsPage = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-background-subtle">
-        <Header 
-          title="Quản lý mục tiêu"
+        <Header
+          title={t('goals.title')}
           icon="target"
           actionButton={{
-            text: 'Thêm mục tiêu',
+            text: t('goals.addGoal'),
             icon: 'add',
             onClick: () => {
               setGoalFormErrors(prev => ({ ...prev, submit: null }));
@@ -242,9 +263,9 @@ const GoalsPage = () => {
           <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10 flex flex-col gap-6 md:gap-10">
           {/* Header Section */}
           <div className="flex flex-col gap-1.5 md:gap-2">
-            <h2 className="text-zinc-900 text-2xl md:text-3xl font-light tracking-tight">Mục tiêu dài hạn</h2>
+            <h2 className="text-zinc-900 text-2xl md:text-3xl font-light tracking-tight">{t('goals.longTermGoals')}</h2>
             <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
-              Theo dõi tiến độ, duy trì động lực và biến ước mơ thành hiện thực.
+              {t('goals.tagline')}
             </p>
           </div>
 
@@ -252,17 +273,17 @@ const GoalsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
             <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-blue-50/60 border border-blue-100 rounded-xl shadow-sm transition-all hover:border-blue-200 hover:shadow-md active:scale-[0.99]">
               <span className="material-symbols-outlined text-blue-500 text-[20px] select-none shrink-0 order-first" aria-hidden>bolt</span>
-              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đang thực hiện</p>
+              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">{t('goals.active')}</p>
               <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight shrink-0 order-last sm:mt-1">{activeGoals}</p>
             </div>
             <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-emerald-50/60 border border-emerald-100 rounded-xl shadow-sm transition-all hover:border-emerald-200 hover:shadow-md active:scale-[0.99]">
               <span className="material-symbols-outlined text-emerald-600 text-[20px] select-none shrink-0 order-first" aria-hidden>check_circle</span>
-              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Đã hoàn thành</p>
+              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">{t('goals.completed')}</p>
               <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight shrink-0 order-last sm:mt-1">{completedGoals}</p>
             </div>
             <div className="flex flex-row sm:flex-col sm:justify-between items-center justify-between sm:justify-start gap-2 sm:gap-0 min-h-0 sm:min-h-[100px] md:h-32 p-4 md:p-6 bg-amber-50/60 border border-amber-100 rounded-xl shadow-sm transition-all hover:border-amber-200 hover:shadow-md active:scale-[0.99]">
               <span className="material-symbols-outlined text-amber-600 text-[20px] select-none shrink-0 order-first" aria-hidden>trending_up</span>
-              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">Tiến độ TB</p>
+              <p className="text-zinc-600 text-sm font-medium min-w-0 flex-1 sm:flex-none text-center sm:text-left truncate">{t('goals.avgProgress')}</p>
               <p className="text-zinc-900 text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight shrink-0 order-last sm:mt-1">{averageProgress}%</p>
             </div>
           </div>
@@ -270,20 +291,20 @@ const GoalsPage = () => {
           {/* Goals List */}
           <div className="flex flex-col gap-4 md:gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border-light pb-3 md:pb-4">
-              <h3 className="text-zinc-900 text-base md:text-lg font-medium tracking-tight">Danh sách mục tiêu</h3>
+              <h3 className="text-zinc-900 text-base md:text-lg font-medium tracking-tight">{t('goals.goalList')}</h3>
               {/* Filter tabs */}
-              <div className="flex rounded-lg bg-zinc-100 p-1 gap-0.5" role="tablist" aria-label="Lọc mục tiêu">
+              <div className="flex rounded-lg bg-zinc-100 p-1 gap-0.5" role="tablist" aria-label={t('goals.filterGoals')}>
                 {[
-                  { value: LIST_FILTER_ALL, label: 'Tất cả', count: goals.length },
-                  { value: LIST_FILTER_ACTIVE, label: 'Đang thực hiện', count: activeGoals },
-                  { value: LIST_FILTER_COMPLETED, label: 'Hoàn thành', count: completedGoals },
-                ].map(({ value, label, count }) => (
+                  { value: LIST_FILTER_ALL, labelKey: 'filterAll', count: goals.length },
+                  { value: LIST_FILTER_ACTIVE, labelKey: 'active', count: activeGoals },
+                  { value: LIST_FILTER_COMPLETED, labelKey: 'completed', count: completedGoals },
+                ].map(({ value, labelKey, count }) => (
                   <button
                     key={value}
                     type="button"
                     role="tab"
                     aria-selected={listFilter === value}
-                    aria-label={`${label}: ${count} mục tiêu`}
+                    aria-label={t('goals.filterTabLabel', { label: t(`goals.${labelKey}`), count })}
                     className={`min-h-[40px] px-3 py-2 rounded-md text-sm font-medium transition-colors touch-manipulation ${
                       listFilter === value
                         ? 'bg-white text-zinc-900 shadow-sm'
@@ -291,14 +312,14 @@ const GoalsPage = () => {
                     }`}
                     onClick={() => setListFilter(value)}
                   >
-                    {label}
+                    {t(`goals.${labelKey}`)}
                     <span className="ml-1.5 text-xs opacity-80">({count})</span>
                   </button>
                 ))}
               </div>
             </div>
             {goalsLoading ? (
-              <div className="flex flex-col gap-4" aria-busy="true" aria-label="Đang tải mục tiêu">
+              <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('goals.loadingGoals')}>
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-4 p-4 md:p-5 rounded-xl border border-border-light bg-background-light animate-pulse">
                     <div className="size-11 md:size-12 rounded-xl bg-zinc-200 shrink-0" />
@@ -314,12 +335,10 @@ const GoalsPage = () => {
               <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 text-center">
                 <span className="material-symbols-outlined text-5xl text-zinc-300 mb-3" aria-hidden>flag</span>
                 <p className="text-zinc-600 font-medium mb-1">
-                  {goals.length === 0 ? 'Chưa có mục tiêu nào' : 'Không có mục tiêu nào phù hợp'}
+                  {goals.length === 0 ? t('goals.noGoals') : t('goals.noGoalsMatch')}
                 </p>
                 <p className="text-zinc-500 text-sm mb-4 max-w-xs">
-                  {goals.length === 0
-                    ? 'Tạo mục tiêu dài hạn đầu tiên để bắt đầu theo dõi tiến độ.'
-                    : 'Thử đổi bộ lọc để xem các mục tiêu khác.'}
+                  {goals.length === 0 ? t('goals.createFirstGoal') : t('goals.tryChangeFilter')}
                 </p>                
               </div>
             ) : (
@@ -344,16 +363,17 @@ const GoalsPage = () => {
                                   : 'bg-blue-100 text-blue-700'
                               }`}
                             >
-                              {goal.status === 'completed' ? 'Hoàn thành' : 'Đang thực hiện'}
+                              {goal.status === 'completed' ? t('goals.completed') : t('goals.progress')}
                             </span>
                           </div>
-                          <p className="text-zinc-500 text-xs leading-normal">{goal.category} {goal.dueDate && `• ${goal.dueDate}`}</p>
+                          <p className="text-zinc-500 text-xs leading-normal">{getCategoryLabel(goal.category, t)}</p>
+                          <p className="text-zinc-500 text-xs leading-normal">{goal.dueDate && `${goal.dueDate}`}</p>
                         </div>
                       </div>
                       <div className="flex flex-row sm:flex-col sm:items-end items-center gap-3 sm:gap-2 w-full sm:w-auto sm:min-w-[180px]">
                         <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
                           <div className="flex justify-between w-full sm:justify-end gap-2">
-                            <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Tiến độ</span>
+                            <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">{t('goals.progress')}</span>
                             <span className="text-[10px] font-bold text-zinc-900">{goal.progress}%</span>
                           </div>
                           <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 overflow-hidden">
@@ -366,7 +386,7 @@ const GoalsPage = () => {
                               aria-valuenow={goal.progress}
                               aria-valuemin={0}
                               aria-valuemax={100}
-                              aria-label={`Tiến độ: ${goal.progress}%`}
+                              aria-label={t('goals.progressLabel', { percent: goal.progress })}
                             />
                           </div>
                         </div>
@@ -377,8 +397,8 @@ const GoalsPage = () => {
                             e.stopPropagation();
                             handleDeleteClick(goal);
                           }}
-                          aria-label={`Xóa mục tiêu: ${goal.title}`}
-                          title="Xóa mục tiêu"
+                          aria-label={t('goals.deleteGoalLabel', { title: goal.title })}
+                          title={t('goals.deleteGoal')}
                         >
                           <span className="material-symbols-outlined text-[20px]">delete</span>
                         </button>
@@ -411,13 +431,13 @@ const GoalsPage = () => {
               aria-label="User avatar"
             />
             <div className="flex flex-col overflow-hidden">
-              <h1 className="text-zinc-900 text-sm font-semibold tracking-wide uppercase">Quản lý mục tiêu</h1>
-              <p className="text-secondary text-xs font-normal">Kế hoạch cá nhân</p>
+              <h1 className="text-zinc-900 text-sm font-semibold tracking-wide uppercase">{t('goals.title')}</h1>
+              <p className="text-secondary text-xs font-normal">{t('goals.personalPlan')}</p>
             </div>
             <button 
               className="ml-auto p-1 rounded-md text-zinc-600 hover:bg-zinc-100"
               onClick={() => setSidebarOpen(false)}
-              aria-label="Close menu"
+              aria-label={t('common.close')}
             >
               <span className="material-symbols-outlined">close</span>
             </button>
@@ -431,7 +451,7 @@ const GoalsPage = () => {
                   onClick={() => setSidebarOpen(false)}
                 >
                   <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>dashboard</span>
-                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Dashboard</p>
+                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('admin.dashboard')}</p>
                 </Link>
                 <Link
                   to="/admin/users"
@@ -439,7 +459,7 @@ const GoalsPage = () => {
                   onClick={() => setSidebarOpen(false)}
                 >
                   <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>people</span>
-                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Users</p>
+                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('admin.users')}</p>
                 </Link>
                 <Link
                   to="/admin/logs"
@@ -447,7 +467,7 @@ const GoalsPage = () => {
                   onClick={() => setSidebarOpen(false)}
                 >
                   <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>description</span>
-                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Logs</p>
+                  <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('admin.logs')}</p>
                 </Link>
                 <div className="my-2 border-t border-zinc-100" />
               </>
@@ -458,7 +478,7 @@ const GoalsPage = () => {
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>today</span>
-              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Kế hoạch hôm nay</p>
+              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('sidebar.dailyPlan')}</p>
             </Link>
             <Link 
               to="/goals" 
@@ -466,7 +486,7 @@ const GoalsPage = () => {
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-900" style={{ fontSize: '20px' }}>track_changes</span>
-              <p className="text-zinc-900 text-sm font-medium">Quản lý mục tiêu</p>
+              <p className="text-zinc-900 text-sm font-medium">{t('sidebar.goals')}</p>
             </Link>
             <Link 
               to="/calendar" 
@@ -474,7 +494,7 @@ const GoalsPage = () => {
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>calendar_month</span>
-              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Lịch biểu</p>
+              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('sidebar.calendar')}</p>
             </Link>
             <Link 
               to="/settings" 
@@ -482,7 +502,7 @@ const GoalsPage = () => {
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>settings</span>
-              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Thiết lập</p>
+              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('sidebar.settings')}</p>
             </Link>
           </nav>
           <div className="mt-auto flex flex-col gap-2">
@@ -498,7 +518,7 @@ const GoalsPage = () => {
               }}
             >
               <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>logout</span>
-              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">Đăng xuất</p>
+              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('auth.logout')}</p>
             </button>
           </div>
         </div>
@@ -518,14 +538,14 @@ const GoalsPage = () => {
               <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-zinc-900" id="add-goal-title">Thêm Mục Tiêu Mới</h3>
-                    <p className="text-sm text-zinc-500 mt-1">Tạo một mục tiêu dài hạn mới để theo dõi.</p>
+                    <h3 className="text-lg font-semibold text-zinc-900" id="add-goal-title">{t('goals.addGoalModalTitle')}</h3>
+                    <p className="text-sm text-zinc-500 mt-1">{t('goals.addGoalModalDesc')}</p>
                   </div>
                   <button
                     type="button"
                     className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 transition-colors focus:outline-none"
                     onClick={handleCloseAddModal}
-                    aria-label="Đóng"
+                    aria-label={t('common.close')}
                   >
                     <span className="material-symbols-outlined text-zinc-400 hover:text-zinc-600 text-[24px]">close</span>
                   </button>
@@ -533,14 +553,14 @@ const GoalsPage = () => {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                      Tên mục tiêu
+                      {t('goals.goalName')}
                     </label>
                     <input
                       autoFocus
                       className={`w-full rounded-lg bg-white text-zinc-900 px-4 py-2.5 text-sm focus:bg-white focus:ring-0 placeholder:text-zinc-400 transition-all font-medium shadow-sm hover:border-zinc-300 ${
                         goalFormErrors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 focus:border-zinc-400'
                       }`}
-                      placeholder="Nhập tên mục tiêu..."
+                      placeholder={t('goals.goalNamePlaceholder')}
                       type="text"
                       value={goalForm.title}
                       onChange={(e) => handleGoalFormChange('title', e.target.value)}
@@ -557,7 +577,7 @@ const GoalsPage = () => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-2">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider" htmlFor="add-goal-category">Danh mục</label>
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider" htmlFor="add-goal-category">{t('goals.category')}</label>
                       <select
                         id="add-goal-category"
                         className={`w-full rounded-lg bg-white text-zinc-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 border transition-all font-medium cursor-pointer ${
@@ -565,16 +585,16 @@ const GoalsPage = () => {
                         }`}
                         value={goalForm.category || ''}
                         onChange={(e) => {
-                          const option = categoryOptions.find(o => o.label === e.target.value);
+                          const option = categoryOptions.find(o => o.apiCategory === e.target.value);
                           if (option) handleCategorySelect(option);
                         }}
                         required
                         aria-invalid={goalFormErrors.category ? 'true' : 'false'}
                         aria-describedby={goalFormErrors.category ? 'category-error' : undefined}
                       >
-                        <option value="">Chọn danh mục</option>
+                        <option value="">{t('goals.selectCategory')}</option>
                         {categoryOptions.map((opt) => (
-                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                          <option key={opt.value} value={opt.apiCategory}>{t(`goals.${opt.labelKey}`)}</option>
                         ))}
                       </select>
                       {goalFormErrors.category && (
@@ -584,7 +604,7 @@ const GoalsPage = () => {
                       )}
                     </div>
                     <div className="flex flex-col gap-2">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider" htmlFor="add-goal-due">Ngày đến hạn</label>
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider" htmlFor="add-goal-due">{t('goals.dueDate')}</label>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 text-[18px] pointer-events-none">event</span>
                         <input
@@ -607,27 +627,6 @@ const GoalsPage = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Biểu tượng</span>
-                    <div className="flex flex-wrap gap-2">
-                      {categoryOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg border transition-all touch-manipulation ${
-                            goalForm.icon === opt.value
-                              ? 'bg-zinc-900 border-zinc-900 text-white'
-                              : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
-                          }`}
-                          onClick={() => handleCategorySelect(opt)}
-                          title={opt.label}
-                          aria-label={opt.label}
-                        >
-                          <span className="material-symbols-outlined text-lg">{opt.value}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
               {goalFormErrors.submit && (
@@ -640,14 +639,14 @@ const GoalsPage = () => {
                   type="submit"
                   className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 sm:ml-3 sm:w-auto transition-colors touch-manipulation"
                 >
-                  Tạo mục tiêu
+                  {t('goals.createGoal')}
                 </button>
                 <button
                   type="button"
                   className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white px-4 py-3 text-sm font-medium text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 sm:mt-0 sm:w-auto transition-colors touch-manipulation"
                   onClick={handleCloseAddModal}
                 >
-                  Hủy
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -676,16 +675,16 @@ const GoalsPage = () => {
                       <span className="material-symbols-outlined text-red-600" style={{ fontSize: '24px' }}>delete</span>
                     </div>
                     <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                      <h3 className="text-base font-semibold leading-6 text-zinc-900" id="modal-title">Xóa mục tiêu</h3>
+                      <h3 className="text-base font-semibold leading-6 text-zinc-900" id="modal-title">{t('goals.deleteModalTitle')}</h3>
                       <div className="mt-2">
-                        <p className="text-sm text-zinc-500">Bạn có chắc chắn muốn xóa mục tiêu này không?</p>
+                        <p className="text-sm text-zinc-500">{t('goals.deleteModalConfirm')}</p>
                         <div className="mt-4 flex items-center gap-4 rounded-lg border border-zinc-100 bg-zinc-50 p-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white border border-zinc-200 shadow-sm text-zinc-900">
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{goalToDelete.icon}</span>
                           </div>
                           <div className="flex flex-col text-left">
                             <p className="text-sm font-semibold text-zinc-900">{goalToDelete.title}</p>
-                            <p className="text-xs text-zinc-500">{goalToDelete.category} • {goalToDelete.dueDate}</p>
+                            <p className="text-xs text-zinc-500">{getCategoryLabel(goalToDelete.category, t)} • {goalToDelete.dueDate}</p>
                           </div>
                         </div>
                       </div>
@@ -698,14 +697,14 @@ const GoalsPage = () => {
                     type="button"
                     onClick={handleConfirmDelete}
                   >
-                    Xóa
+                    {t('goals.delete')}
                   </button>
                   <button 
                     className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white px-3 py-3 text-sm font-medium text-zinc-900 shadow-sm ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 sm:w-auto transition-colors touch-manipulation" 
                     type="button"
                     onClick={handleCancelDelete}
                   >
-                    Hủy
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>

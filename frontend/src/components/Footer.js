@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const Footer = () => {
+  const { t } = useTranslation();
   return (
     <footer className="w-full bg-white border-t border-gray-200">
       <div className="max-w-[960px] mx-auto px-4 py-12 md:py-16">
@@ -13,13 +15,13 @@ const Footer = () => {
               </div>
               <span className="text-xl font-bold text-gray-900 tracking-tight">PlanLife</span>
             </div>
-            <p className="text-sm text-gray-500">© 2024 PlanLife Inc. All rights reserved.</p>
+            <p className="text-sm text-gray-500">{t('footer.copyright')}</p>
           </div>
           <div className="flex flex-col md:items-end gap-6">
             <div className="flex flex-wrap gap-6 text-sm font-medium text-gray-600">
-              <Link to="/conditions" className="hover:text-primary transition-colors">Privacy Policy</Link>
-              <Link to="/term" className="hover:text-primary transition-colors">Terms of Service</Link>
-              <Link to="/contact" className="hover:text-primary transition-colors">Contact Support</Link>
+              <Link to="/conditions" className="hover:text-primary transition-colors">{t('legal.privacyPolicy')}</Link>
+              <Link to="/term" className="hover:text-primary transition-colors">{t('legal.termsOfService')}</Link>
+              <Link to="/contact" className="hover:text-primary transition-colors">{t('legal.contactSupport')}</Link>
             </div>
             <div className="flex items-center gap-5">
               <button aria-label="Twitter" className="text-gray-400 hover:text-primary transition-colors">

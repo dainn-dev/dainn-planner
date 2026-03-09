@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
 import Footer from '../components/Footer';
 
 const NotFoundPage = () => {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <PublicHeader />
@@ -19,13 +21,13 @@ const NotFoundPage = () => {
           {/* Error Message */}
           <div className="mb-8">
             <h2 className="text-3xl font-semibold text-gray-800 mb-4">
-              Trang không tìm thấy
+              {t('notFound.title')}
             </h2>
             <p className="text-lg text-gray-600 mb-2">
-              Xin lỗi, trang bạn đang tìm kiếm không tồn tại.
+              {t('notFound.message')}
             </p>
             <p className="text-base text-gray-500">
-              Có thể trang đã bị di chuyển hoặc URL không chính xác.
+              {t('notFound.hint')}
             </p>
           </div>
           
@@ -47,7 +49,7 @@ const NotFoundPage = () => {
               <span className="material-symbols-outlined text-xl">
                 home
               </span>
-              Về trang chủ
+              {t('notFound.backHome')}
             </Link>
             
             <button
@@ -57,37 +59,37 @@ const NotFoundPage = () => {
               <span className="material-symbols-outlined text-xl">
                 arrow_back
               </span>
-              Quay lại
+              {t('notFound.back')}
             </button>
           </div>
           
           {/* Helpful Links */}
           <div className="mt-12 pt-8 border-t border-gray-200">
-            <p className="text-sm text-gray-500 mb-4">Có thể bạn đang tìm:</p>
+            <p className="text-sm text-gray-500 mb-4">{t('notFound.youMightWant')}</p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link
                 to="/daily"
                 className="text-blue-600 hover:text-blue-700 hover:underline text-sm"
               >
-                Trang hàng ngày
+                {t('notFound.dailyPage')}
               </Link>
               <Link
                 to="/goals"
                 className="text-blue-600 hover:text-blue-700 hover:underline text-sm"
               >
-                Mục tiêu
+                {t('notFound.goalsPage')}
               </Link>
               <Link
                 to="/calendar"
                 className="text-blue-600 hover:text-blue-700 hover:underline text-sm"
               >
-                Lịch
+                {t('notFound.calendarPage')}
               </Link>
               <Link
                 to="/contact"
                 className="text-blue-600 hover:text-blue-700 hover:underline text-sm"
               >
-                Liên hệ
+                {t('notFound.contactPage')}
               </Link>
             </div>
           </div>

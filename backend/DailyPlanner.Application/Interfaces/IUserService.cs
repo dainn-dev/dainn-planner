@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DailyPlanner.Application.DTOs;
 
 namespace DailyPlanner.Application.Interfaces;
@@ -8,7 +9,7 @@ public interface IUserService
     Task<ApiResponse<UserDto>> UpdateUserAsync(string userId, UpdateUserRequest request);
     Task<ApiResponse<string>> UploadAvatarAsync(string userId, Stream fileStream, string fileName);
     Task<ApiResponse<UserSettingsDto>> GetSettingsAsync(string userId);
-    Task<ApiResponse<UserSettingsDto>> UpdateSettingsAsync(string userId, UpdateSettingsRequest request);
+    Task<ApiResponse<UserSettingsDto>> UpdateSettingsAsync(string userId, JsonElement request);
     
     // 2FA Methods
     Task<ApiResponse<Setup2FAResponse>> Setup2FAAsync(string userId);

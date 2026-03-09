@@ -21,5 +21,6 @@ public class ApplicationUser : IdentityUser
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<UserDevice> UserDevices { get; set; } = new List<UserDevice>();
+    public UserSettings? UserSettings { get; set; }
 }
 

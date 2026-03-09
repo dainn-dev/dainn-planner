@@ -4,6 +4,14 @@
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
+/** Base URL for API server (no /api suffix), for static assets like avatars */
+export const getAvatarFullUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  const base = API_BASE_URL.replace(/\/api\/?$/, '');
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+};
+
 // In-flight GET request de-dupe (prevents duplicate GETs in React StrictMode/dev)
 const inflightGetRequests = new Map();
 
@@ -231,6 +239,9 @@ export const authAPI = {
   },
 };
 
+// localStorage key for persisted user settings (full settings object from GET /users/me/settings)
+export const USER_SETTINGS_STORAGE_KEY = 'user_settings';
+
 // ============================================
 // USER PROFILE API
 // ============================================
@@ -245,6 +256,50 @@ export const userAPI = {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
+  },
+
+  uploadAvatar: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return await apiRequest('/users/me/avatar', {
+      method: 'POST',
+      body: form,
+    });
+  },
+
+  getSettings: async () => {
+    const response = await apiRequest('/users/me/settings');
+    const settings = response?.data?.data ?? response?.data ?? response;
+    if (settings && typeof settings === 'object') {
+      try {
+        localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
+        }
+      } catch (e) {
+        // ignore quota or serialization errors
+      }
+    }
+    return settings;
+  },
+
+  updateSettings: async (payload) => {
+    const response = await apiRequest('/users/me/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    const settings = response?.data?.data ?? response?.data ?? response;
+    if (settings && typeof settings === 'object') {
+      try {
+        localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return settings;
   },
 };
 
@@ -283,6 +338,12 @@ export const tasksAPI = {
     return await apiRequest(`/tasks/${taskId}`, {
       method: 'DELETE',
     });
+  },
+
+  getTagsWithUsage: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const endpoint = `/tasks/tags${queryParams ? `?${queryParams}` : ''}`;
+    return await apiRequest(endpoint);
   },
 };
 
@@ -406,9 +467,19 @@ export const adminAPI = {
     return await apiRequest(endpoint);
   },
 
+  getUserStats: async () => {
+    return await apiRequest('/admin/users/stats');
+  },
+
   getStats: async (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     const endpoint = `/admin/dashboard/stats${queryParams ? `?${queryParams}` : ''}`;
+    return await apiRequest(endpoint);
+  },
+
+  getUserGrowth: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const endpoint = `/admin/dashboard/user-growth${queryParams ? `?${queryParams}` : ''}`;
     return await apiRequest(endpoint);
   },
 
@@ -427,6 +498,124 @@ export const adminAPI = {
     return await apiRequest(`/admin/users/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  resetUserPassword: async (id, { newPassword }) => {
+    return await apiRequest(`/admin/users/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    });
+  },
+
+  exportUsers: async (params = {}) => {
+    const token = getAuthToken();
+    const queryParams = new URLSearchParams();
+    if (params.format) queryParams.set('format', params.format);
+    if (params.search) queryParams.set('search', params.search);
+    if (params.status) queryParams.set('status', params.status);
+    if (params.role) queryParams.set('role', params.role);
+    if (params.dateRange) queryParams.set('dateRange', params.dateRange);
+    if (params.sort) queryParams.set('sort', params.sort);
+    if (params.ids && Array.isArray(params.ids) && params.ids.length > 0) {
+      queryParams.set('ids', params.ids.join(','));
+    }
+    const url = `${API_BASE_URL}/admin/users/export${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      let message = 'Export failed';
+      if (contentType.includes('application/json')) {
+        try {
+          const data = await response.json();
+          message = data.message || data.error || message;
+        } catch (_) {}
+      }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition');
+    let filename = 'users_export';
+    if (params.format === 'csv') filename += '.csv';
+    else if (params.format === 'excel') filename += '.xlsx';
+    else if (params.format === 'pdf') filename += '.pdf';
+    else filename += '.bin';
+    if (disposition) {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '').trim();
+      }
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  },
+
+  getLogFiles: async () => {
+    const res = await apiRequest('/admin/logs');
+    return res?.data ?? [];
+  },
+
+  getLogContent: async (fileName, options = {}) => {
+    const params = new URLSearchParams();
+    if (options.tail != null) params.set('tail', String(options.tail));
+    if (options.offset != null) params.set('offset', String(options.offset));
+    if (options.limit != null) params.set('limit', String(options.limit));
+    const q = params.toString();
+    const endpoint = `/admin/logs/${encodeURIComponent(fileName)}${q ? `?${q}` : ''}`;
+    const res = await apiRequest(endpoint);
+    return res;
+  },
+
+  subscribeLogStream: (fileName, onMessage, onError) => {
+    const token = getAuthToken();
+    const url = `${API_BASE_URL}/admin/logs/stream?file=${encodeURIComponent(fileName)}`;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const response = await fetch(url, {
+          headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          onError?.(new Error('Stream failed'));
+          return;
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split('\n\n');
+          buf = parts.pop() ?? '';
+          for (const part of parts) {
+            const match = part.match(/^data:\s*(.+)/m);
+            if (match) {
+              try {
+                const data = JSON.parse(match[1].trim());
+                onMessage(data);
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') onError?.(err);
+      }
+    })();
+
+    return () => controller.abort();
   },
 };
 

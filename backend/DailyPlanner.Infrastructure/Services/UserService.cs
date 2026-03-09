@@ -1,12 +1,15 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using AutoMapper;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
+using DailyPlanner.Infrastructure.Constants;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Encodings.Web;
 
 namespace DailyPlanner.Infrastructure.Services;
 
@@ -160,18 +163,28 @@ public class UserService : IUserService
             };
         }
 
+        var entity = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId);
+        if (entity == null)
+        {
+            entity = new UserSettings
+            {
+                UserId = userId,
+                Data = DefaultUserSettings.Json,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.UserSettings.Add(entity);
+            await _context.SaveChangesAsync();
+        }
+
+        var data = JsonSerializer.Deserialize<JsonElement>(entity.Data);
         return new ApiResponse<UserSettingsDto>
         {
             Success = true,
-            Data = new UserSettingsDto
-            {
-                Timezone = user.Timezone,
-                Language = user.Language
-            }
+            Data = new UserSettingsDto { Data = data }
         };
     }
 
-    public async Task<ApiResponse<UserSettingsDto>> UpdateSettingsAsync(string userId, UpdateSettingsRequest request)
+    public async Task<ApiResponse<UserSettingsDto>> UpdateSettingsAsync(string userId, JsonElement request)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
@@ -183,24 +196,45 @@ public class UserService : IUserService
             };
         }
 
-        if (!string.IsNullOrEmpty(request.Timezone))
-            user.Timezone = request.Timezone;
-        if (!string.IsNullOrEmpty(request.Language))
-            user.Language = request.Language;
+        var entity = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId);
+        if (entity == null)
+        {
+            entity = new UserSettings
+            {
+                UserId = userId,
+                Data = DefaultUserSettings.Json,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.UserSettings.Add(entity);
+            await _context.SaveChangesAsync();
+        }
 
-        user.UpdatedAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
+        var current = JsonSerializer.Deserialize<JsonElement>(entity.Data);
+        var merged = MergeSettings(current, request);
+        entity.Data = JsonSerializer.Serialize(merged);
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
 
+        var data = JsonSerializer.Deserialize<JsonElement>(entity.Data);
         return new ApiResponse<UserSettingsDto>
         {
             Success = true,
             Message = "Settings updated successfully",
-            Data = new UserSettingsDto
-            {
-                Timezone = user.Timezone,
-                Language = user.Language
-            }
+            Data = new UserSettingsDto { Data = data }
         };
+    }
+
+    private static JsonElement MergeSettings(JsonElement current, JsonElement incoming)
+    {
+        var currentObj = JsonNode.Parse(current.GetRawText()) as JsonObject ?? new JsonObject();
+        var incomingObj = JsonNode.Parse(incoming.GetRawText()) as JsonObject;
+        if (incomingObj != null)
+        {
+            foreach (var prop in incomingObj)
+                currentObj[prop.Key] = prop.Value != null ? JsonNode.Parse(prop.Value.ToJsonString()) : null;
+        }
+        var mergedJson = currentObj.ToJsonString();
+        return JsonSerializer.Deserialize<JsonElement>(mergedJson);
     }
 
     public async Task<ApiResponse<Setup2FAResponse>> Setup2FAAsync(string userId)

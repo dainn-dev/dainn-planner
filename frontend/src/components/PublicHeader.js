@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const PublicHeader = () => {
+  const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -25,19 +27,19 @@ const PublicHeader = () => {
               to="/" 
               className="text-gray-600 hover:text-primary text-sm font-medium transition-colors"
             >
-              Trang chủ
+              {t('header.home')}
             </Link>
             <a 
               href="/#features" 
               className="text-gray-600 hover:text-primary text-sm font-medium transition-colors"
             >
-              Tính năng
+              {t('header.features')}
             </a>
             <Link 
               to="/contact" 
               className="text-gray-600 hover:text-primary text-sm font-medium transition-colors"
             >
-              Liên hệ
+              {t('header.contact')}
             </Link>
           </nav>
           <div className="flex gap-3">
@@ -46,7 +48,7 @@ const PublicHeader = () => {
                 to="/login" 
                 className="flex h-10 px-5 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-all"
               >
-                <span>Đăng nhập</span>
+                <span>{t('header.login')}</span>
               </Link>
             )}
             {!isRegisterPage && (
@@ -54,7 +56,7 @@ const PublicHeader = () => {
                 to="/register" 
                 className="flex h-10 px-5 items-center justify-center rounded-lg bg-primary text-white text-sm font-semibold hover:bg-blue-600 transition-all shadow-sm shadow-blue-200"
               >
-                <span>Đăng ký miễn phí</span>
+                <span>{t('header.registerFree')}</span>
               </Link>
             )}
           </div>
@@ -64,7 +66,7 @@ const PublicHeader = () => {
         <button 
           className="md:hidden text-gray-900"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
+          aria-label={t('common.toggleMenu')}
           aria-expanded={mobileMenuOpen}
         >
           <span className="material-symbols-outlined">
@@ -82,21 +84,21 @@ const PublicHeader = () => {
               className="px-4 py-3 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Trang chủ
+              {t('header.home')}
             </Link>
             <a 
               href="/#features" 
               className="px-4 py-3 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Tính năng
+              {t('header.features')}
             </a>
             <Link 
               to="/contact" 
               className="px-4 py-3 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Liên hệ
+              {t('header.contact')}
             </Link>
             <div className="border-t border-gray-200 my-2"></div>
             {!isLoginPage && (
@@ -105,7 +107,7 @@ const PublicHeader = () => {
                 className="px-4 py-3 text-center bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 rounded-lg transition-all"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Đăng nhập
+                {t('header.login')}
               </Link>
             )}
             {!isRegisterPage && (
@@ -114,7 +116,7 @@ const PublicHeader = () => {
                 className="px-4 py-3 text-center bg-primary text-white text-sm font-semibold hover:bg-blue-600 rounded-lg transition-all shadow-sm"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Đăng ký miễn phí
+                {t('header.registerFree')}
               </Link>
             )}
           </nav>

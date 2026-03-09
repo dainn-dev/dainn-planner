@@ -11,5 +11,6 @@ public interface IDailyTaskService
     Task<ApiResponse<DailyTaskDto>> ToggleTaskAsync(string userId, Guid taskId);
     Task<ApiResponse<MainDailyGoalDto?>> GetMainGoalAsync(string userId, DateTime date);
     Task<ApiResponse<MainDailyGoalDto>> UpsertMainGoalAsync(string userId, DateTime date, UpdateMainDailyGoalRequest request);
+    Task<ApiResponse<TagsWithUsageResult>> GetTagsWithUsageAsync(string userId, DateTime? dateFrom = null, DateTime? dateTo = null);
 }
 

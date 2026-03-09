@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { authAPI } from '../services/api';
 
 const Sidebar = ({ className = '' }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -31,17 +33,17 @@ const Sidebar = ({ className = '' }) => {
 
   // Base menu items for all users
   const baseMenuItems = [
-    { path: '/daily', label: 'Kế hoạch hôm nay', icon: 'today', fillWhenActive: true },
-    { path: '/goals', label: 'Quản lý mục tiêu', icon: 'target', fillWhenActive: false },
-    { path: '/calendar', label: 'Lịch biểu', icon: 'calendar_month', fillWhenActive: false },
-    { path: '/settings', label: 'Thiết lập', icon: 'settings', fillWhenActive: false },
+    { path: '/daily', labelKey: 'sidebar.dailyPlan', icon: 'today', fillWhenActive: true },
+    { path: '/goals', labelKey: 'sidebar.goals', icon: 'target', fillWhenActive: false },
+    { path: '/calendar', labelKey: 'sidebar.calendar', icon: 'calendar_month', fillWhenActive: false },
+    { path: '/settings', labelKey: 'sidebar.settings', icon: 'settings', fillWhenActive: false },
   ];
 
   // Admin menu items
   const adminMenuItems = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', fillWhenActive: false },
-    { path: '/admin/users', label: 'Users', icon: 'people', fillWhenActive: false },
-    { path: '/admin/logs', label: 'Logs', icon: 'description', fillWhenActive: false },
+    { path: '/admin/dashboard', labelKey: 'sidebar.dashboard', icon: 'dashboard', fillWhenActive: false },
+    { path: '/admin/users', labelKey: 'sidebar.users', icon: 'people', fillWhenActive: false },
+    { path: '/admin/logs', labelKey: 'sidebar.logs', icon: 'description', fillWhenActive: false },
   ];
 
   const isActive = (path) => {
@@ -84,7 +86,7 @@ const Sidebar = ({ className = '' }) => {
                 <span className={`material-symbols-outlined ${isActive(item.path) && item.fillWhenActive ? 'fill-1' : ''}`}>
                   {item.icon}
                 </span>
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </Link>
             ))}
             <div className="my-2 border-t border-gray-100"></div>
@@ -103,16 +105,17 @@ const Sidebar = ({ className = '' }) => {
             <span className={`material-symbols-outlined ${isActive(item.path) && item.fillWhenActive ? 'fill-1' : ''}`}>
               {item.icon}
             </span>
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         ))}
         <div className="mt-auto border-t border-gray-100 pt-4">
+          
           <button 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full"
             onClick={handleLogout}
           >
             <span className="material-symbols-outlined">logout</span>
-            <span>Đăng xuất</span>
+            <span>{t('sidebar.logout')}</span>
           </button>
         </div>
       </div>

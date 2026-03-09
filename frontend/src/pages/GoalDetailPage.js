@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDate } from '../utils/dateFormat';
+
+const localeToDateLocale = (locale) => (locale === 'en' ? 'en-US' : 'vi-VN');
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -15,9 +19,10 @@ const categoryToIcon = {
   'Du lịch': 'flight',
 };
 
-const mapGoalDetailFromApi = (g) => {
+const mapGoalDetailFromApi = (g, locale = 'vi') => {
+  const dateLocale = localeToDateLocale(locale);
   const dueDate = g.targetDate
-    ? new Date(g.targetDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    ? new Date(g.targetDate).toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '';
   const milestones = (g.milestones || []).map(m => {
     const targetDateObj = m.targetDate ? new Date(m.targetDate) : null;
@@ -26,7 +31,7 @@ const mapGoalDetailFromApi = (g) => {
       id: m.id,
       title: m.title,
       completed: m.isCompleted ?? m.completed,
-      date: targetDateObj ? targetDateObj.toLocaleDateString('vi-VN') : '',
+      date: targetDateObj ? targetDateObj.toLocaleDateString(dateLocale) : '',
       targetDateObj,
       completedDateObj,
     };
@@ -35,7 +40,7 @@ const mapGoalDetailFromApi = (g) => {
     id: t.id,
     text: t.title,
     completed: t.isCompleted ?? t.completed,
-    date: t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
+    date: t.dueDate ? new Date(t.dueDate).toLocaleDateString(dateLocale) : '',
   }));
   const completedM = milestones.filter(m => m.completed).length;
   const totalM = milestones.length;
@@ -81,19 +86,23 @@ const parseGoalDate = (dateStr) => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-const mapNotificationFromApi = (n) => ({
-  id: n.id,
-  type: n.type || 'system',
-  title: n.title,
-  message: n.message,
-  time: n.createdAt ? new Date(n.createdAt).toLocaleString('vi-VN') : '',
-  unread: !n.isRead,
-  icon: n.icon || 'notifications',
-  iconBg: 'bg-blue-100',
-  iconColor: n.iconColor || 'text-primary',
-});
+const mapNotificationFromApi = (n, locale = 'vi') => {
+  const dateLocale = localeToDateLocale(locale);
+  return {
+    id: n.id,
+    type: n.type || 'system',
+    title: n.title,
+    message: n.message,
+    time: n.createdAt ? new Date(n.createdAt).toLocaleString(dateLocale) : '',
+    unread: !n.isRead,
+    icon: n.icon || 'notifications',
+    iconBg: 'bg-blue-100',
+    iconColor: n.iconColor || 'text-primary',
+  };
+};
 
 const GoalDetailPage = () => {
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const isAdmin = isStoredAdmin();
@@ -123,7 +132,7 @@ const GoalDetailPage = () => {
   };
 
   const handleDeleteGoalTask = async (taskId) => {
-    if (!window.confirm('Xóa nhiệm vụ này?')) return;
+    if (!window.confirm(t('goals.confirmDeleteTask'))) return;
     try {
       await tasksAPI.deleteTask(taskId);
       const items = await loadGoalTasks(id);
@@ -158,11 +167,12 @@ const GoalDetailPage = () => {
           notificationsAPI.getNotifications({ limit: 20 }),
         ]);
         if (cancelled) return;
-        const mapped = mapGoalDetailFromApi(goalData);
+        const lang = i18n.language || 'vi';
+        const mapped = mapGoalDetailFromApi(goalData, lang);
         setGoal(mapped);
         setEditedGoal({ ...mapped });
         const notifList = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []);
-        setNotifications(notifList.map(mapNotificationFromApi));
+        setNotifications(notifList.map((n) => mapNotificationFromApi(n, lang)));
         const items = await loadGoalTasks(id);
         if (!cancelled) setGoalTasks(items);
       } catch (error) {
@@ -220,7 +230,7 @@ const GoalDetailPage = () => {
       });
       const updatedGoalData = res?.data ?? res;
       if (updatedGoalData && typeof updatedGoalData === 'object') {
-        const mapped = mapGoalDetailFromApi(updatedGoalData);
+        const mapped = mapGoalDetailFromApi(updatedGoalData, i18n.language || 'vi');
         setGoal(mapped);
         setEditedGoal({ ...mapped });
       } else {
@@ -229,7 +239,7 @@ const GoalDetailPage = () => {
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to update goal:', error);
-      setSaveError(error?.message || 'Không thể lưu thay đổi. Vui lòng thử lại.');
+      setSaveError(error?.message || t('goals.saveError'));
     }
   };
 
@@ -264,7 +274,7 @@ const GoalDetailPage = () => {
     try {
       await goalsAPI.toggleMilestone(id, milestoneId);
       const goalData = await goalsAPI.getGoal(id);
-      const mapped = mapGoalDetailFromApi(goalData?.data ?? goalData);
+      const mapped = mapGoalDetailFromApi(goalData?.data ?? goalData, i18n.language || 'vi');
       setGoal(mapped);
     } catch (err) {
       console.error('Failed to toggle milestone:', err);
@@ -274,11 +284,12 @@ const GoalDetailPage = () => {
   };
 
   const handleAddMilestone = () => {
+    const dateLocale = localeToDateLocale(i18n.language || 'vi');
     const newMilestone = {
       id: Date.now(),
-      title: 'Mốc quan trọng mới',
+      title: t('goals.newMilestoneTitle'),
       completed: false,
-      date: new Date().toLocaleDateString('vi-VN')
+      date: new Date().toLocaleDateString(dateLocale)
     };
     setEditedGoal(prev => {
       const updatedMilestones = [...prev.milestones, newMilestone];
@@ -312,20 +323,20 @@ const GoalDetailPage = () => {
   };
 
   const iconOptions = [
-    { value: 'flag', label: 'Mục tiêu' },
-    { value: 'code', label: 'Kỹ năng' },
-    { value: 'savings', label: 'Tài chính' },
-    { value: 'fitness_center', label: 'Sức khỏe' },
-    { value: 'school', label: 'Học tập' },
-    { value: 'work', label: 'Công việc' },
-    { value: 'home', label: 'Gia đình' },
-    { value: 'flight', label: 'Du lịch' }
+    { value: 'flag', label: t('goals.categoryGoal') },
+    { value: 'code', label: t('goals.categorySkill') },
+    { value: 'savings', label: t('goals.categoryFinance') },
+    { value: 'fitness_center', label: t('goals.categoryHealth') },
+    { value: 'school', label: t('goals.categoryLearning') },
+    { value: 'work', label: t('goals.categoryWork') },
+    { value: 'home', label: t('goals.categoryFamily') },
+    { value: 'flight', label: t('goals.categoryTravel') }
   ];
 
   if (loading || !goal) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#f6f7f8]">
-        <p className="text-gray-500">Đang tải...</p>
+        <p className="text-gray-500">{t('common.loading')}</p>
       </div>
     );
   }
@@ -344,7 +355,7 @@ const GoalDetailPage = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header 
-          title={goal ? `Quản lý mục tiêu / ${goal.title}` : "Chi tiết mục tiêu"}
+          title={goal ? `${t('goals.manageGoalsSlash')}${goal.title}` : t('goals.detailTitle')}
           icon="info"
           notifications={notifications}
           onNotificationsChange={setNotifications}
@@ -359,11 +370,11 @@ const GoalDetailPage = () => {
             type="button"
             onClick={() => navigate('/goals')}
             className="flex items-center gap-2 min-h-[44px] py-2 -ml-1 pl-1 pr-3 text-gray-500 hover:text-[#111418] active:bg-gray-100 rounded-lg transition-colors text-sm font-medium self-start touch-manipulation"
-            aria-label="Quay lại danh sách mục tiêu"
+            aria-label={t('goals.backToGoals')}
           >
             <span className="material-symbols-outlined text-xl sm:text-lg">arrow_back</span>
-            <span className="sm:hidden">Quay lại</span>
-            <span className="hidden sm:inline">Quay lại danh sách mục tiêu</span>
+            <span className="sm:hidden">{t('goals.backShort')}</span>
+            <span className="hidden sm:inline">{t('goals.backToGoals')}</span>
           </button>
 
           {/* Goal Header */}
@@ -388,11 +399,11 @@ const GoalDetailPage = () => {
               <div className="shrink-0 flex items-center gap-1">
                 {isEditing ? (
                   <>
-                    <button onClick={handleSave} type="button" className="min-h-[40px] px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg touch-manipulation" aria-label="Lưu">Lưu</button>
-                    <button onClick={handleCancel} type="button" className="min-h-[40px] px-3 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 touch-manipulation" aria-label="Hủy">Hủy</button>
+                    <button onClick={handleSave} type="button" className="min-h-[40px] px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg touch-manipulation" aria-label={t('common.save')}>{t('common.save')}</button>
+                    <button onClick={handleCancel} type="button" className="min-h-[40px] px-3 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 touch-manipulation" aria-label={t('common.cancel')}>{t('common.cancel')}</button>
                   </>
                 ) : (
-                  <button onClick={handleEdit} type="button" className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label="Chỉnh sửa">
+                  <button onClick={handleEdit} type="button" className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
                     <span className="material-symbols-outlined text-[22px]">edit</span>
                   </button>
                 )}
@@ -442,7 +453,7 @@ const GoalDetailPage = () => {
                           value={editedGoal.category}
                           onChange={(e) => handleFieldChange('category', e.target.value)}
                           className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
-                          placeholder="Danh mục"
+                          placeholder={t('goals.category')}
                         />
                         <input
                           type="date"
@@ -460,7 +471,7 @@ const GoalDetailPage = () => {
                     <div className="min-w-0">
                       <h2 className="text-2xl font-semibold text-[#111418] mb-1 break-words">{goal.title}</h2>
                       <p className="text-gray-500 text-sm break-words">{goal.category} </p> 
-                      <p className="text-gray-500 text-sm break-words">Đến hạn: {goal.dueDate}</p>
+                      <p className="text-gray-500 text-sm break-words">{t('goals.dueLabel')} {goal.dueDate}</p>
                     </div>
                   )}
                 </div>
@@ -472,11 +483,11 @@ const GoalDetailPage = () => {
                   )}
                   {isEditing ? (
                     <div className="flex gap-2">
-                      <button onClick={handleSave} type="button" className="min-h-[44px] px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors touch-manipulation" aria-label="Lưu thay đổi">Lưu</button>
-                      <button onClick={handleCancel} type="button" className="min-h-[44px] px-4 py-2.5 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors touch-manipulation" aria-label="Hủy chỉnh sửa">Hủy</button>
+                      <button onClick={handleSave} type="button" className="min-h-[44px] px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors touch-manipulation" aria-label={t('goals.saveAria')}>{t('common.save')}</button>
+                      <button onClick={handleCancel} type="button" className="min-h-[44px] px-4 py-2.5 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors touch-manipulation" aria-label={t('goals.cancelEditAria')}>{t('common.cancel')}</button>
                     </div>
                   ) : (
-                    <button onClick={handleEdit} type="button" className="min-h-[44px] min-w-[44px] p-2.5 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label="Chỉnh sửa mục tiêu">
+                    <button onClick={handleEdit} type="button" className="min-h-[44px] min-w-[44px] p-2.5 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
                       <span className="material-symbols-outlined text-[22px]">edit</span>
                     </button>
                   )}
@@ -516,7 +527,7 @@ const GoalDetailPage = () => {
                       value={editedGoal.category}
                       onChange={(e) => handleFieldChange('category', e.target.value)}
                       className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 touch-manipulation"
-                      placeholder="Danh mục"
+                      placeholder={t('goals.category')}
                     />
                     <input
                       type="date"
@@ -532,7 +543,7 @@ const GoalDetailPage = () => {
                 ) : (
                   <>
                     <p className="text-gray-500 text-sm break-words">{goal.category}</p>
-                    <p className="text-gray-500 text-sm break-words">Đến hạn: {goal.dueDate}</p>
+                    <p className="text-gray-500 text-sm break-words">{t('goals.dueLabel')} {goal.dueDate}</p>
                   </>
                 )}
               </div>
@@ -541,13 +552,13 @@ const GoalDetailPage = () => {
                   value={editedGoal.description}
                   onChange={(e) => handleFieldChange('description', e.target.value)}
                   className="w-full mt-3 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[90px] focus:outline-none focus:border-gray-400 focus:ring-0 resize-none leading-relaxed shadow-sm hover:border-gray-300 transition-all placeholder:text-gray-400 touch-manipulation"
-                  placeholder="Mô tả mục tiêu..."
+                  placeholder={t('goals.descriptionPlaceholder')}
                 />
               ) : (
                 <p className="text-gray-600 text-sm leading-relaxed mt-3 break-words">{goal.description}</p>
               )}
               <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tiến độ tổng thể</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('goals.overallProgress')}</span>
                 <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
                   <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
                     <div 
@@ -557,15 +568,15 @@ const GoalDetailPage = () => {
                       aria-valuenow={overallProgress}
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-label={`Tiến độ tổng thể ${overallProgress}%`}
+                      aria-label={t('goals.progressLabelAria', { percent: overallProgress })}
                     />
                   </div>
                   <span className="text-sm font-bold text-[#111418] shrink-0">{overallProgress}%</span>
                   {isEditing && (
-                    <span className="hidden sm:inline text-xs text-gray-400">(tự động)</span>
+                    <span className="hidden sm:inline text-xs text-gray-400">{t('goals.auto')}</span>
                   )}
                   {totalMilestones > 0 && (
-                    <span className="text-xs text-gray-400 shrink-0">{completedMilestones}/{totalMilestones} mốc</span>
+                    <span className="text-xs text-gray-400 shrink-0">{t('goals.milestonesCount', { completed: completedMilestones, total: totalMilestones })}</span>
                   )}
                 </div>
               </div>
@@ -575,7 +586,7 @@ const GoalDetailPage = () => {
           {/* Milestones Section */}
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-base sm:text-lg font-medium text-[#111418]">Mốc quan trọng</h3>
+              <h3 className="text-base sm:text-lg font-medium text-[#111418]">{t('goals.milestones')}</h3>
               {isEditing && (
                 <button
                   type="button"
@@ -583,7 +594,7 @@ const GoalDetailPage = () => {
                   className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-xl sm:rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors shadow-sm touch-manipulation w-full sm:w-auto"
                 >
                   <span className="material-symbols-outlined text-xl">add</span>
-                  <span>Thêm mốc</span>
+                  <span>{t('goals.addMilestone')}</span>
                 </button>
               )}
             </div>
@@ -591,8 +602,8 @@ const GoalDetailPage = () => {
               {(isEditing ? editedGoal.milestones : goal.milestones).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 px-4 bg-white border border-gray-200 border-dashed rounded-lg text-center">
                   <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">flag</span>
-                  <p className="text-sm text-gray-500 font-medium">Chưa có mốc quan trọng</p>
-                  <p className="text-xs text-gray-400 mt-1">Thêm mốc để theo dõi tiến độ</p>
+                  <p className="text-sm text-gray-500 font-medium">{t('goals.noMilestones')}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('goals.addMilestonesHint')}</p>
                 </div>
               ) : (isEditing ? editedGoal.milestones : goal.milestones).map((milestone, index) => {
                 const currentMilestone = milestone;
@@ -611,7 +622,7 @@ const GoalDetailPage = () => {
                               ? 'bg-primary border-primary text-white hover:bg-primary/90 active:bg-primary/80' 
                               : 'bg-white border-gray-300 text-gray-400 hover:border-gray-400 active:bg-gray-50'
                           }`}
-                          aria-label={currentMilestone.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
+                          aria-label={currentMilestone.completed ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
                         >
                           {currentMilestone.completed ? (
                             <span className="material-symbols-outlined text-sm">check</span>
@@ -629,8 +640,8 @@ const GoalDetailPage = () => {
                               ? 'bg-primary border-primary text-white hover:bg-primary/90 active:bg-primary/80'
                               : 'bg-white border-gray-300 text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 active:bg-primary/10'
                           }`}
-                          aria-label={milestone.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
-                          title={milestone.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
+                          aria-label={milestone.completed ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
+                          title={milestone.completed ? t('goals.markIncomplete') : t('goals.markComplete')}
                         >
                           {milestone.completed ? (
                             <span className="material-symbols-outlined text-sm">check</span>
@@ -662,7 +673,7 @@ const GoalDetailPage = () => {
                                   }));
                                 }}
                                 className="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all placeholder:text-gray-400 touch-manipulation"
-                                placeholder="Tên mốc quan trọng"
+                                placeholder={t('goals.milestones')}
                               />
                               <input
                                 type="date"
@@ -711,21 +722,21 @@ const GoalDetailPage = () => {
                                 },
                               })}
                               className="min-h-[44px] min-w-[44px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                              aria-label={`Thêm nhiệm vụ ngày từ mốc: ${milestone.title}`}
-                              title="Thêm nhiệm vụ"
+                              aria-label={t('goals.addTaskFromMilestoneAria', { title: milestone.title })}
+                              title={t('goals.addTask')}
                             >
                               <span className="material-symbols-outlined text-xl">task_alt</span>
                             </button>
                           )}
                           {!isEditing && milestone.completed && (
-                            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 whitespace-nowrap">Hoàn thành</span>
+                            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 whitespace-nowrap">{t('goals.completed')}</span>
                           )}
                           {isEditing && (
                             <button
                               type="button"
                               onClick={() => handleDeleteMilestone(milestone.id)}
                               className="min-h-[44px] min-w-[44px] p-2 text-red-500 hover:text-red-700 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                              aria-label={`Xóa mốc: ${milestone.title}`}
+                              aria-label={t('goals.deleteMilestoneAria', { title: milestone.title })}
                             >
                               <span className="material-symbols-outlined text-xl">delete</span>
                             </button>
@@ -738,12 +749,11 @@ const GoalDetailPage = () => {
                         if (tasksForMilestone.length === 0) return null;
                         const formatTaskDate = (d) => {
                           if (!d) return '';
-                          const date = typeof d === 'string' ? new Date(d) : d;
-                          return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                          return formatDate(typeof d === 'string' ? new Date(d) : d);
                         };
                         return (
                           <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Danh sách nhiệm vụ</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t('goals.taskList')}</p>
                             <ul className="space-y-2">
                               {tasksForMilestone.map((task) => (
                                 <li key={task.id} className="flex items-center gap-2 text-sm min-w-0">
@@ -752,7 +762,7 @@ const GoalDetailPage = () => {
                                     onClick={() => handleToggleGoalTask(task.id)}
                                     disabled={!!togglingTaskId}
                                     className={`shrink-0 min-h-[40px] min-w-[40px] p-1.5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 touch-manipulation ${task.isCompleted ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-600 hover:text-primary hover:bg-primary/10'}`}
-                                    aria-label={task.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
+                                    aria-label={task.isCompleted ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
                                   >
                                     <span className="material-symbols-outlined text-lg">
                                       {task.isCompleted ? 'check_circle' : 'radio_button_unchecked'}
@@ -775,8 +785,8 @@ const GoalDetailPage = () => {
                                         type="button"
                                         onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
                                         className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                                        aria-label={`Chỉnh sửa: ${task.title}`}
-                                        title="Chỉnh sửa"
+                                        aria-label={t('goals.editTaskAria', { title: task.title })}
+                                        title={t('goals.edit')}
                                       >
                                         <span className="material-symbols-outlined text-lg">edit</span>
                                       </button>
@@ -784,8 +794,8 @@ const GoalDetailPage = () => {
                                         type="button"
                                         onClick={() => handleDeleteGoalTask(task.id)}
                                         className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                                        aria-label={`Xóa: ${task.title}`}
-                                        title="Xóa"
+                                        aria-label={t('goals.deleteTaskAria', { title: task.title })}
+                                        title={t('common.delete')}
                                       >
                                         <span className="material-symbols-outlined text-lg">delete</span>
                                       </button>
@@ -824,7 +834,7 @@ const GoalDetailPage = () => {
           <button 
             className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
             onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
+            aria-label={t('common.close')}
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -838,7 +848,7 @@ const GoalDetailPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
-                <span>Dashboard</span>
+                <span>{t('admin.dashboard')}</span>
               </Link>
               <Link
                 to="/admin/users"
@@ -846,7 +856,7 @@ const GoalDetailPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
-                <span>Users</span>
+                <span>{t('admin.users')}</span>
               </Link>
               <Link
                 to="/admin/logs"
@@ -854,7 +864,7 @@ const GoalDetailPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
-                <span>Logs</span>
+                <span>{t('admin.logs')}</span>
               </Link>
               <div className="my-2 border-t border-gray-100" />
             </>
@@ -865,7 +875,7 @@ const GoalDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
-            <span>Kế hoạch hôm nay</span>
+            <span>{t('sidebar.dailyPlan')}</span>
           </Link>
           <Link 
             to="/goals" 
@@ -873,7 +883,7 @@ const GoalDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">target</span>
-            <span>Quản lý mục tiêu</span>
+            <span>{t('sidebar.goals')}</span>
           </Link>
           <Link 
             to="/calendar" 
@@ -881,7 +891,7 @@ const GoalDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
-            <span>Lịch biểu</span>
+            <span>{t('sidebar.calendar')}</span>
           </Link>
           <Link 
             to="/settings" 
@@ -889,7 +899,7 @@ const GoalDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span>Thiết lập</span>
+            <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
             <button 
@@ -899,7 +909,7 @@ const GoalDetailPage = () => {
               }}
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
+              <span>{t('auth.logout')}</span>
             </button>
           </div>
         </div>

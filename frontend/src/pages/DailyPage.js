@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { DEFAULT_TAGS } from '../constants/tasks';
+import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI, notificationsAPI, eventsAPI } from '../services/api';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDate, formatTime } from '../utils/dateFormat';
 
 const toDateOnly = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
 const mapEventForDaily = (e) => {
@@ -25,19 +27,13 @@ const mapEventForDaily = (e) => {
   };
 };
 
-// Map backend DailyTaskDto to frontend task shape (id, text, completed, priority display)
-const RECURRENCE_TO_LABEL = { 0: 'Không', 1: 'Mỗi ngày', 2: 'Mỗi tuần', 3: 'Mỗi tháng' };
+// Recurrence keys for i18n
+const RECURRENCE_KEYS = { 0: 'daily.recurrenceNone', 1: 'daily.recurrenceDaily', 2: 'daily.recurrenceWeekly', 3: 'daily.recurrenceMonthly' };
 const formatDeadline = (dateVal) => {
   if (!dateVal) return null;
   const d = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
   if (Number.isNaN(d.getTime())) return null;
-  const hour12 = d.getHours() % 12 || 12;
-  const ampm = d.getHours() < 12 ? 'AM' : 'PM';
-  const timeStr = `${hour12}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${timeStr} ${day}/${month}/${year}`;
+  return `${formatTime(d)} ${formatDate(d)}`;
 };
 const dateToDatetimeLocal = (dateVal) => {
   if (!dateVal) return '';
@@ -63,9 +59,8 @@ const mapTaskFromApi = (t) => {
     isCompleted: t.isCompleted ?? t.completed,
     dateObj,
     completedDateObj,
-    priority: typeof t.priority === 'number' ? (t.priority === 2 ? 'Cao' : t.priority === 1 ? 'Trung bình' : 'Thấp') : t.priority,
+    priority: typeof t.priority === 'number' ? t.priority : (t.priority === 'Cao' ? 2 : t.priority === 'Trung bình' ? 1 : 0),
     recurrence: t.recurrence ?? 0,
-    recurrenceLabel: RECURRENCE_TO_LABEL[t.recurrence] ?? 'Không',
     reminderTime: t.reminderTime ?? '',
     tags: t.tags ?? [],
     goalMilestoneId: t.goalMilestoneId ?? null,
@@ -74,7 +69,10 @@ const mapTaskFromApi = (t) => {
 };
 
 const DailyPage = () => {
+  const { t } = useTranslation();
   const isAdmin = isStoredAdmin();
+  const getPriorityLabel = (p) => (p === 2 ? t('daily.priorityHigh') : p === 1 ? t('daily.priorityMedium') : t('daily.priorityLow'));
+  const getRecurrenceLabel = (r) => t(RECURRENCE_KEYS[r] ?? 'daily.recurrenceNone');
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
   const [mainGoal, setMainGoal] = useState(null);
@@ -114,7 +112,7 @@ const DailyPage = () => {
     {
       id: 1,
       type: 'task',
-      title: 'Nhắc nhở nhiệm vụ',
+      title: t('daily.taskReminder'),
       message: 'Đến hạn nộp báo cáo quý vào lúc 14:00 chiều nay. Đừng quên kiểm tra lại số liệu.',
       time: '15 phút trước',
       unread: true,
@@ -125,7 +123,7 @@ const DailyPage = () => {
     {
       id: 2,
       type: 'goal',
-      title: 'Cập nhật mục tiêu',
+      title: t('daily.goalUpdate'),
       message: 'Chúc mừng! Bạn đã hoàn thành 50% tiến độ mục tiêu "Chạy bộ mỗi sáng".',
       time: '2 giờ trước',
       unread: true,
@@ -136,9 +134,9 @@ const DailyPage = () => {
     {
       id: 3,
       type: 'system',
-      title: 'Cập nhật hệ thống',
+      title: t('daily.systemUpdate'),
       message: 'Tính năng đồng bộ lịch Google Calendar đã sẵn sàng để sử dụng.',
-      time: 'Hôm qua',
+      time: t('daily.yesterday'),
       unread: false,
       icon: 'settings',
       iconBg: 'bg-gray-100',
@@ -226,7 +224,7 @@ const DailyPage = () => {
 
   const applyDescriptionFormat = (command, value = null) => {
     if (command === 'createLink') {
-      const url = value != null ? value : window.prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+      const url = value != null ? value : window.prompt(t('daily.linkPrompt'), 'https://');
       if (url == null || url.trim() === '' || url === 'https://') return;
       document.execCommand('createLink', false, url.trim());
     } else {
@@ -384,7 +382,7 @@ const DailyPage = () => {
 
   const handleOpenEditTask = (task) => {
     const recurrenceToOption = { 0: 'none', 1: 'daily', 2: 'weekly', 3: 'monthly' };
-    const priorityLabelToOption = { 'Cao': 'high', 'Trung bình': 'medium', 'Thấp': 'low' };
+    const priorityNumToOption = { 0: 'low', 1: 'medium', 2: 'high' };
     setEditingTaskId(task.id);
     setFormGoalMilestoneId(task.goalMilestoneId ?? null);
     setFormGoalId(task.goalId ?? null);
@@ -394,7 +392,7 @@ const DailyPage = () => {
       dueDate: dateToDatetimeLocal(task.date),
       reminderTime: task.reminderTime ?? '',
       repeat: recurrenceToOption[task.recurrence] ?? 'none',
-      priority: priorityLabelToOption[task.priority] ?? 'low',
+      priority: priorityNumToOption[task.priority] ?? 'low',
       tags: task.tags ? [...task.tags] : [],
     });
     setAddTaskModalOpen(true);
@@ -429,12 +427,16 @@ const DailyPage = () => {
     }
   };
 
+  const getTagLabel = (tag) => (TAG_I18N_KEYS[tag] ? t(`daily.${TAG_I18N_KEYS[tag]}`) : tag);
+
   const getPriorityBadgeClass = (priority) => {
-    switch (priority) {
-      case 'Cao':
+    const p = typeof priority === 'number' ? priority : (priority === 'Cao' ? 2 : priority === 'Trung bình' ? 1 : 0);
+    switch (p) {
+      case 2:
         return 'bg-red-50 text-red-600 ring-1 ring-inset ring-red-200';
-      case 'Trung bình':
+      case 1:
         return 'bg-yellow-50 text-yellow-600 ring-1 ring-inset ring-yellow-200';
+      case 0:
       default:
         return 'bg-gray-100 text-gray-600';
     }
@@ -452,8 +454,8 @@ const DailyPage = () => {
   };
 
   const today = new Date();
-  const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-  const dayName = dayNames[today.getDay()];
+  const dayKeys = ['daySunday', 'dayMonday', 'dayTuesday', 'dayWednesday', 'dayThursday', 'dayFriday', 'daySaturday'];
+  const dayName = t(`daily.${dayKeys[today.getDay()]}`);
   const dateStr = `${today.getDate()}/${today.getMonth() + 1}`;
 
   return (
@@ -463,11 +465,11 @@ const DailyPage = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header 
-          title="Kế hoạch hôm nay"
+        <Header
+          title={t('daily.title')}
           icon="calendar_today"
           actionButton={{
-            text: 'Thêm nhiệm vụ',
+            text: t('daily.addTask'),
             icon: 'add',
             onClick: () => setAddTaskModalOpen(true)
           }}
@@ -486,17 +488,17 @@ const DailyPage = () => {
                   {dayName}, {dateStr}
                 </p>
                 <p className="text-gray-500 text-base font-normal leading-normal">
-                  Xin chào, hãy bắt đầu ngày mới hiệu quả.
+                  {t('daily.greeting')}
                 </p>
               </div>
               <div className="flex min-w-[200px] flex-col gap-1 rounded-lg p-4 bg-white border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center mb-1">
-                  <p className="text-gray-600 text-sm font-medium leading-normal">Tiến độ hôm nay</p>
+                  <p className="text-gray-600 text-sm font-medium leading-normal">{t('daily.progressToday')}</p>
                   <span className="material-symbols-outlined text-[#0bda5b]">trending_up</span>
                 </div>
                 <div className="flex items-end gap-2">
                   <p className="text-[#111418] text-3xl font-bold leading-tight">{progressPercentage}%</p>
-                  <p className="text-gray-500 text-xs pb-1">hoàn thành</p>
+                  <p className="text-gray-500 text-xs pb-1">{t('daily.completed')}</p>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
                   <div 
@@ -506,7 +508,7 @@ const DailyPage = () => {
                     aria-valuenow={progressPercentage}
                     aria-valuemin="0"
                     aria-valuemax="100"
-                    aria-label={`Tiến độ: ${progressPercentage}%`}
+                    aria-label={t('daily.progressLabel', { percent: progressPercentage })}
                   />
                 </div>
               </div>
@@ -520,14 +522,14 @@ const DailyPage = () => {
                   <div className="flex flex-col gap-1 z-10 pl-2">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="material-symbols-outlined text-primary text-sm">flag</span>
-                      <p className="text-primary text-xs font-bold uppercase tracking-wider">Mục tiêu chính</p>
+                      <p className="text-primary text-xs font-bold uppercase tracking-wider">{t('daily.mainGoal')}</p>
                     </div>
                     <p className={`text-[#111418] text-xl font-bold leading-tight group-hover:text-primary transition-colors ${mainGoal.completed ? 'line-through text-gray-400' : ''}`}>
                       {mainGoal.text}
                     </p>
                   </div>
                   <label className="relative flex cursor-pointer items-center gap-3 z-10">
-                    <span className="text-gray-500 text-sm hidden sm:block">Đánh dấu hoàn thành</span>
+                    <span className="text-gray-500 text-sm hidden sm:block">{t('daily.markComplete')}</span>
                     <div className={`relative flex h-[31px] w-[51px] items-center rounded-full border-none p-0.5 transition-colors ${mainGoal.completed ? 'bg-[#1380ec]' : 'bg-gray-200'}`}>
                       <div 
                         className={`h-[27px] w-[27px] rounded-full bg-white shadow-md transition-transform ${mainGoal.completed ? 'translate-x-[20px]' : 'translate-x-0'}`}
@@ -545,7 +547,7 @@ const DailyPage = () => {
                             console.error('Failed to update main goal:', error);
                           }
                         }}
-                        aria-label="Đánh dấu mục tiêu chính hoàn thành"
+                        aria-label={t('daily.markMainGoalComplete')}
                       />
                     </div>
                   </label>
@@ -559,13 +561,13 @@ const DailyPage = () => {
               <div className="lg:col-span-5 flex flex-col gap-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="material-symbols-outlined text-[#111418]">schedule</span>
-                  <h2 className="text-[#111418] text-xl font-bold">Lịch trình</h2>
+                  <h2 className="text-[#111418] text-xl font-bold">{t('daily.schedule')}</h2>
                 </div>
                 {events.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border border-gray-200">
                     <span className="material-symbols-outlined text-gray-300 text-5xl mb-3">event_busy</span>
-                    <p className="text-gray-500 text-sm font-medium text-center">Chưa có sự kiện nào trong ngày</p>
-                    <p className="text-gray-400 text-xs text-center mt-1">Thêm sự kiện mới từ trang Lịch biểu</p>
+                    <p className="text-gray-500 text-sm font-medium text-center">{t('daily.noEvents')}</p>
+                    <p className="text-gray-400 text-xs text-center mt-1">{t('daily.addEventFromCalendar')}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4">
@@ -579,7 +581,7 @@ const DailyPage = () => {
                         <div key={event.id} className="flex gap-4 group">
                     <div className="flex flex-col items-center pt-1 w-12 flex-shrink-0">
                             <span className={`text-sm font-medium ${isActive ? 'text-[#111418] font-bold' : isPast ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {event.time_from ? event.time_from.substring(0, 5) : 'Cả ngày'}
+                              {event.time_from ? event.time_from.substring(0, 5) : t('daily.allDay')}
                             </span>
                             {index < events.length - 1 && (
                       <div className="w-px h-full bg-gray-200 mt-2"></div>
@@ -598,7 +600,7 @@ const DailyPage = () => {
                                   {event.title}
                                 </p>
                                 {isActive && (
-                          <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded">Đang diễn ra</span>
+                          <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded">{t('daily.ongoing')}</span>
                                 )}
                               </div>
                               {event.description && (
@@ -636,15 +638,15 @@ const DailyPage = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-[#111418]">check_circle</span>
-                      <h2 className="text-[#111418] text-xl font-bold">Nhiệm vụ</h2>
+                      <h2 className="text-[#111418] text-xl font-bold">{t('daily.tasks')}</h2>
                       <button
                         type="button"
                         onClick={() => { setTaskForm(prev => ({ ...prev, name: '' })); setEditingTaskId(null); setAddTaskModalOpen(true); }}
                         className="lg:hidden inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/90 px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
-                        aria-label="Thêm nhiệm vụ"
+                        aria-label={t('daily.addTask')}
                       >
                         <span className="material-symbols-outlined text-[18px]">add</span>
-                        Thêm nhiệm vụ
+                        {t('daily.addTask')}
                       </button>
                     </div>
                     {taskTotalCount > 0 && (
@@ -654,19 +656,19 @@ const DailyPage = () => {
                         onClick={() => taskPage > 1 && setTaskPage(p => p - 1)}
                         disabled={taskPage <= 1}
                         className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
-                        aria-label="Trang trước"
+                        aria-label={t('daily.prevPage')}
                       >
                         <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_left</span>
                       </button>
                       <span className="text-sm text-gray-600 min-w-[80px] text-center">
-                        Trang {taskPage} / {Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
+                        {t('daily.pageOf', { current: taskPage, total: Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) })}
                       </span>
                       <button
                         type="button"
                         onClick={() => taskPage < Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) && setTaskPage(p => p + 1)}
                         disabled={taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
                         className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
-                        aria-label="Trang sau"
+                        aria-label={t('daily.nextPage')}
                       >
                         <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_right</span>
                       </button>
@@ -684,17 +686,17 @@ const DailyPage = () => {
                         }
                       }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${filterExpanded ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-primary hover:bg-primary/5 border border-gray-200'}`}
-                      aria-label={filterExpanded ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
+                      aria-label={filterExpanded ? t('daily.closeFilter') : t('daily.openFilter')}
                       aria-expanded={filterExpanded}
                     >
                       <span className="material-symbols-outlined text-[18px]">
                         {filterExpanded ? 'expand_less' : 'filter_list'}
                       </span>
-                      <span className="hidden sm:inline">{filterExpanded ? 'Thu gọn' : 'Bộ lọc'}</span>
+                      <span className="hidden sm:inline">{filterExpanded ? t('daily.filterCollapse') : t('daily.filter')}</span>
                     </button>
                   </div>
                   {!filterExpanded && (
-                    <div className="flex items-center pt-1" role="group" aria-label="Trạng thái nhiệm vụ">
+                    <div className="flex items-center pt-1" role="group" aria-label={t('daily.status')}>
                       <div className="inline-flex p-0.5 rounded-full bg-gray-200">
                         <button
                           type="button"
@@ -705,7 +707,7 @@ const DailyPage = () => {
                           {taskStatusFilter === 'incomplete' && (
                             <span className="absolute inset-0 rounded-full bg-primary shadow-sm z-0" aria-hidden="true" />
                           )}
-                          <span className="relative z-10">Việc cần làm</span>
+                          <span className="relative z-10">{t('daily.toDo')}</span>
                         </button>
                         <button
                           type="button"
@@ -716,7 +718,7 @@ const DailyPage = () => {
                           {taskStatusFilter === 'completed' && (
                             <span className="absolute inset-0 rounded-full bg-primary shadow-sm z-0" aria-hidden="true" />
                           )}
-                          <span className="relative z-10">Hoàn thành</span>
+                          <span className="relative z-10">{t('daily.completed')}</span>
                         </button>
                       </div>
                     </div>
@@ -726,7 +728,7 @@ const DailyPage = () => {
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                         <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
-                        <span>Tùy chọn lọc & sắp xếp</span>
+                        <span>{t('daily.filterSortOptions')}</span>
                       </div>
                       <button
                         type="button"
@@ -740,58 +742,58 @@ const DailyPage = () => {
                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200/80 transition-colors shrink-0"
                       >
                         <span className="material-symbols-outlined text-[18px]">refresh</span>
-                        <span>Đặt lại</span>
+                        <span>{t('daily.reset')}</span>
                       </button>
                     </div>
                     <div className="flex flex-wrap items-end gap-3 mt-3">
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Trạng thái</label>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.status')}</label>
                         <select
                           value={taskStatusFilter}
                           onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
                           className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
-                          <option value="">Tất cả</option>
-                          <option value="completed">Hoàn thành</option>
-                          <option value="incomplete">Chưa hoàn thành</option>
+                          <option value="">{t('daily.all')}</option>
+                          <option value="completed">{t('daily.completed')}</option>
+                          <option value="incomplete">{t('daily.incomplete')}</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ưu tiên</label>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.priority')}</label>
                         <select
                           value={taskPriorityFilter}
                           onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
                           className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
-                          <option value="">Tất cả</option>
-                          <option value="0">Thấp</option>
-                          <option value="1">Trung bình</option>
-                          <option value="2">Cao</option>
+                          <option value="">{t('daily.all')}</option>
+                          <option value="0">{t('daily.priorityLow')}</option>
+                          <option value="1">{t('daily.priorityMedium')}</option>
+                          <option value="2">{t('daily.priorityHigh')}</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nhãn</label>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.label')}</label>
                         <select
                           value={taskTagFilter}
                           onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
                           className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
-                          <option value="">Tất cả</option>
+                          <option value="">{t('daily.all')}</option>
                           {DEFAULT_TAGS.map((tag) => (
-                            <option key={tag} value={tag}>{tag}</option>
+                            <option key={tag} value={tag}>{getTagLabel(tag)}</option>
                           ))}
                         </select>
                       </div>
                       <div className="h-px w-px bg-gray-300 self-stretch hidden sm:block" aria-hidden="true" />
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sắp xếp</label>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.sort')}</label>
                         <select
                           value={taskSortOrder}
                           onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
                           className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
-                          <option value="desc">Mới nhất trước</option>
-                          <option value="asc">Cũ nhất trước</option>
+                          <option value="desc">{t('daily.sortNewestFirst')}</option>
+                          <option value="asc">{t('daily.sortOldestFirst')}</option>
                         </select>
                       </div>
                     </div>
@@ -803,8 +805,8 @@ const DailyPage = () => {
                 {tasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border border-gray-200">
                     <span className="material-symbols-outlined text-gray-300 text-5xl mb-3">task_alt</span>
-                    <p className="text-gray-500 text-sm font-medium text-center">Chưa có nhiệm vụ nào</p>
-                    <p className="text-gray-400 text-xs text-center mt-1">Thêm nhiệm vụ mới để bắt đầu ngày làm việc</p>
+                    <p className="text-gray-500 text-sm font-medium text-center">{t('daily.noTasks')}</p>
+                    <p className="text-gray-400 text-xs text-center mt-1">{t('daily.addTaskToStart')}</p>
                   </div>
                 ) : (
                 <div className="flex flex-col gap-3">
@@ -822,7 +824,7 @@ const DailyPage = () => {
                               type="checkbox"
                               onChange={() => handleTaskCheckboxChange(task.id)}
                               disabled={taskIdInProgress === task.id}
-                              aria-label={`Đánh dấu hoàn thành: ${task.text || task.title}`}
+                              aria-label={t('daily.markTaskComplete', { title: task.text || task.title })}
                             />
                           <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity pt-1">
                             <span className="material-symbols-outlined text-[16px] font-bold">check</span>
@@ -832,7 +834,7 @@ const DailyPage = () => {
                           <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 line-through' : 'text-[#111418]'}`}>
                           {task.priority && (
                               <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
-                                {task.priority}
+                                {getPriorityLabel(task.priority)}
                               </span>
                             )} 
                             {task.text || task.title}
@@ -845,13 +847,13 @@ const DailyPage = () => {
                               return cDay > dDay ? 'text-red-600' : 'text-green-600';
                             })()}`}>
                               <span className="material-symbols-outlined text-[12px] sm:text-[14px]">event</span>
-                              <span>Đến hạn: {formatDeadline(task.date)}</span>
+                              <span>{t('daily.dueLabel')} {formatDeadline(task.date)}</span>
                             </p>
                           )}
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">                            
                               {task.tags && task.tags.map((tag, idx) => (
                               <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600">
-                                {tag}
+                                {getTagLabel(tag)}
                               </span>
                             ))}
                           </div>
@@ -862,7 +864,7 @@ const DailyPage = () => {
                           type="button"
                           className="invisible group-hover:visible text-gray-400 hover:text-primary transition-colors p-1 rounded"
                           onClick={() => handleOpenEditTask(task)}
-                          aria-label={`Chỉnh sửa nhiệm vụ: ${task.text || task.title}`}
+                          aria-label={t('daily.editTaskLabel', { title: task.text || task.title })}
                         >
                           <span className="material-symbols-outlined text-lg">edit</span>
                         </button>
@@ -870,14 +872,14 @@ const DailyPage = () => {
                           type="button"
                           className="invisible group-hover:visible text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
                           onClick={() => handleDeleteTask(task.id)}
-                          aria-label={`Xóa nhiệm vụ: ${task.text || task.title}`}
+                          aria-label={t('daily.deleteTaskLabel', { title: task.text || task.title })}
                         >
                           <span className="material-symbols-outlined text-lg">delete</span>
                         </button>
                       </div>
                       </div>
                       {taskIdInProgress === task.id && (
-                        <div className="h-1.5 w-full bg-gray-100 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label="Đang cập nhật">
+                        <div className="h-1.5 w-full bg-gray-100 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t('daily.updating')}>
                           <div
                             className="h-full bg-primary rounded-b-lg transition-[width] duration-[3000ms] ease-linear"
                             style={{ width: `${toggleProgressPercent}%` }}
@@ -896,19 +898,19 @@ const DailyPage = () => {
                       onClick={() => taskPage > 1 && setTaskPage(p => p - 1)}
                       disabled={taskPage <= 1}
                       className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
-                      aria-label="Trang trước"
+                      aria-label={t('daily.prevPage')}
                     >
                       <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_left</span>
                     </button>
                     <span className="text-sm text-gray-600 min-w-[80px] text-center">
-                      Trang {taskPage} / {Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
+                      {t('daily.pageOf', { current: taskPage, total: Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) })}
                     </span>
                     <button
                       type="button"
                       onClick={() => taskPage < Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) && setTaskPage(p => p + 1)}
                       disabled={taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
                       className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
-                      aria-label="Trang sau"
+                      aria-label={t('daily.nextPage')}
                     >
                       <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_right</span>
                     </button>
@@ -933,14 +935,14 @@ const DailyPage = () => {
             <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-                  {editingTaskId ? 'Chỉnh sửa nhiệm vụ' : 'Thêm Nhiệm Vụ'}
+                  {editingTaskId ? t('daily.editTaskTitle') : t('daily.addTaskTitle')}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1 font-normal">
-                  {editingTaskId ? 'Cập nhật thông tin nhiệm vụ.' : 'Tạo một mục tiêu mới cho kế hoạch của bạn.'}
+                  {editingTaskId ? t('daily.editTaskDesc') : t('daily.addTaskDesc')}
                 </p>
               </div>
               <button 
-                aria-label="Đóng"
+                aria-label={t('common.close')}
                 className="group p-2 -mr-2 -mt-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none"
                 onClick={handleCloseModal}
               >
@@ -951,13 +953,13 @@ const DailyPage = () => {
               <div className="px-8 py-2 overflow-y-auto flex flex-col gap-6 custom-scrollbar bg-surface-light">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Tên nhiệm vụ
+                    {t('daily.taskName')}
                   </label>
                   <div className="relative group">
                     <input
                       autoFocus
                       className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 px-4 py-3 text-base focus:border-gray-400 focus:bg-white focus:ring-0 placeholder:text-gray-400 transition-all font-medium shadow-sm hover:border-gray-300"
-                      placeholder="Nhập tên nhiệm vụ..."
+                      placeholder={t('daily.taskNamePlaceholder')}
                       type="text"
                       value={taskForm.name}
                       onChange={(e) => setTaskForm(prev => ({ ...prev, name: e.target.value }))}
@@ -967,7 +969,7 @@ const DailyPage = () => {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Mô tả
+                    {t('daily.description')}
                   </label>
                     <div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-all overflow-hidden">
                     <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
@@ -975,8 +977,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('bold')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Đậm"
-                        aria-label="Đậm"
+                        title={t('daily.bold')}
+                        aria-label={t('daily.bold')}
                       >
                         <span className="material-symbols-outlined text-lg">format_bold</span>
                       </button>
@@ -984,8 +986,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('italic')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Nghiêng"
-                        aria-label="Nghiêng"
+                        title={t('daily.italic')}
+                        aria-label={t('daily.italic')}
                       >
                         <span className="material-symbols-outlined text-lg">format_italic</span>
                       </button>
@@ -993,8 +995,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('underline')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Gạch chân"
-                        aria-label="Gạch chân"
+                        title={t('daily.underline')}
+                        aria-label={t('daily.underline')}
                       >
                         <span className="material-symbols-outlined text-lg">format_underlined</span>
                       </button>
@@ -1002,8 +1004,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('strikeThrough')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Gạch ngang"
-                        aria-label="Gạch ngang"
+                        title={t('daily.strikethrough')}
+                        aria-label={t('daily.strikethrough')}
                       >
                         <span className="material-symbols-outlined text-lg">format_strikethrough</span>
                       </button>
@@ -1012,8 +1014,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('insertUnorderedList')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Danh sách gạch đầu dòng"
-                        aria-label="Danh sách gạch đầu dòng"
+                        title={t('daily.bulletList')}
+                        aria-label={t('daily.bulletList')}
                       >
                         <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
                       </button>
@@ -1021,8 +1023,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('insertOrderedList')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Danh sách đánh số"
-                        aria-label="Danh sách đánh số"
+                        title={t('daily.numberedList')}
+                        aria-label={t('daily.numberedList')}
                       >
                         <span className="material-symbols-outlined text-lg">format_list_numbered</span>
                       </button>
@@ -1030,8 +1032,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('createLink')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Chèn liên kết"
-                        aria-label="Chèn liên kết"
+                        title={t('daily.insertLink')}
+                        aria-label={t('daily.insertLink')}
                       >
                         <span className="material-symbols-outlined text-lg">link</span>
                       </button>
@@ -1040,8 +1042,8 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => applyDescriptionFormat('removeFormat')}
                         className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Xóa định dạng"
-                        aria-label="Xóa định dạng"
+                        title={t('daily.removeFormat')}
+                        aria-label={t('daily.removeFormat')}
                       >
                         <span className="material-symbols-outlined text-lg">format_clear</span>
                       </button>
@@ -1051,7 +1053,7 @@ const DailyPage = () => {
                       contentEditable
                       suppressContentEditableWarning
                       className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 [&:empty::before]:content-[attr(data-placeholder)] [&:empty::before]:text-gray-400"
-                      data-placeholder="Thêm chi tiết về nhiệm vụ này..."
+                      data-placeholder={t('daily.descriptionPlaceholder')}
                       onInput={() => {
                         if (descriptionEditorRef.current) {
                           setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
@@ -1062,7 +1064,7 @@ const DailyPage = () => {
                 </div>
                 <div className="flex gap-3">
                   <div className="flex flex-col gap-2 flex-[2] min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày đến hạn</label>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('daily.dueDate')}</label>
                     <div className="relative group">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">event</span>
                       <input
@@ -1070,12 +1072,12 @@ const DailyPage = () => {
                         type="datetime-local"
                         value={taskForm.dueDate}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                        aria-label="Ngày và giờ đến hạn"
+                        aria-label={t('daily.dueDateAria')}
                       />
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 flex-[1] min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Giờ nhắc</label>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('daily.reminderTime')}</label>
                     <div className="relative group">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">schedule</span>
                       <input
@@ -1083,7 +1085,7 @@ const DailyPage = () => {
                         type="time"
                         value={taskForm.reminderTime}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, reminderTime: e.target.value }))}
-                        aria-label="Giờ nhắc"
+                        aria-label={t('daily.reminderTime')}
                       />
                     </div>
                   </div>
@@ -1091,7 +1093,7 @@ const DailyPage = () => {
                 <div className="flex gap-3">
                   <div className="flex flex-col gap-2 flex-1 min-w-0">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Lặp lại
+                      {t('daily.repeat')}
                     </label>
                     <div className="relative group">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">repeat</span>
@@ -1099,18 +1101,18 @@ const DailyPage = () => {
                         className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 shadow-sm appearance-none"
                         value={taskForm.repeat}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, repeat: e.target.value }))}
-                        aria-label="Lặp lại"
+                        aria-label={t('daily.repeat')}
                       >
-                        <option value="none">Không</option>
-                        <option value="daily">Mỗi ngày</option>
-                        <option value="weekly">Mỗi tuần</option>
-                        <option value="monthly">Mỗi tháng</option>
+                        <option value="none">{t('daily.recurrenceNone')}</option>
+                        <option value="daily">{t('daily.recurrenceDaily')}</option>
+                        <option value="weekly">{t('daily.recurrenceWeekly')}</option>
+                        <option value="monthly">{t('daily.recurrenceMonthly')}</option>
                       </select>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 flex-1 min-w-0">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Độ ưu tiên
+                      {t('daily.priorityLabel')}
                     </label>
                     <div className="relative group">
                       <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] pointer-events-none ${getPriorityFlagClass(taskForm.priority)}`}>flag</span>
@@ -1118,11 +1120,11 @@ const DailyPage = () => {
                         className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 shadow-sm appearance-none"
                         value={taskForm.priority}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
-                        aria-label="Độ ưu tiên"
+                        aria-label={t('daily.priorityLabel')}
                       >
-                        <option value="low">Thấp</option>
-                        <option value="medium">Trung bình</option>
-                        <option value="high">Cao</option>
+                        <option value="low">{t('daily.priorityLow')}</option>
+                        <option value="medium">{t('daily.priorityMedium')}</option>
+                        <option value="high">{t('daily.priorityHigh')}</option>
                       </select>
                     </div>
                   </div>
@@ -1130,7 +1132,7 @@ const DailyPage = () => {
                 <div className="flex flex-col gap-3 pt-2 pb-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                      Thẻ
+                      {t('daily.tags')}
                     </label>
                   </div>
                   {/* Selected Tags Display */}
@@ -1141,12 +1143,12 @@ const DailyPage = () => {
                           key={index}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-full shadow-sm"
                         >
-                          {tag}
+                          {getTagLabel(tag)}
                           <button
                             type="button"
                             onClick={() => handleTagToggle(tag)}
                             className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
-                            aria-label={`Xóa thẻ ${tag}`}
+                            aria-label={t('daily.removeTag', { tag: getTagLabel(tag) })}
                           >
                             <span className="material-symbols-outlined text-[14px]">close</span>
                           </button>
@@ -1166,7 +1168,7 @@ const DailyPage = () => {
                         }`}
                         onClick={() => handleTagToggle(tag)}
                       >
-                        <span className="text-xs font-medium">{tag}</span>
+                        <span className="text-xs font-medium">{getTagLabel(tag)}</span>
                         {taskForm.tags.includes(tag) && (
                           <span className="material-symbols-outlined text-[14px] ml-0.5">close</span>
                         )}
@@ -1184,7 +1186,7 @@ const DailyPage = () => {
                               handleAddNewTag();
                             }
                           }}
-                          placeholder="Tên thẻ mới..."
+                          placeholder={t('daily.newTagPlaceholder')}
                           autoFocus
                           className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-full focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                         />
@@ -1192,7 +1194,7 @@ const DailyPage = () => {
                           type="button"
                           onClick={handleAddNewTag}
                           className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white hover:bg-primary-hover transition-colors"
-                          aria-label="Xác nhận thêm thẻ"
+                          aria-label={t('daily.confirmAddTag')}
                         >
                           <span className="material-symbols-outlined text-[16px]">check</span>
                         </button>
@@ -1203,7 +1205,7 @@ const DailyPage = () => {
                             setNewTagValue('');
                           }}
                           className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                          aria-label="Hủy"
+                          aria-label={t('common.cancel')}
                         >
                           <span className="material-symbols-outlined text-[16px]">close</span>
                         </button>
@@ -1213,7 +1215,7 @@ const DailyPage = () => {
                         type="button"
                         className="group flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-gray-300 text-gray-400 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 transition-all"
                         onClick={() => setShowNewTagInput(true)}
-                        aria-label="Thêm thẻ mới"
+                        aria-label={t('daily.addNewTag')}
                       >
                         <span className="material-symbols-outlined text-[16px]">add</span>
                       </button>
@@ -1227,13 +1229,13 @@ const DailyPage = () => {
                   className="px-5 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 hover:bg-gray-100 transition-colors text-sm"
                   onClick={handleCloseModal}
                 >
-                  Hủy bỏ
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-all shadow-minimal active:scale-[0.98] text-sm tracking-wide"
                 >
-                  {editingTaskId ? 'Cập nhật' : 'Tạo nhiệm vụ'}
+                  {editingTaskId ? t('daily.update') : t('daily.createTask')}
                 </button>
               </div>
             </form>
@@ -1271,7 +1273,7 @@ const DailyPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
-                <span>Dashboard</span>
+                <span>{t('admin.dashboard')}</span>
               </Link>
               <Link
                 to="/admin/users"
@@ -1279,7 +1281,7 @@ const DailyPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
-                <span>Users</span>
+                <span>{t('admin.users')}</span>
               </Link>
               <Link
                 to="/admin/logs"
@@ -1287,7 +1289,7 @@ const DailyPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
-                <span>Logs</span>
+                <span>{t('admin.logs')}</span>
               </Link>
               <div className="my-2 border-t border-gray-100" />
             </>
@@ -1298,7 +1300,7 @@ const DailyPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">today</span>
-            <span>Kế hoạch hôm nay</span>
+            <span>{t('sidebar.dailyPlan')}</span>
           </Link>
           <Link 
             to="/goals" 
@@ -1306,7 +1308,7 @@ const DailyPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
-            <span>Quản lý mục tiêu</span>
+            <span>{t('sidebar.goals')}</span>
           </Link>
           <Link 
             to="/calendar" 
@@ -1314,7 +1316,7 @@ const DailyPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
-            <span>Lịch biểu</span>
+            <span>{t('sidebar.calendar')}</span>
           </Link>
           <Link 
             to="/settings" 
@@ -1322,7 +1324,7 @@ const DailyPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span>Thiết lập</span>
+            <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
             <button 
@@ -1332,7 +1334,7 @@ const DailyPage = () => {
               }}
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
+              <span>{t('auth.logout')}</span>
             </button>
           </div>
         </div>

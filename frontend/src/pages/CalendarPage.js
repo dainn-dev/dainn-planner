@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import { eventsAPI, notificationsAPI } from '../services/api';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDateWithWeekday, formatDateTime } from '../utils/dateFormat';
 import {
   getColorClasses,
   getTextColorClasses,
@@ -39,7 +41,7 @@ const mapNotificationFromApi = (n) => ({
   type: n.type || 'system',
   title: n.title,
   message: n.message,
-  time: n.createdAt ? new Date(n.createdAt).toLocaleString('vi-VN') : '',
+  time: n.createdAt ? formatDateTime(n.createdAt) : '',
   unread: !n.isRead,
   icon: n.icon || 'notifications',
   iconBg: 'bg-blue-100',
@@ -48,19 +50,24 @@ const mapNotificationFromApi = (n) => ({
 
 const MOBILE_BREAKPOINT = 640;
 
+const VIEW_DAY = 'day';
+const VIEW_WEEK = 'week';
+const VIEW_MONTH = 'month';
+
 const CalendarPage = () => {
+  const { t } = useTranslation();
   const isAdmin = isStoredAdmin();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState(() =>
-    (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT) ? 'Ngày' : 'Tuần'
+    (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT) ? VIEW_DAY : VIEW_WEEK
   );
   const [weekStartDay, setWeekStartDay] = useState('monday');
 
-  // On mobile only Ngày and Tuần are shown; switch from Tháng to Ngày when resizing to mobile
+  // On mobile only Day and Week are shown; switch from Month to Day when resizing to mobile
   useEffect(() => {
     const check = () => {
       const mobile = window.innerWidth < MOBILE_BREAKPOINT;
-      if (mobile && viewMode === 'Tháng') setViewMode('Ngày');
+      if (mobile && viewMode === VIEW_MONTH) setViewMode(VIEW_DAY);
     };
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -91,12 +98,12 @@ const CalendarPage = () => {
   useEffect(() => {
     let cancelled = false;
     const getRange = () => {
-      if (viewMode === 'Ngày') {
+      if (viewMode === VIEW_DAY) {
         const d = new Date(currentDate);
         const dayStr = toDateOnly(d);
         return { startDate: dayStr, endDate: dayStr };
       }
-      if (viewMode === 'Tuần') {
+      if (viewMode === VIEW_WEEK) {
         const d = new Date(currentDate);
         const day = d.getDay();
         const diff = day === 0 ? -6 : 1 - day;
@@ -137,14 +144,7 @@ const CalendarPage = () => {
     return () => { cancelled = true; };
   }, [currentDate, viewMode]);
 
-  // Get month name in Vietnamese
-  const getMonthName = (date) => {
-    const months = [
-      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
-    ];
-    return months[date.getMonth()];
-  };
+  const getMonthName = (date) => t(`calendar.month${date.getMonth() + 1}`);
 
   // Navigate months/weeks
   const changeMonth = (direction) => {
@@ -318,41 +318,20 @@ const CalendarPage = () => {
     }));
   };
 
-  // Format date for display
-  const formatDate = (date) => {
-    const d = new Date(date);
-    const day = d.getDate();
-    const month = d.getMonth() + 1;
-    const year = d.getFullYear();
-    const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    const dayName = dayNames[d.getDay()];
-    return `${dayName}, ${day}/${month}/${year}`;
-  };
+  // Format date for display (weekday + date from user settings)
+  const formatDate = (date) => formatDateWithWeekday(date);
 
   // Convert solar date to lunar date (simplified Vietnamese lunar calendar)
-  // Note: This is a simplified version. For production, use a proper lunar calendar library
   const convertToLunar = (solarDate) => {
     const d = new Date(solarDate);
-    // const year = d.getFullYear();
-    // const month = d.getMonth() + 1;
-    // const day = d.getDate();
-
-    // Base reference: January 1, 1900 (solar) = December 1, 1899 (lunar)
-    // This is a simplified approximation
     const baseSolar = new Date(1900, 0, 1);
     const baseLunar = { year: 1899, month: 12, day: 1 };
-    
     const diffDays = Math.floor((d - baseSolar) / (1000 * 60 * 60 * 24));
-    
-    // Approximate lunar month = 29.53 days
     const lunarDays = baseLunar.day + diffDays;
     let lunarMonth = baseLunar.month;
     let lunarYear = baseLunar.year;
-    
-    // Simplified calculation (not astronomically accurate)
     let remainingDays = lunarDays;
-    const lunarMonths = [29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30]; // Approximate month lengths
-    
+    const lunarMonths = [29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30];
     while (remainingDays > 0) {
       const monthLength = lunarMonths[(lunarMonth - 1) % 12];
       if (remainingDays > monthLength) {
@@ -366,20 +345,12 @@ const CalendarPage = () => {
         break;
       }
     }
-    
     const lunarDay = Math.floor(remainingDays) || 1;
-    
-    // Vietnamese month names
-    const lunarMonthNames = [
-      'Giêng', 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu',
-      'Bảy', 'Tám', 'Chín', 'Mười', 'Mười một', 'Chạp'
-    ];
-    
     return {
       day: lunarDay,
       month: lunarMonth,
       year: lunarYear,
-      monthName: lunarMonthNames[lunarMonth - 1] || '',
+      monthName: t(`calendar.lunarMonth${lunarMonth}`),
       display: `${lunarDay}/${lunarMonth}`
     };
   };
@@ -464,21 +435,20 @@ const CalendarPage = () => {
     return calendar;
   };
 
-  // Get week days array based on week start day
   const getWeekDays = () => {
+    const keys = ['daySunday', 'dayMonday', 'dayTuesday', 'dayWednesday', 'dayThursday', 'dayFriday', 'daySaturday'];
     if (weekStartDay === 'sunday') {
-      return ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    } else {
-      return ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+      return keys.map((k) => t(`calendar.${k}`));
     }
+    return [...keys.slice(1).map((k) => t(`calendar.${k}`)), t('calendar.daySunday')];
   };
 
   const getWeekDaysShort = () => {
+    const keys = ['shortSun', 'shortMon', 'shortTue', 'shortWed', 'shortThu', 'shortFri', 'shortSat'];
     if (weekStartDay === 'sunday') {
-      return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    } else {
-      return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+      return keys.map((k) => t(`calendar.${k}`));
     }
+    return [...keys.slice(1).map((k) => t(`calendar.${k}`)), t('calendar.shortSun')];
   };
 
   const weekDays = getWeekDays();
@@ -486,11 +456,14 @@ const CalendarPage = () => {
 
   const generateDay = () => [new Date(currentDate)];
 
-  const calendarDays = viewMode === 'Ngày' ? generateDay() : viewMode === 'Tuần' ? generateWeek() : generateCalendar();
+  const calendarDays = viewMode === VIEW_DAY ? generateDay() : viewMode === VIEW_WEEK ? generateWeek() : generateCalendar();
 
-  const isCurrentMonth = (date) => {
-    return date.getMonth() === currentDate.getMonth() &&
-           date.getFullYear() === currentDate.getFullYear();
+  const isCurrentMonth = (date) =>
+    date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear();
+
+  const getEventColorLabel = (colorValue) => {
+    const key = `color${colorValue.charAt(0).toUpperCase()}${colorValue.slice(1)}`;
+    return t(`calendar.${key}`);
   };
 
   const getEventsForDate = (date) => {
@@ -555,7 +528,7 @@ const CalendarPage = () => {
                   <button
                 className="lg:hidden min-h-[44px] min-w-[44px] p-2 -ml-1 rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 touch-manipulation flex items-center justify-center"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                aria-label="Toggle menu"
+                aria-label={t('common.toggleMenu')}
               >
                 <span className="material-symbols-outlined text-xl">menu</span>
                   </button>
@@ -567,26 +540,26 @@ const CalendarPage = () => {
             <div className="flex flex-col gap-0.5 min-w-0 flex-1">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <h2 className="text-[#111418] text-sm sm:text-base md:text-lg font-bold leading-tight tracking-[-0.015em] truncate">
-                  {viewMode === 'Ngày' ? getDayTitle() : viewMode === 'Tuần' ? getWeekRange() : `${getMonthName(currentDate)}, ${currentDate.getFullYear()}`}
+                  {viewMode === VIEW_DAY ? getDayTitle() : viewMode === VIEW_WEEK ? getWeekRange() : `${getMonthName(currentDate)}, ${currentDate.getFullYear()}`}
                 </h2>
                   <div className="flex items-center shrink-0">
                   <button 
-                    onClick={() => viewMode === 'Ngày' ? changeDay(-1) : viewMode === 'Tuần' ? changeWeek(-1) : changeMonth(-1)}
+                    onClick={() => viewMode === VIEW_DAY ? changeDay(-1) : viewMode === VIEW_WEEK ? changeWeek(-1) : changeMonth(-1)}
                       className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 active:bg-gray-200 hover:text-gray-800 transition-colors touch-manipulation"
-                    aria-label={viewMode === 'Ngày' ? 'Ngày trước' : viewMode === 'Tuần' ? 'Tuần trước' : 'Tháng trước'}
+                    aria-label={viewMode === VIEW_DAY ? t('calendar.prevDay') : viewMode === VIEW_WEEK ? t('calendar.prevWeek') : t('calendar.prevMonth')}
                   >
                       <span className="material-symbols-outlined text-[22px]">chevron_left</span>
                   </button>
                   <button 
-                    onClick={() => viewMode === 'Ngày' ? changeDay(1) : viewMode === 'Tuần' ? changeWeek(1) : changeMonth(1)}
+                    onClick={() => viewMode === VIEW_DAY ? changeDay(1) : viewMode === VIEW_WEEK ? changeWeek(1) : changeMonth(1)}
                       className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 active:bg-gray-200 hover:text-gray-800 transition-colors touch-manipulation"
-                    aria-label={viewMode === 'Ngày' ? 'Ngày sau' : viewMode === 'Tuần' ? 'Tuần sau' : 'Tháng sau'}
+                    aria-label={viewMode === VIEW_DAY ? t('calendar.nextDay') : viewMode === VIEW_WEEK ? t('calendar.nextWeek') : t('calendar.nextMonth')}
                   >
                       <span className="material-symbols-outlined text-[22px]">chevron_right</span>
                   </button>
                 </div>
               </div>
-                <p className="text-gray-500 text-[11px] sm:text-xs hidden sm:block">{viewMode === 'Ngày' ? 'Sự kiện trong ngày' : `Tuần ${weekNumber} • Các sự kiện quan trọng`}</p>
+                <p className="text-gray-500 text-[11px] sm:text-xs hidden sm:block">{viewMode === VIEW_DAY ? t('calendar.eventsInDay') : t('calendar.weekEvents', { weekNumber })}</p>
             </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
@@ -594,48 +567,48 @@ const CalendarPage = () => {
               <div className="flex items-center gap-2">
                 <div className="flex p-0.5 sm:p-1 bg-gray-50 rounded-lg border border-gray-200">
                   <label className={`cursor-pointer relative px-2 sm:px-3 py-1.5 min-h-[36px] flex items-center justify-center text-xs sm:text-sm transition-colors rounded-md touch-manipulation ${
-                  viewMode === 'Ngày' 
+                  viewMode === VIEW_DAY 
                       ? 'bg-white shadow-sm text-gray-800 font-semibold' 
                       : 'font-medium text-gray-500 hover:text-gray-800'
                 }`}>
-                  <span>Ngày</span>
+                  <span>{t('calendar.viewDay')}</span>
                   <input 
                     className="hidden" 
                     name="view_mode" 
                     type="radio" 
-                    value="Ngày"
-                    checked={viewMode === 'Ngày'}
-                    onChange={() => setViewMode('Ngày')}
+                    value={VIEW_DAY}
+                    checked={viewMode === VIEW_DAY}
+                    onChange={() => setViewMode(VIEW_DAY)}
                   />
                 </label>
                   <label className={`cursor-pointer relative px-2 sm:px-3 py-1.5 min-h-[36px] flex items-center justify-center text-xs sm:text-sm transition-colors rounded-md touch-manipulation ${
-                  viewMode === 'Tuần' 
+                  viewMode === VIEW_WEEK 
                       ? 'bg-white shadow-sm text-gray-800 font-semibold' 
                       : 'font-medium text-gray-500 hover:text-gray-800'
                 }`}>
-                  <span>Tuần</span>
+                  <span>{t('calendar.viewWeek')}</span>
                   <input 
                     className="hidden" 
                     name="view_mode" 
                     type="radio" 
-                    value="Tuần"
-                    checked={viewMode === 'Tuần'}
-                    onChange={() => setViewMode('Tuần')}
+                    value={VIEW_WEEK}
+                    checked={viewMode === VIEW_WEEK}
+                    onChange={() => setViewMode(VIEW_WEEK)}
                   />
                 </label>
                   <label className={`cursor-pointer relative px-2 sm:px-3 py-1.5 min-h-[36px] flex items-center justify-center text-xs sm:text-sm transition-colors rounded-md touch-manipulation hidden sm:flex ${
-                  viewMode === 'Tháng' 
+                  viewMode === VIEW_MONTH 
                       ? 'bg-white shadow-sm text-gray-800 font-semibold' 
                       : 'font-medium text-gray-500 hover:text-gray-800'
                 }`}>
-                  <span>Tháng</span>
+                  <span>{t('calendar.viewMonth')}</span>
                   <input 
                     className="hidden" 
                     name="view_mode" 
                     type="radio" 
-                    value="Tháng"
-                    checked={viewMode === 'Tháng'}
-                    onChange={() => setViewMode('Tháng')}
+                    value={VIEW_MONTH}
+                    checked={viewMode === VIEW_MONTH}
+                    onChange={() => setViewMode(VIEW_MONTH)}
                   />
                 </label>
               </div>
@@ -643,7 +616,7 @@ const CalendarPage = () => {
                 onClick={goToToday}
                   className="min-h-[40px] px-3 sm:px-4 py-2 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-800 text-xs sm:text-sm font-medium hover:bg-gray-100 active:bg-gray-200 transition-all touch-manipulation"
               >
-                Hôm nay
+                {t('calendar.today')}
               </button>
               </div>
               
@@ -653,7 +626,7 @@ const CalendarPage = () => {
                 className="hidden sm:flex h-10 cursor-pointer items-center justify-center rounded-lg bg-[#1380ec] px-4 text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-blue-600 transition-colors"
               >
                 <span className="mr-2 material-symbols-outlined text-sm">add</span>
-                <span className="truncate">Thêm sự kiện</span>
+                <span className="truncate">{t('calendar.addEvent')}</span>
               </button>
 
               {/* Notifications Dropdown */}
@@ -661,7 +634,7 @@ const CalendarPage = () => {
                 <button
                   className="flex min-h-[44px] min-w-[44px] size-10 cursor-pointer items-center justify-center rounded-lg bg-blue-50 text-primary hover:bg-blue-100 active:bg-blue-200 transition-colors relative touch-manipulation"
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  aria-label="Notifications"
+                  aria-label={t('common.notifications')}
                   aria-expanded={notificationsOpen}
               >
                   <span className="material-symbols-outlined">notifications</span>
@@ -677,26 +650,26 @@ const CalendarPage = () => {
                     />
                     <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden origin-top-right z-50">
                       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
-                        <h3 className="font-bold text-[#111418] text-sm">Thông báo</h3>
+                        <h3 className="font-bold text-[#111418] text-sm">{t('common.notifications')}</h3>
                         <div className="flex items-center gap-3">
                           <button
                             className="text-[11px] font-medium text-primary hover:text-blue-700 transition-colors"
                             onClick={handleMarkAllAsRead}
                           >
-                            Đánh dấu đã đọc
+                            {t('common.markAllRead')}
                           </button>
                           <button
                             className="text-[11px] font-medium text-gray-400 hover:text-red-500 transition-colors"
                             onClick={handleDeleteAllNotifications}
                           >
-                            Xóa tất cả
+                            {t('common.deleteAll')}
               </button>
             </div>
                       </div>
                       <div className="max-h-[360px] overflow-y-auto">
                         {notifications.length === 0 ? (
                           <div className="p-8 text-center text-gray-500 text-sm">
-                            Không có thông báo nào
+                            {t('common.noNotifications')}
                           </div>
                         ) : (
                           notifications.map((notification) => (
@@ -739,7 +712,7 @@ const CalendarPage = () => {
                             setNotificationsOpen(false);
                           }}
                         >
-                          Xem tất cả thông báo
+                          {t('common.viewAllNotifications')}
                         </Link>
                       )}
                     </div>
@@ -753,14 +726,14 @@ const CalendarPage = () => {
                   backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBr3X7Z7D9oVzqv59WsWDkRyy7yyUi86zJzG0vYqzFaaGh60Qw5psjFjeEh7oCRNQMb9pV2RNcGZ7LdYuSCCXKNFvIuW_u3KWXWL45QWH4DESIVyRG1t2l4Li_LiWgFjDjzgpaGbmp6v-bJBrouwxbq731SsEPCb6dMx0HOmrZjFpR4YJZ2PZr9ckec2y5gpszHLn_zL10DWuQkfb2ocg5mZ2rT7WUFuO8euRXp4-mErpqaeriYEsTgIevz0gS-hwFDr7N3T-y6mNpV")'
                 }}
                 role="button"
-                aria-label="User profile"
+                aria-label={t('common.userProfile')}
                 tabIndex={0}
               />
             </div>
           </div>
 
-          <div className={`grid border-t border-slate-200 bg-white ${viewMode === 'Ngày' ? 'grid-cols-1' : 'grid-cols-7'}`}>
-            {viewMode !== 'Ngày' && (
+          <div className={`grid border-t border-slate-200 bg-white ${viewMode === VIEW_DAY ? 'grid-cols-1' : 'grid-cols-7'}`}>
+            {viewMode !== VIEW_DAY && (
               weekDays.map((day, idx) => {
                 const isWeekend = weekStartDay === 'sunday' 
                   ? (idx === 0 || idx === 6) 
@@ -780,16 +753,16 @@ const CalendarPage = () => {
           </div>
         </header>
         <div className="flex-1 overflow-y-auto bg-white overflow-x-hidden">
-          <div className={`grid ${viewMode === 'Ngày' ? 'grid-cols-1 grid-rows-1' : viewMode === 'Tuần' ? 'grid-cols-7 grid-rows-1' : 'grid-cols-7 grid-rows-5'} min-h-[min(800px,calc(100vh-180px))] sm:min-h-[800px] h-full`}>
+          <div className={`grid ${viewMode === VIEW_DAY ? 'grid-cols-1 grid-rows-1' : viewMode === VIEW_WEEK ? 'grid-cols-7 grid-rows-1' : 'grid-cols-7 grid-rows-5'} min-h-[min(800px,calc(100vh-180px))] sm:min-h-[800px] h-full`}>
             {calendarDays.map((day, idx) => {
               const dayEvents = getEventsForDate(day);
-              const isOtherMonth = viewMode === 'Tháng' && !isCurrentMonth(day);
-              const isSelected = viewMode === 'Tháng' && day.getDate() === 5 && isCurrentMonth(day);
+              const isOtherMonth = viewMode === VIEW_MONTH && !isCurrentMonth(day);
+              const isSelected = viewMode === VIEW_MONTH && day.getDate() === 5 && isCurrentMonth(day);
 
               return (
                 <div
                   key={idx}
-                  className={`border-b border-r border-slate-200 p-1.5 sm:p-3 ${viewMode === 'Ngày' ? 'min-h-[calc(100vh-180px)]' : viewMode === 'Tuần' ? 'min-h-[calc(100vh-180px)] sm:min-h-[calc(100vh-200px)]' : 'min-h-[100px] sm:min-h-[140px]'} group hover:bg-gray-50 active:bg-gray-100 transition-colors relative ${
+                  className={`border-b border-r border-slate-200 p-1.5 sm:p-3 ${viewMode === VIEW_DAY ? 'min-h-[calc(100vh-180px)]' : viewMode === VIEW_WEEK ? 'min-h-[calc(100vh-180px)] sm:min-h-[calc(100vh-200px)]' : 'min-h-[100px] sm:min-h-[140px]'} group hover:bg-gray-50 active:bg-gray-100 transition-colors relative ${
                     isSelected ? 'bg-indigo-50' : isOtherMonth ? 'bg-gray-50/50' : ''
                   }`}
                 >
@@ -811,12 +784,12 @@ const CalendarPage = () => {
                         className={`w-full rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 cursor-pointer transition-all duration-200 shadow-sm relative group/item min-h-[44px] flex flex-col justify-center touch-manipulation ${getColorClasses(event.color)}`}
                       >
                         {!event.allDay && (
-                          <div className={`flex items-center gap-1.5 mb-0.5 ${viewMode === 'Tuần' ? 'hidden sm:flex' : ''}`}>
+                          <div className={`flex items-center gap-1.5 mb-0.5 ${viewMode === VIEW_WEEK ? 'hidden sm:flex' : ''}`}>
                             {event.color !== 'emerald' && (
                               <div className={`size-1 sm:size-1.5 rounded-full shrink-0 ${getDotColorClasses(event.color)}`}></div>
                             )}
                             <span className={`text-[9px] sm:text-[10px] font-bold tracking-wide ${getTimeColorClasses(event.color)}`}>
-                              {viewMode === 'Tuần' || viewMode === 'Tháng'
+                              {viewMode === VIEW_WEEK || viewMode === VIEW_MONTH
                                 ? (event.timeFrom || event.time || '')
                                 : (event.timeFrom && event.timeTo ? `${event.timeFrom} - ${event.timeTo}` : event.timeFrom || event.time || '')}
                             </span>
@@ -840,7 +813,7 @@ const CalendarPage = () => {
           type="button"
           onClick={handleOpenAddEventModal}
           className="lg:hidden fixed bottom-6 right-6 z-40 flex size-14 min-h-[56px] min-w-[56px] items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 hover:bg-primary/90 active:scale-95 transition-all touch-manipulation"
-          aria-label="Thêm sự kiện"
+          aria-label={t('calendar.addEventAria')}
         >
           <span className="material-symbols-outlined text-[28px]">add</span>
         </button>
@@ -860,14 +833,14 @@ const CalendarPage = () => {
               <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4 max-h-[85vh] overflow-y-auto">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-zinc-900" id="add-event-title">Thêm Lịch Trình Mới</h3>
-                    <p className="text-xs sm:text-sm text-zinc-500 mt-1">Tạo một sự kiện mới trong lịch của bạn.</p>
+                    <h3 className="text-base sm:text-lg font-semibold text-zinc-900" id="add-event-title">{t('calendar.addScheduleTitle')}</h3>
+                    <p className="text-xs sm:text-sm text-zinc-500 mt-1">{t('calendar.addScheduleDesc')}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="event-title" className="block text-sm font-medium text-zinc-700 mb-1.5">
-                      Tiêu đề <span className="text-red-500">*</span>
+                      {t('calendar.titleLabel')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -876,13 +849,13 @@ const CalendarPage = () => {
                       value={eventForm.title}
                       onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
                       className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
-                      placeholder="Nhập tiêu đề sự kiện..."
+                      placeholder={t('calendar.titlePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="event-date" className="block text-sm font-medium text-zinc-700 mb-1.5">
-                      Ngày <span className="text-red-500">*</span>
+                      {t('calendar.dateLabel')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
@@ -903,7 +876,7 @@ const CalendarPage = () => {
                       className="size-5 sm:size-4 text-zinc-900 border-zinc-300 rounded focus:ring-zinc-900 cursor-pointer touch-manipulation"
                     />
                     <label htmlFor="event-all-day" className="text-sm font-medium text-zinc-700 cursor-pointer touch-manipulation">
-                      Cả ngày
+                      {t('calendar.allDay')}
                     </label>
                   </div>
 
@@ -911,7 +884,7 @@ const CalendarPage = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="event-time-from" className="block text-sm font-medium text-zinc-700 mb-1.5">
-                          Từ
+                          {t('calendar.timeFrom')}
                         </label>
                         <input
                           type="time"
@@ -923,7 +896,7 @@ const CalendarPage = () => {
                       </div>
                       <div>
                         <label htmlFor="event-time-to" className="block text-sm font-medium text-zinc-700 mb-1.5">
-                          Đến
+                          {t('calendar.timeTo')}
                         </label>
                         <input
                           type="time"
@@ -938,7 +911,7 @@ const CalendarPage = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-1.5">
-                      Địa điểm (Tùy chọn)
+                      {t('calendar.locationOptional')}
                     </label>
                     <div className="space-y-3">
                       <div className="flex gap-3">
@@ -951,7 +924,7 @@ const CalendarPage = () => {
                             onChange={(e) => setEventForm({ ...eventForm, locationType: e.target.value, address: '' })}
                             className="size-5 sm:size-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
                           />
-                          <span className="text-sm text-zinc-700">Online</span>
+                          <span className="text-sm text-zinc-700">{t('calendar.online')}</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer min-h-[44px] touch-manipulation">
                           <input
@@ -962,7 +935,7 @@ const CalendarPage = () => {
                             onChange={(e) => setEventForm({ ...eventForm, locationType: e.target.value, platform: '' })}
                             className="size-5 sm:size-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
                           />
-                          <span className="text-sm text-zinc-700">Offline</span>
+                          <span className="text-sm text-zinc-700">{t('calendar.offline')}</span>
                         </label>
                       </div>
                       {eventForm.locationType === 'online' && (
@@ -971,10 +944,10 @@ const CalendarPage = () => {
                           onChange={(e) => setEventForm({ ...eventForm, platform: e.target.value })}
                           className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                         >
-                          <option value="">Chọn nền tảng</option>
-                          <option value="google-meet">Google Meet</option>
-                          <option value="teams">Microsoft Teams</option>
-                          <option value="whatsapp">WhatsApp</option>
+                          <option value="">{t('calendar.selectPlatform')}</option>
+                          <option value="google-meet">{t('calendar.platformGoogleMeet')}</option>
+                          <option value="teams">{t('calendar.platformTeams')}</option>
+                          <option value="whatsapp">{t('calendar.platformWhatsApp')}</option>
                         </select>
                       )}
                       {eventForm.locationType === 'offline' && (
@@ -982,7 +955,7 @@ const CalendarPage = () => {
                           type="text"
                           value={eventForm.address || ''}
                           onChange={(e) => setEventForm({ ...eventForm, address: e.target.value })}
-                          placeholder="Nhập địa chỉ..."
+                          placeholder={t('calendar.addressPlaceholder')}
                           className="w-full px-3 py-2.5 min-h-[44px] border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent touch-manipulation"
                         />
                       )}
@@ -991,7 +964,7 @@ const CalendarPage = () => {
 
                   <div>
                     <label htmlFor="event-color" className="block text-sm font-medium text-zinc-700 mb-1.5">
-                      Màu sắc
+                      {t('calendar.colorLabel')}
                     </label>
                     <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                       {EVENT_COLORS.map((color) => (
@@ -1006,7 +979,7 @@ const CalendarPage = () => {
                           }`}
                         >
                           <div className={`size-5 sm:size-6 rounded-full ${color.bg}`}></div>
-                          <span className="text-[9px] sm:text-[10px] font-medium text-zinc-600">{color.label}</span>
+                          <span className="text-[9px] sm:text-[10px] font-medium text-zinc-600">{getEventColorLabel(color.value)}</span>
                         </button>
                       ))}
                     </div>
@@ -1018,14 +991,14 @@ const CalendarPage = () => {
                   type="submit"
                   className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 active:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors shadow-sm touch-manipulation"
                 >
-                  Thêm lịch trình
+                  {t('calendar.submitAdd')}
                 </button>
                 <button
                   type="button"
                   onClick={handleCloseAddEventModal}
                   className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors border border-zinc-300 shadow-sm touch-manipulation"
                 >
-                  Hủy
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -1069,17 +1042,17 @@ const CalendarPage = () => {
                         type="button"
                         onClick={handleSaveEvent}
                         className="min-h-[44px] px-4 py-2.5 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 active:bg-zinc-700 transition-colors touch-manipulation"
-                        aria-label="Lưu"
+                        aria-label={t('common.save')}
                       >
-                        Lưu
+                        {t('common.save')}
                       </button>
                       <button
                         type="button"
                         onClick={handleCancelEdit}
                         className="min-h-[44px] px-4 py-2.5 bg-white text-zinc-900 text-sm font-medium rounded-lg border border-zinc-300 hover:bg-zinc-50 active:bg-zinc-100 transition-colors touch-manipulation"
-                        aria-label="Hủy"
+                        aria-label={t('common.cancel')}
                       >
-                        Hủy
+                        {t('common.cancel')}
                       </button>
                     </>
                   ) : (
@@ -1087,7 +1060,7 @@ const CalendarPage = () => {
                       type="button"
                       onClick={handleStartEdit}
                       className="min-h-[44px] min-w-[44px] p-2.5 rounded-full hover:bg-zinc-100 active:bg-zinc-200 transition-colors focus:outline-none flex items-center justify-center touch-manipulation"
-                      aria-label="Chỉnh sửa"
+                      aria-label={t('common.edit')}
                     >
                       <span className="material-symbols-outlined text-zinc-400 hover:text-zinc-600 text-[20px]">edit</span>
                     </button>
@@ -1099,7 +1072,7 @@ const CalendarPage = () => {
                 <div>
                   <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1.5">
                     <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                    <span className="font-medium">Ngày</span>
+                    <span className="font-medium">{t('calendar.dateLabel')}</span>
                   </div>
                   {isEditingEvent ? (
                     <input
@@ -1130,13 +1103,13 @@ const CalendarPage = () => {
                         className="h-4 w-4 text-zinc-900 border-zinc-300 rounded focus:ring-zinc-900 cursor-pointer"
                       />
                       <label htmlFor="edit-all-day" className="text-sm font-medium text-zinc-700 cursor-pointer">
-                        Cả ngày
+                        {t('calendar.allDay')}
                       </label>
                     </div>
                     {!editedEvent.allDay && (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1.5">Từ</label>
+                          <label className="block text-sm font-medium text-zinc-700 mb-1.5">{t('calendar.timeFrom')}</label>
                           <input
                             type="time"
                             value={editedEvent.timeFrom || ''}
@@ -1145,7 +1118,7 @@ const CalendarPage = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1.5">Đến</label>
+                          <label className="block text-sm font-medium text-zinc-700 mb-1.5">{t('calendar.timeTo')}</label>
                           <input
                             type="time"
                             value={editedEvent.timeTo || ''}
@@ -1162,14 +1135,14 @@ const CalendarPage = () => {
                       <div>
                         <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1">
                           <span className="material-symbols-outlined text-[18px]">schedule</span>
-                          <span className="font-medium">Thời gian</span>
+                          <span className="font-medium">{t('calendar.timeLabel')}</span>
                         </div>
                         <p className="text-sm text-zinc-900 ml-7">
                           {selectedEvent.timeFrom && selectedEvent.timeTo 
                             ? `${selectedEvent.timeFrom} - ${selectedEvent.timeTo}`
                             : selectedEvent.timeFrom 
                             ? selectedEvent.timeFrom
-                            : selectedEvent.time || 'Không có'
+                            : selectedEvent.time || t('calendar.noTime')
                           }
                         </p>
                       </div>
@@ -1179,9 +1152,9 @@ const CalendarPage = () => {
                       <div>
                         <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1">
                           <span className="material-symbols-outlined text-[18px]">event_available</span>
-                          <span className="font-medium">Loại</span>
+                          <span className="font-medium">{t('calendar.typeLabel')}</span>
                         </div>
-                        <p className="text-sm text-zinc-900 ml-7">Cả ngày</p>
+                        <p className="text-sm text-zinc-900 ml-7">{t('calendar.allDay')}</p>
                       </div>
                     )}
                   </>
@@ -1191,7 +1164,7 @@ const CalendarPage = () => {
                 <div>
                   <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1.5">
                     <span className="material-symbols-outlined text-[18px]">location_on</span>
-                    <span className="font-medium">Địa điểm</span>
+                    <span className="font-medium">{t('calendar.locationLabel')}</span>
                   </div>
                   {isEditingEvent ? (
                     <div className="ml-7 space-y-3">
@@ -1205,7 +1178,7 @@ const CalendarPage = () => {
                             onChange={(e) => handleFieldChange('locationType', e.target.value)}
                             className="h-4 w-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
                           />
-                          <span className="text-sm text-zinc-700">Online</span>
+                          <span className="text-sm text-zinc-700">{t('calendar.online')}</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -1216,7 +1189,7 @@ const CalendarPage = () => {
                             onChange={(e) => handleFieldChange('locationType', e.target.value)}
                             className="h-4 w-4 text-zinc-900 border-zinc-300 focus:ring-zinc-900"
                           />
-                          <span className="text-sm text-zinc-700">Offline</span>
+                          <span className="text-sm text-zinc-700">{t('calendar.offline')}</span>
                         </label>
                       </div>
                       {editedEvent.locationType === 'online' && (
@@ -1225,10 +1198,10 @@ const CalendarPage = () => {
                           onChange={(e) => handleFieldChange('platform', e.target.value)}
                           className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
                         >
-                          <option value="">Chọn nền tảng</option>
-                          <option value="google-meet">Google Meet</option>
-                          <option value="teams">Microsoft Teams</option>
-                          <option value="whatsapp">WhatsApp</option>
+                          <option value="">{t('calendar.selectPlatform')}</option>
+                          <option value="google-meet">{t('calendar.platformGoogleMeet')}</option>
+                          <option value="teams">{t('calendar.platformTeams')}</option>
+                          <option value="whatsapp">{t('calendar.platformWhatsApp')}</option>
                         </select>
                       )}
                       {editedEvent.locationType === 'offline' && (
@@ -1236,7 +1209,7 @@ const CalendarPage = () => {
                           type="text"
                           value={editedEvent.address || ''}
                           onChange={(e) => handleFieldChange('address', e.target.value)}
-                          placeholder="Nhập địa chỉ..."
+                          placeholder={t('calendar.addressPlaceholder')}
                           className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
                         />
                       )}
@@ -1245,14 +1218,14 @@ const CalendarPage = () => {
                     <div className="ml-7">
                       {selectedEvent.locationType === 'online' && selectedEvent.platform ? (
                         <p className="text-sm text-zinc-900">
-                          Online - {selectedEvent.platform === 'google-meet' ? 'Google Meet' :
-                                   selectedEvent.platform === 'teams' ? 'Microsoft Teams' :
-                                   selectedEvent.platform === 'whatsapp' ? 'WhatsApp' : selectedEvent.platform}
+                          {t('calendar.online')} – {selectedEvent.platform === 'google-meet' ? t('calendar.platformGoogleMeet') :
+                                   selectedEvent.platform === 'teams' ? t('calendar.platformTeams') :
+                                   selectedEvent.platform === 'whatsapp' ? t('calendar.platformWhatsApp') : selectedEvent.platform}
                         </p>
                       ) : selectedEvent.locationType === 'offline' && selectedEvent.address ? (
                         <p className="text-sm text-zinc-900">{selectedEvent.address}</p>
                       ) : (
-                        <p className="text-sm text-zinc-400">Chưa có địa điểm</p>
+                        <p className="text-sm text-zinc-400">{t('calendar.noLocation')}</p>
                       )}
                     </div>
                   )}
@@ -1260,7 +1233,7 @@ const CalendarPage = () => {
 
                 {isEditingEvent ? (
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1.5">Màu sắc</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1.5">{t('calendar.colorLabel')}</label>
                     <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                       {EVENT_COLORS.map((color) => (
                         <button
@@ -1274,7 +1247,7 @@ const CalendarPage = () => {
                           }`}
                         >
                           <div className={`size-5 sm:size-6 rounded-full ${color.bg}`}></div>
-                          <span className="text-[9px] sm:text-[10px] font-medium text-zinc-600">{color.label}</span>
+                          <span className="text-[9px] sm:text-[10px] font-medium text-zinc-600">{getEventColorLabel(color.value)}</span>
                         </button>
                       ))}
                     </div>
@@ -1283,12 +1256,12 @@ const CalendarPage = () => {
                   <div>
                     <div className="flex items-center gap-2 text-sm text-zinc-500 mb-1">
                       <span className="material-symbols-outlined text-[18px]">palette</span>
-                      <span className="font-medium">Màu sắc</span>
+                      <span className="font-medium">{t('calendar.colorLabel')}</span>
                     </div>
                     <div className="flex items-center gap-2 ml-7">
                       <div className={`size-4 rounded-full ${getDotColorClasses(selectedEvent.color) || 'bg-gray-500'}`}></div>
                       <span className="text-sm text-zinc-900">
-                        {EVENT_COLORS.find(c => c.value === selectedEvent.color)?.label || selectedEvent.color}
+                        {getEventColorLabel(selectedEvent.color)}
                       </span>
                     </div>
                   </div>
@@ -1306,14 +1279,14 @@ const CalendarPage = () => {
                   className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-red-600 text-white text-sm font-medium hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition-colors shadow-sm touch-manipulation"
                 >
                   <span className="material-symbols-outlined text-[18px] mr-2">delete</span>
-                  Xóa sự kiện
+                  {t('calendar.deleteEvent')}
                 </button>
                 <button
                   type="button"
                   onClick={handleCloseEventDetail}
                   className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 transition-colors border border-zinc-300 shadow-sm touch-manipulation"
                 >
-                  Đóng
+                  {t('common.close')}
                 </button>
               </div>
             )}
@@ -1344,7 +1317,7 @@ const CalendarPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
-                <span>Dashboard</span>
+                <span>{t('admin.dashboard')}</span>
               </Link>
               <Link
                 to="/admin/users"
@@ -1352,7 +1325,7 @@ const CalendarPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
-                <span>Users</span>
+                <span>{t('admin.users')}</span>
               </Link>
               <Link
                 to="/admin/logs"
@@ -1360,7 +1333,7 @@ const CalendarPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
-                <span>Logs</span>
+                <span>{t('admin.logs')}</span>
               </Link>
               <div className="my-2 border-t border-slate-100" />
             </>
@@ -1371,7 +1344,7 @@ const CalendarPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
-            <span>Kế hoạch hôm nay</span>
+            <span>{t('calendar.planToday')}</span>
           </Link>
           <Link 
             to="/goals" 
@@ -1379,7 +1352,7 @@ const CalendarPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
-            <span>Quản lý mục tiêu</span>
+            <span>{t('calendar.manageGoals')}</span>
           </Link>
           <Link 
             to="/calendar" 
@@ -1387,7 +1360,7 @@ const CalendarPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">calendar_month</span>
-            <span>Lịch biểu</span>
+            <span>{t('calendar.calendarNav')}</span>
           </Link>
           <Link 
             to="/settings" 
@@ -1395,7 +1368,7 @@ const CalendarPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span>Thiết lập</span>
+            <span>{t('calendar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-slate-100 pt-4">
             <button 
@@ -1405,7 +1378,7 @@ const CalendarPage = () => {
               }}
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
+              <span>{t('calendar.logout')}</span>
             </button>
           </div>
         </div>

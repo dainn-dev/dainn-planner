@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const Header = ({ 
   title, 
@@ -10,6 +11,7 @@ const Header = ({
   onNotificationsChange,
   onToggleSidebar
 }) => {
+  const { t } = useTranslation();
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   
   const unreadCount = notifications.filter(n => n.unread).length;
@@ -41,7 +43,7 @@ const Header = ({
           <button 
             className="lg:hidden p-1 -ml-1 rounded-md text-gray-600 hover:bg-gray-100"
             onClick={onToggleSidebar}
-            aria-label="Toggle menu"
+            aria-label={t('common.toggleMenu')}
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
@@ -70,7 +72,7 @@ const Header = ({
             <button
               className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-blue-50 text-primary hover:bg-blue-100 transition-colors relative"
               onClick={() => setNotificationsOpen(!notificationsOpen)}
-              aria-label="Notifications"
+              aria-label={t('common.notifications')}
               aria-expanded={notificationsOpen}
             >
               <span className="material-symbols-outlined">notifications</span>
@@ -86,26 +88,26 @@ const Header = ({
                 />
                 <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden origin-top-right z-50">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-white">
-                    <h3 className="font-bold text-[#111418] text-sm">Thông báo</h3>
+                    <h3 className="font-bold text-[#111418] text-sm">{t('common.notifications')}</h3>
                     <div className="flex items-center gap-3">
                       <button
                         className="text-[11px] font-medium text-primary hover:text-blue-700 transition-colors"
                         onClick={handleMarkAllAsRead}
                       >
-                        Đánh dấu đã đọc
+                        {t('common.markAllRead')}
                       </button>
                       <button
                         className="text-[11px] font-medium text-gray-400 hover:text-red-500 transition-colors"
                         onClick={handleDeleteAllNotifications}
                       >
-                        Xóa tất cả
+                        {t('common.deleteAll')}
                       </button>
                     </div>
                   </div>
                   <div className="max-h-[360px] overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="p-8 text-center text-gray-500 text-sm">
-                        Không có thông báo nào
+                        {t('common.noNotifications')}
                       </div>
                     ) : (
                       notifications.map((notification) => (
@@ -144,7 +146,7 @@ const Header = ({
                         setNotificationsOpen(false);
                       }}
                     >
-                      Xem tất cả thông báo
+                      {t('common.viewAllNotifications')}
                     </Link>
                   )}
                 </div>
@@ -158,7 +160,7 @@ const Header = ({
               backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBr3X7Z7D9oVzqv59WsWDkRyy7yyUi86zJzG0vYqzFaaGh60Qw5psjFjeEh7oCRNQMb9pV2RNcGZ7LdYuSCCXKNFvIuW_u3KWXWL45QWH4DESIVyRG1t2l4Li_LiWgFjDjzgpaGbmp6v-bJBrouwxbq731SsEPCb6dMx0HOmrZjFpR4YJZ2PZr9ckec2y5gpszHLn_zL10DWuQkfb2ocg5mZ2rT7WUFuO8euRXp4-mErpqaeriYEsTgIevz0gS-hwFDr7N3T-y6mNpV")'
             }}
             role="button"
-            aria-label="User profile"
+            aria-label={t('common.userProfile')}
             tabIndex={0}
           />
         </div>

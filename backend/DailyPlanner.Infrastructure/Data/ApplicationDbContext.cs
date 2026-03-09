@@ -21,6 +21,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<UserDevice> UserDevices { get; set; }
+    public DbSet<UserSettings> UserSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -155,6 +156,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.User)
                 .WithMany(u => u.UserDevices)
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UserSettings (one-to-one per user)
+        builder.Entity<UserSettings>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.Property(e => e.Data).HasColumnType("text");
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.UserSettings)
+                .HasForeignKey<UserSettings>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

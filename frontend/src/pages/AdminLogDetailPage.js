@@ -1,7 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { isStoredAdmin } from '../utils/auth';
+import { adminAPI } from '../services/api';
+
+const parseLevel = (text) => {
+  if (!text) return 'INF';
+  const t = text.toUpperCase();
+  if (t.includes('[ERR]') || t.includes('[ERROR]')) return 'ERROR';
+  if (t.includes('[WRN]') || t.includes('[WARN]')) return 'WARN';
+  if (t.includes('[INF]') || t.includes('[INFO]')) return 'INFO';
+  return 'INF';
+};
 
 const AdminLogDetailPage = () => {
   const { fileName } = useParams();
@@ -11,57 +21,97 @@ const AdminLogDetailPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [logContent, setLogContent] = useState(null);
   const [logFile, setLogFile] = useState(null);
-
-
-  // Mock log files data - in a real app, this would come from an API
-  const logFiles = useMemo(() => [
-    {
-      name: 'server-error-2023-10-27.log',
-      displayName: 'server-error-2023-10-27.log',
-      size: '2.4 MB',
-      createdAt: 'Oct 27, 2023 08:45 AM',
-      server: 'Server-01',
-      priority: 'High Priority',
-      priorityColor: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-900',
-      lines: 1542,
-      content: [
-        { line: 1, level: 'INFO', text: '2023-10-27 08:00:01 - System initialization started. Version 2.4.1' },
-        { line: 2, level: 'INFO', text: '2023-10-27 08:00:02 - Loading configuration from /etc/planner/config.yaml' },
-        { line: 3, level: 'INFO', text: '2023-10-27 08:00:02 - Database connection pool initialized (Max: 50)' },
-        { line: 4, level: 'INFO', text: '2023-10-27 08:00:03 - Redis cache connected on 127.0.0.1:6379' },
-        { line: 5, level: 'INFO', text: '2023-10-27 08:00:03 - Scheduler service started' },
-        { line: 6, level: 'INFO', text: '2023-10-27 08:00:04 - Background jobs registered: [EmailDigest, DataCleanup]' },
-        { line: 7, level: 'INFO', text: '2023-10-27 08:00:05 - API Gateway listening on port 8080' },
-        { line: 8, level: 'INFO', text: '2023-10-27 08:00:30 - User session created: admin_01' },
-        { line: 9, level: 'WARN', text: '2023-10-27 08:01:15 - High latency detected on /api/v1/goals (450ms)' },
-        { line: 10, level: 'INFO', text: '2023-10-27 08:02:00 - Scheduled task \'EmailDigest\' executing' },
-        { line: 11, level: 'INFO', text: '2023-10-27 08:02:05 - Sent 150 digest emails' },
-        { line: 12, level: 'INFO', text: '2023-10-27 08:05:22 - Incoming request: GET /api/v1/logs' },
-        { line: 13, level: 'INFO', text: '2023-10-27 08:10:00 - User logout: user_452' },
-        { line: 14, level: 'ERROR', text: '2023-10-27 08:15:00 - Connection timeout: External Calendar API' },
-        { line: 15, level: 'ERROR', text: 'at com.myplanner.integrations.CalendarService.sync(CalendarService.java:142)' },
-        { line: 16, level: 'ERROR', text: 'at com.myplanner.tasks.SyncJob.execute(SyncJob.java:45)' },
-        { line: 17, level: 'INFO', text: '2023-10-27 08:15:01 - Retry mechanism triggered (Attempt 1/3)' },
-        { line: 18, level: 'INFO', text: '2023-10-27 08:15:05 - Connection restored' },
-        { line: 19, level: 'INFO', text: '2023-10-27 08:20:00 - Data cleanup job started' },
-        { line: 20, level: 'INFO', text: '2023-10-27 08:20:02 - Removed 45 temporary files' },
-      ]
-    }
-  ], []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [liveTailOn, setLiveTailOn] = useState(false);
+  const [streamConnected, setStreamConnected] = useState(false);
+  const unsubscribeRef = useRef(null);
+  const nextLineRef = useRef(1);
 
   useEffect(() => {
-    // Decode the file name from URL
-    const decodedFileName = decodeURIComponent(fileName);
-    const foundLogFile = logFiles.find(log => log.name === decodedFileName || log.displayName === decodedFileName);
-    
-    if (foundLogFile) {
-      setLogFile(foundLogFile);
-      setLogContent(foundLogFile.content);
-    } else {
-      // Log file not found, redirect to logs page
+    if (!fileName) {
       navigate('/admin/logs');
+      return;
     }
-  }, [fileName, navigate, logFiles]);
+    const decodedFileName = decodeURIComponent(fileName);
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await adminAPI.getLogContent(decodedFileName, { tail: 2000 });
+        if (cancelled) return;
+        const data = res?.data;
+        if (!data) {
+          setError('No content');
+          navigate('/admin/logs');
+          return;
+        }
+        const lines = (data.lines || []).map((l) => ({
+          line: l.lineNumber,
+          level: l.level || 'INF',
+          text: l.text ?? ''
+        }));
+        nextLineRef.current = (data.totalLineCount ?? 0) + 1;
+        if (lines.length > 0) nextLineRef.current = Math.max(nextLineRef.current, lines[lines.length - 1].line + 1);
+        setLogContent(lines);
+        setLogFile({
+          name: data.fileName || decodedFileName,
+          displayName: data.fileName || decodedFileName,
+          size: '–',
+          createdAt: '–',
+          server: '–',
+          priority: 'Log file',
+          priorityColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+          lines: data.totalLineCount ?? lines.length
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setError(err?.message || 'Failed to load log');
+        navigate('/admin/logs');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [fileName, navigate]);
+
+  useEffect(() => {
+    if (!liveTailOn || !fileName || !logFile?.name) return;
+    const decoded = decodeURIComponent(fileName);
+    setStreamConnected(false);
+    const unsubscribe = adminAPI.subscribeLogStream(
+      decoded,
+      (data) => {
+        setStreamConnected(true);
+        const raw = data?.line ?? '';
+        const lineNum = nextLineRef.current++;
+        setLogContent((prev) => {
+          if (!prev) return [{ line: lineNum, level: parseLevel(raw), text: raw }];
+          return [...prev, { line: lineNum, level: parseLevel(raw), text: raw }];
+        });
+      },
+      () => setStreamConnected(false)
+    );
+    unsubscribeRef.current = unsubscribe;
+    return () => {
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
+      setStreamConnected(false);
+    };
+  }, [liveTailOn, fileName, logFile?.name]);
+
+  const handleLiveTailToggle = () => {
+    if (liveTailOn) {
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
+      setStreamConnected(false);
+    }
+    setLiveTailOn((prev) => !prev);
+  };
 
   const getLevelColor = (level) => {
     switch (level) {
@@ -88,40 +138,39 @@ const AdminLogDetailPage = () => {
   };
 
   const handleDownload = () => {
-    // In a real app, you would download the log file
-    console.log('Downloading log file:', logFile?.name);
-    // Create a blob and trigger download
-    if (logContent) {
-      const content = logContent.map(line => `[${line.level}] ${line.text}`).join('\n');
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = logFile?.name || 'log.txt';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+    if (!logContent?.length || !logFile?.name) return;
+    const content = logContent.map((line) => `[${line.level}] ${line.text}`).join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = logFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleCopyRaw = () => {
-    // In a real app, you would copy the raw log content
-    if (logContent) {
-      const content = logContent.map(line => `[${line.level}] ${line.text}`).join('\n');
-      navigator.clipboard.writeText(content).then(() => {
-        // Show success message (you could add a toast notification here)
-        console.log('Log content copied to clipboard');
-      });
-    }
+    if (!logContent?.length) return;
+    const content = logContent.map((line) => `[${line.level}] ${line.text}`).join('\n');
+    navigator.clipboard.writeText(content).then(() => {});
   };
 
   const handleBack = () => {
     navigate('/admin/logs');
   };
 
+  if (loading) {
+    return (
+      <div className="bg-[#f6f7f8] dark:bg-[#101922] min-h-screen flex items-center justify-center">
+        <p className="text-slate-500 dark:text-slate-400">Đang tải...</p>
+      </div>
+    );
+  }
+
   if (!logFile || !logContent) {
-    return null; // Or show a loading state
+    return null;
   }
 
   return (
@@ -140,7 +189,7 @@ const AdminLogDetailPage = () => {
               <span className="material-symbols-outlined text-[16px] text-slate-300">chevron_right</span>
               <Link to="/admin/logs" className="hover:text-primary transition-colors">Log Management</Link>
               <span className="material-symbols-outlined text-[16px] text-slate-300">chevron_right</span>
-              <span className="text-slate-900 dark:text-white font-medium">{logFile.displayName}</span>
+              <span className="text-slate-900 dark:text-white font-medium">{logFile?.displayName ?? fileName}</span>
             </div>
             {/* Toolbar */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -189,6 +238,18 @@ const AdminLogDetailPage = () => {
                   />
                 </div>
                 <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
+                <button 
+                  onClick={handleLiveTailToggle}
+                  className={`flex items-center justify-center gap-2 h-10 px-4 rounded-lg border text-sm font-medium transition-colors ${
+                    liveTailOn
+                      ? 'bg-primary/10 border-primary text-primary dark:bg-primary/20 dark:border-primary dark:text-primary'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px]">podcasts</span>
+                  <span className="hidden md:inline">Live tail</span>
+                  <span className="text-xs">({liveTailOn ? (streamConnected ? 'On' : '…') : 'Off'})</span>
+                </button>
                 <button 
                   onClick={handleDownload}
                   className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors text-sm font-medium"
@@ -269,10 +330,14 @@ const AdminLogDetailPage = () => {
               <span>Encoding: UTF-8</span>
               <span>Ln {logContent.length}, Col 1</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Live Tail (Connected)</span>
-            </div>
+            <button
+              type="button"
+              onClick={handleLiveTailToggle}
+              className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              <span className={`w-2 h-2 rounded-full ${liveTailOn && streamConnected ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></span>
+              <span>Live tail ({liveTailOn ? (streamConnected ? 'Connected' : 'Connecting…') : 'Off'})</span>
+            </button>
           </div>
         </div>
 

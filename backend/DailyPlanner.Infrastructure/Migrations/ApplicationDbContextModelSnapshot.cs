@@ -512,6 +512,23 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.ToTable("UserDevices");
                 });
 
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserSettings", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserSettings");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -759,6 +776,17 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserSettings", b =>
+                {
+                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("UserSettings")
+                        .HasForeignKey("DailyPlanner.Domain.Entities.UserSettings", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -825,6 +853,8 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserDevices");
+
+                    b.Navigation("UserSettings");
                 });
 
             modelBuilder.Entity("DailyPlanner.Domain.Entities.LongTermGoal", b =>

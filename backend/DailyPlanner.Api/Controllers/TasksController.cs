@@ -29,6 +29,17 @@ public class TasksController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("tags")]
+    public async Task<ActionResult<ApiResponse<TagsWithUsageResult>>> GetTagsWithUsage([FromQuery] DateTime? dateFrom, [FromQuery] DateTime? dateTo)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _taskService.GetTagsWithUsageAsync(userId, dateFrom, dateTo);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<ActionResult<ApiResponse<DailyTaskDto>>> CreateTask([FromBody] CreateDailyTaskRequest request)
     {

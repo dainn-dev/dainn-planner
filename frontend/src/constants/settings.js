@@ -14,7 +14,7 @@ export const INITIAL_SETTINGS = {
 };
 
 export const INITIAL_GENERAL_SETTINGS = {
-  language: 'Tiếng Việt (Vietnamese)',
+  language: 'vi',
   timezone: '(GMT+07:00) Bangkok, Hanoi, Jakarta',
   dateFormat: '31/12/2024 (DD/MM/YYYY)',
   timeFormat: '24',

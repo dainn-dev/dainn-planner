@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Xunit;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Domain.Entities;
@@ -144,8 +145,6 @@ public class UserServiceTests : IDisposable
     {
         // Arrange
         var user = TestHelpers.CreateTestUser();
-        user.Timezone = "UTC";
-        user.Language = "en";
         _userManagerMock.Setup(x => x.FindByIdAsync(user.Id)).ReturnsAsync(user);
 
         // Act
@@ -154,8 +153,10 @@ public class UserServiceTests : IDisposable
         // Assert
         result.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
-        result.Data!.Timezone.Should().Be("UTC");
-        result.Data.Language.Should().Be("en");
+        result.Data!.Data.Should().NotBeNull();
+        var dataJson = JsonSerializer.Serialize(result.Data.Data);
+        dataJson.Should().Contain("general");
+        dataJson.Should().Contain("plans");
     }
 
     [Fact]
@@ -164,17 +165,19 @@ public class UserServiceTests : IDisposable
         // Arrange
         var user = TestHelpers.CreateTestUser();
         _userManagerMock.Setup(x => x.FindByIdAsync(user.Id)).ReturnsAsync(user);
-        _userManagerMock.Setup(x => x.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
-
-        var request = new UpdateSettingsRequest { Timezone = "UTC", Language = "en" };
+        var request = JsonDocument.Parse("{\"general\":{\"language\":\"en\",\"timezone\":\"UTC\"}}").RootElement;
 
         // Act
         var result = await _service.UpdateSettingsAsync(user.Id, request);
 
         // Assert
         result.Success.Should().BeTrue();
-        user.Timezone.Should().Be("UTC");
-        user.Language.Should().Be("en");
+        result.Data.Should().NotBeNull();
+        result.Data!.Data.Should().NotBeNull();
+        var row = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == user.Id);
+        row.Should().NotBeNull();
+        row!.Data.Should().Contain("en");
+        row.Data.Should().Contain("UTC");
     }
 
     public void Dispose()

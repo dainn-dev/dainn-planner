@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
 import PasswordInput from '../components/PasswordInput';
 import ErrorMessage from '../components/ErrorMessage';
@@ -8,6 +9,7 @@ import { validateEmail, validatePassword, validateConfirmPassword, validateName 
 import { authAPI } from '../services/api';
 
 const RegisterPage = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     fullname: '',
     email: '',
@@ -50,7 +52,7 @@ const RegisterPage = () => {
     };
 
     if (!formData.terms) {
-      newErrors.terms = 'Bạn phải đồng ý với điều khoản và chính sách bảo mật';
+      newErrors.terms = t('auth.termsRequired');
     }
 
     if (Object.values(newErrors).some(error => error !== null)) {
@@ -65,7 +67,7 @@ const RegisterPage = () => {
     try {
       const response = await authAPI.register(formData);
       if (response.success) {
-        setSuccessMessage('Đăng ký thành công! Đang chuyển hướng...');
+        setSuccessMessage(t('auth.registerSuccess'));
         setTimeout(() => {
           navigate('/login');
         }, 1500);
@@ -75,7 +77,7 @@ const RegisterPage = () => {
       if (error.errors) {
         setErrors(error.errors);
       } else {
-        setErrors({ submit: error.message || 'Đăng ký thất bại. Vui lòng thử lại.' });
+        setErrors({ submit: error.message || t('auth.registerFail') });
       }
     } finally {
       setIsSubmitting(false);
@@ -91,15 +93,15 @@ const RegisterPage = () => {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-register text-white mb-4 shadow-soft-register">
               <span className="material-symbols-outlined text-2xl">event_note</span>
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-primary-register">Personal Planner</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-primary-register">{t('auth.registerTitle')}</h2>
             <p className="text-secondary-text text-sm mt-2">
-              Lập kế hoạch chi tiết cho mục tiêu của bạn.
+              {t('auth.registerSubtitle')}
             </p>
           </div>
           <div className="bg-card-bg shadow-soft-register rounded-2xl p-8 border border-accent-border">
             <div className="mb-6">
-              <h1 className="text-xl font-semibold text-primary-register">Tạo tài khoản mới</h1>
-              <p className="text-secondary-text text-sm mt-1">Nhập thông tin của bạn để bắt đầu.</p>
+              <h1 className="text-xl font-semibold text-primary-register">{t('auth.createAccount')}</h1>
+              <p className="text-secondary-text text-sm mt-1">{t('auth.enterInfo')}</p>
             </div>
             <form className="space-y-5" onSubmit={handleSubmit}>
               {successMessage && <SuccessMessage message={successMessage} />}
@@ -107,13 +109,13 @@ const RegisterPage = () => {
               
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary-text" htmlFor="fullname">
-                  Họ và tên
+                  {t('auth.fullname')}
                 </label>
                 <input
                   className={`block w-full rounded-lg border-accent-border bg-subtle-bg px-3 py-2.5 text-sm text-primary-register placeholder-slate-400 focus:border-highlight focus:bg-white focus:ring-1 focus:ring-highlight transition-all duration-200 shadow-sm ${errors.fullname ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''}`}
                   id="fullname"
                   name="fullname"
-                  placeholder="Nguyễn Văn A"
+                  placeholder={t('auth.fullnamePlaceholder')}
                   type="text"
                   value={formData.fullname}
                   onChange={handleChange}
@@ -129,13 +131,13 @@ const RegisterPage = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary-text" htmlFor="email">
-                  Email
+                  {t('auth.email')}
                 </label>
                 <input
                   className={`block w-full rounded-lg border-accent-border bg-subtle-bg px-3 py-2.5 text-sm text-primary-register placeholder-slate-400 focus:border-highlight focus:bg-white focus:ring-1 focus:ring-highlight transition-all duration-200 shadow-sm ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''}`}
                   id="email"
                   name="email"
-                  placeholder="name@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -151,7 +153,7 @@ const RegisterPage = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary-text" htmlFor="password">
-                  Mật khẩu
+                  {t('auth.password')}
                 </label>
                 <PasswordInput
                   id="password"
@@ -166,7 +168,7 @@ const RegisterPage = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wide text-secondary-text" htmlFor="confirm_password">
-                  Xác nhận mật khẩu
+                  {t('auth.confirmPassword')}
                 </label>
                 <PasswordInput
                   id="confirm_password"
@@ -194,13 +196,13 @@ const RegisterPage = () => {
                   />
                 </div>
                 <label className="text-sm text-secondary-text leading-tight" htmlFor="terms">
-                  Tôi đồng ý với{' '}
+                  {t('auth.termsAgree')}{' '}
                   <Link to="/term" className="font-medium text-primary-register hover:underline underline-offset-2 decoration-slate-300 hover:decoration-primary-register transition-all">
-                    Điều khoản
+                    {t('auth.termsLink')}
                   </Link>{' '}
-                  và{' '}
+                  {t('common.and')}{' '}
                   <Link to="/conditions" className="font-medium text-primary-register hover:underline underline-offset-2 decoration-slate-300 hover:decoration-primary-register transition-all">
-                    Chính sách bảo mật
+                    {t('auth.privacyLink')}
                   </Link>
                   .
                 </label>
@@ -216,19 +218,19 @@ const RegisterPage = () => {
                   type="submit"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Đang xử lý...' : 'Đăng ký'}
+                  {isSubmitting ? t('common.processing') : t('auth.register')}
                 </button>
               </div>
               <div className="flex justify-center gap-1.5 text-sm pt-2">
-                <p className="text-secondary-text">Đã có tài khoản?</p>
+                <p className="text-secondary-text">{t('auth.alreadyHaveAccount')}</p>
                 <Link to="/login" className="font-medium text-highlight hover:text-highlight-hover hover:underline transition-colors">
-                  Đăng nhập
+                  {t('auth.login')}
                 </Link>
               </div>
             </form>
           </div>
           <div className="mt-8 text-center">
-            <p className="text-xs text-slate-400">© 2024 Personal Planner. Minimalist Design.</p>
+            <p className="text-xs text-slate-400">{t('auth.copyrightRegister')}</p>
           </div>
         </div>
       </div>

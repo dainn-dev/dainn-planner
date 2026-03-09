@@ -6,6 +6,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using DailyPlanner.Api.Jobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -13,6 +14,15 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// When behind a reverse proxy (nginx, Cloudflare, etc.), trust forwarded headers
+// so HTTPS redirection doesn't loop (proxy terminates SSL and forwards HTTP)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add services to the container
 builder.Services.AddControllers()
@@ -85,6 +95,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Admin logs (file-based, uses ContentRootPath)
+builder.Services.AddScoped<DailyPlanner.Application.Interfaces.ILogsService, DailyPlanner.Infrastructure.Services.LogsService>();
+builder.Services.AddScoped<DailyPlanner.Infrastructure.Services.LogStreamService>();
+
 // Hangfire
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -136,6 +150,8 @@ builder.Services.AddDirectoryBrowser();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+app.UseForwardedHeaders();
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

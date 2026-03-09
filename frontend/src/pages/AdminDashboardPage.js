@@ -1,15 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { adminAPI } from '../services/api';
+import { adminAPI, tasksAPI } from '../services/api';
+import { TAG_I18N_KEYS } from '../constants/tasks';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDate } from '../utils/dateFormat';
+
+const getTagLabel = (tag, t) => {
+  const key = TAG_I18N_KEYS[tag];
+  return key ? t(`daily.${key}`) : tag;
+};
+
+const TAG_BAR_COLORS = ['bg-primary', 'bg-sky-400', 'bg-indigo-400', 'bg-amber-400', 'bg-emerald-400', 'bg-gray-400'];
 
 const AdminDashboardPage = () => {
+  const { t } = useTranslation();
   const isAdmin = isStoredAdmin();
+  const [, setSettingsVersion] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [tagsWithUsage, setTagsWithUsage] = useState(null);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [userGrowth, setUserGrowth] = useState(null);
+  const [userGrowthLoading, setUserGrowthLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -26,6 +42,41 @@ const AdminDashboardPage = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await adminAPI.getUserGrowth({ days: 30 });
+        setUserGrowth(data);
+      } catch (error) {
+        console.error('Failed to load user growth:', error);
+      } finally {
+        setUserGrowthLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await tasksAPI.getTagsWithUsage();
+        setTagsWithUsage(data);
+      } catch (error) {
+        console.error('Failed to load task tags:', error);
+      } finally {
+        setTagsLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Re-render when user updates date/time format in Settings so chart labels use new format
+  useEffect(() => {
+    const onSettingsUpdated = () => setSettingsVersion((v) => v + 1);
+    window.addEventListener('userSettingsUpdated', onSettingsUpdated);
+    return () => window.removeEventListener('userSettingsUpdated', onSettingsUpdated);
+  }, []);
+
   return (
     <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
       {/* Sidebar - Desktop */}
@@ -34,7 +85,7 @@ const AdminDashboardPage = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header 
-          title="Dashboard Overview"
+          title={t('admin.dashboardOverview')}
           icon="dashboard"          
           notifications={notifications}
           onNotificationsChange={setNotifications}
@@ -47,20 +98,20 @@ const AdminDashboardPage = () => {
             {/* Breadcrumb */}
             <div className="flex flex-wrap gap-2 text-sm">
               <Link to="/admin/dashboard" className="text-gray-500 font-medium hover:text-primary transition-colors">
-                Admin
+                {t('admin.admin')}
               </Link>
               <span className="text-gray-500 font-medium">/</span>
-              <span className="text-[#111418] font-semibold">Dashboard</span>
+              <span className="text-[#111418] font-semibold">{t('admin.dashboardBreadcrumb')}</span>
             </div>
             {/* Page Heading */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold text-[#111418] tracking-tight">Dashboard Overview</h1>
-                <p className="text-gray-500">Welcome back, Admin. Here's what's happening with your users today.</p>
+                <h1 className="text-3xl font-bold text-[#111418] tracking-tight">{t('admin.dashboardOverview')}</h1>
+                <p className="text-gray-500">{t('admin.welcomeBack')}</p>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm">
                 <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                <span>Last 30 Days</span>
+                <span>{t('admin.last30Days')}</span>
               </div>
             </div>
 
@@ -69,7 +120,7 @@ const AdminDashboardPage = () => {
               {/* Card 1 - Total Users */}
               <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">Total Users</p>
+                  <p className="text-gray-500 text-sm font-medium">{t('admin.totalUsers')}</p>
                   <div className="bg-blue-50 text-blue-600 p-1.5 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]">group</span>
                   </div>
@@ -88,7 +139,7 @@ const AdminDashboardPage = () => {
               {/* Card 2 - Active Users Today */}
               <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">Active Users Today</p>
+                  <p className="text-gray-500 text-sm font-medium">{t('admin.activeUsers')}</p>
                   <div className="bg-violet-50 text-violet-600 p-1.5 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]">person_check</span>
                   </div>
@@ -107,7 +158,7 @@ const AdminDashboardPage = () => {
               {/* Card 3 - Goals Created */}
               <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">Goals Created</p>
+                  <p className="text-gray-500 text-sm font-medium">{t('admin.goalsCreated')}</p>
                   <div className="bg-amber-50 text-amber-600 p-1.5 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]">flag</span>
                   </div>
@@ -126,7 +177,7 @@ const AdminDashboardPage = () => {
               {/* Card 4 - Total Events */}
               <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">Total Events</p>
+                  <p className="text-gray-500 text-sm font-medium">{t('admin.totalEvents')}</p>
                   <div className="bg-emerald-50 text-emerald-600 p-1.5 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]">event</span>
                   </div>
@@ -145,12 +196,14 @@ const AdminDashboardPage = () => {
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Line Chart */}
+              {/* Main Line Chart - User Growth */}
               <div className="lg:col-span-2 rounded-xl bg-white p-6 shadow-sm border border-gray-100 flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-[#111418]">User Growth</h3>
-                    <p className="text-sm text-gray-500">New signups over the last 30 days</p>
+                    <h3 className="text-lg font-bold text-[#111418]">{t('admin.userGrowth')}</h3>
+                    <p className="text-sm text-gray-500">
+                      {userGrowthLoading ? t('common.loading') : t('admin.newSignups')}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button className="p-1.5 rounded-md hover:bg-gray-50 text-gray-400">
@@ -158,90 +211,78 @@ const AdminDashboardPage = () => {
                     </button>
                   </div>
                 </div>
-                {/* Custom SVG Chart */}
                 <div className="flex-1 min-h-[240px] w-full relative">
-                  <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 240">
-                    {/* Grid lines */}
-                    <line stroke="#e2e8f0" strokeWidth="1" x1="0" x2="800" y1="240" y2="240"></line>
-                    <line stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="180" y2="180"></line>
-                    <line stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="120" y2="120"></line>
-                    <line stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="60" y2="60"></line>
-                    {/* Area Fill */}
-                    <path d="M0,200 Q100,180 200,150 T400,100 T600,80 T800,40 V240 H0 Z" fill="url(#gradient)" opacity="0.1"></path>
-                    {/* Line */}
-                    <path d="M0,200 Q100,180 200,150 T400,100 T600,80 T800,40" fill="none" stroke="#137fec" strokeLinecap="round" strokeWidth="3"></path>
-                    {/* Gradient Def */}
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                        <stop offset="0%" style={{stopColor:'#137fec',stopOpacity:1}}></stop>
-                        <stop offset="100%" style={{stopColor:'#137fec',stopOpacity:0}}></stop>
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  {/* Tooltip Point Example */}
-                  <div className="absolute top-[35px] right-0 translate-x-1/2 flex flex-col items-center">
-                    <div className="bg-primary size-3 rounded-full border-2 border-white shadow-sm"></div>
-                  </div>
-                </div>
-                {/* X Axis Labels */}
-                <div className="flex justify-between mt-4 text-xs text-gray-400 font-medium">
-                  <span>Day 1</span>
-                  <span>Day 5</span>
-                  <span>Day 10</span>
-                  <span>Day 15</span>
-                  <span>Day 20</span>
-                  <span>Day 25</span>
-                  <span>Today</span>
+                  {userGrowthLoading ? (
+                    <div className="flex items-center justify-center h-[240px] text-sm text-gray-500">{t('admin.loadingChart')}</div>
+                  ) : !userGrowth?.dataPoints?.length ? (
+                    <div className="flex items-center justify-center h-[240px] text-sm text-gray-500">{t('admin.noSignupData')}</div>
+                  ) : (() => {
+                    const points = userGrowth.dataPoints;
+                    const n = points.length;
+                    const maxCount = Math.max(1, ...points.map((p) => p.count));
+                    const x = (i) => (n <= 1 ? 0 : (i / (n - 1)) * 800);
+                    const y = (count) => 240 - (count / maxCount) * 240;
+                    const lineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i)},${y(p.count)}`).join(' ');
+                    const areaD = lineD + ` L ${x(n - 1)},240 L 0,240 Z`;
+                    const labelDates = n >= 3
+                      ? [points[0].date, points[Math.floor(n / 2)].date, points[n - 1].date]
+                      : points.map((p) => p.date);
+                    return (
+                      <>
+                        <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 240">
+                          <line stroke="#e2e8f0" strokeWidth="1" x1="0" x2="800" y1="240" y2="240" />
+                          <line stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="180" y2="180" />
+                          <line stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="120" y2="120" />
+                          <line stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth="1" x1="0" x2="800" y1="60" y2="60" />
+                          <path d={areaD} fill="url(#userGrowthGradient)" opacity="0.1" />
+                          <path d={lineD} fill="none" stroke="#137fec" strokeLinecap="round" strokeWidth="3" />
+                          <defs>
+                            <linearGradient id="userGrowthGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+                              <stop offset="0%" style={{ stopColor: '#137fec', stopOpacity: 1 }} />
+                              <stop offset="100%" style={{ stopColor: '#137fec', stopOpacity: 0 }} />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="flex justify-between mt-4 text-xs text-gray-400 font-medium">
+                          {labelDates.map((d) => (
+                            <span key={d}>{formatDate(d) || d}</span>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
-              {/* Side Bar Chart */}
+              {/* Side Bar Chart - Task tags usage */}
               <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100 flex flex-col">
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-[#111418]">Goal Categories</h3>
-                  <p className="text-sm text-gray-500">Distribution by type</p>
+                  <h3 className="text-lg font-bold text-[#111418]">{t('admin.taskTags')}</h3>
+                  <p className="text-sm text-gray-500">
+                    {tagsLoading ? t('common.loading') : tagsWithUsage ? t('admin.usageAcross', { count: tagsWithUsage.totalTasks ?? 0 }) : t('admin.distributionByTag')}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-5 flex-1 justify-center">
-                  {/* Category Item */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">Health & Fitness</span>
-                      <span className="font-bold text-[#111418]">45%</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{width: '45%'}}></div>
-                    </div>
-                  </div>
-                  {/* Category Item */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">Career Growth</span>
-                      <span className="font-bold text-[#111418]">30%</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-sky-400 rounded-full" style={{width: '30%'}}></div>
-                    </div>
-                  </div>
-                  {/* Category Item */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">Learning</span>
-                      <span className="font-bold text-[#111418]">15%</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-400 rounded-full" style={{width: '15%'}}></div>
-                    </div>
-                  </div>
-                  {/* Category Item */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">Finance</span>
-                      <span className="font-bold text-[#111418]">10%</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gray-300 rounded-full" style={{width: '10%'}}></div>
-                    </div>
-                  </div>
+                  {tagsLoading ? (
+                    <div className="text-sm text-gray-500 py-4">{t('admin.loadingTags')}</div>
+                  ) : !tagsWithUsage?.tags?.length ? (
+                    <div className="text-sm text-gray-500 py-4">{t('admin.noTags')}</div>
+                  ) : (
+                    tagsWithUsage.tags.map((item, index) => (
+                      <div key={item.tag} className="flex flex-col gap-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-gray-700 capitalize">{getTagLabel(item.tag, t)}</span>
+                          <span className="font-bold text-[#111418]">{Number(item.percentUsage).toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${TAG_BAR_COLORS[index % TAG_BAR_COLORS.length]}`}
+                            style={{ width: `${Math.min(100, item.percentUsage)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -279,7 +320,7 @@ const AdminDashboardPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">dashboard</span>
-                <span>Dashboard</span>
+                <span>{t('sidebar.dashboard')}</span>
               </Link>
               <Link
                 to="/admin/users"
@@ -287,7 +328,7 @@ const AdminDashboardPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
-                <span>Users</span>
+                <span>{t('sidebar.users')}</span>
               </Link>
               <Link
                 to="/admin/logs"
@@ -295,7 +336,7 @@ const AdminDashboardPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
-                <span>Logs</span>
+                <span>{t('sidebar.logs')}</span>
               </Link>
               <div className="my-2 border-t border-gray-100" />
             </>
@@ -306,7 +347,7 @@ const AdminDashboardPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
-            <span>Kế hoạch hôm nay</span>
+            <span>{t('sidebar.dailyPlan')}</span>
           </Link>
           <Link 
             to="/goals" 
@@ -314,7 +355,7 @@ const AdminDashboardPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
-            <span>Quản lý mục tiêu</span>
+            <span>{t('sidebar.goals')}</span>
           </Link>
           <Link 
             to="/calendar" 
@@ -322,7 +363,7 @@ const AdminDashboardPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
-            <span>Lịch biểu</span>
+            <span>{t('sidebar.calendar')}</span>
           </Link>
           <Link 
             to="/settings" 
@@ -330,7 +371,7 @@ const AdminDashboardPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span>Thiết lập</span>
+            <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
             <button 
@@ -340,7 +381,7 @@ const AdminDashboardPage = () => {
               }}
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
+              <span>{t('sidebar.logout')}</span>
             </button>
           </div>
         </div>

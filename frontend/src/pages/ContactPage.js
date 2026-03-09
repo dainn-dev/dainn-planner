@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
 import ContactFooter from '../components/ContactFooter';
 import ErrorMessage from '../components/ErrorMessage';
@@ -8,6 +9,7 @@ import { validateEmail, validateName, validateMessage } from '../utils/formValid
 import { contactAPI } from '../services/api';
 
 const ContactPage = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -53,14 +55,14 @@ const ContactPage = () => {
     try {
       const response = await contactAPI.submitContact(formData);
       if (response.success) {
-        setSuccessMessage(response.message || 'Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi trong thời gian sớm nhất.');
+        setSuccessMessage(response.message || t('contact.successMessage'));
         setFormData({ name: '', email: '', message: '' });
       }
     } catch (error) {
       if (error.errors) {
         setErrors(error.errors);
       } else {
-        setErrors({ submit: error.message || 'Không thể gửi tin nhắn. Vui lòng thử lại sau.' });
+        setErrors({ submit: error.message || t('contact.failMessage') });
       }
     } finally {
       setIsSubmitting(false);
@@ -75,13 +77,13 @@ const ContactPage = () => {
           <div className="flex flex-col justify-center space-y-8">
             <div className="space-y-4">
               <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-bold uppercase tracking-wider border border-blue-100">
-                Hỗ trợ
+                {t('contact.support')}
               </span>
               <h1 className="text-slate-900 text-4xl md:text-5xl font-black leading-tight tracking-tight">
-                Liên hệ với <br />chúng tôi
+                {t('contact.heroTitle')}
               </h1>
               <p className="text-text-muted text-lg font-normal leading-relaxed max-w-md">
-                Bạn có câu hỏi về tính năng, bảng giá hoặc cần hỗ trợ đăng nhập? Đội ngũ của chúng tôi luôn sẵn sàng lắng nghe và giải đáp.
+                {t('contact.subtitle')}
               </p>
             </div>
             <div className="flex flex-col gap-6 p-6 rounded-2xl bg-white border border-border-light shadow-xl shadow-slate-200/60">

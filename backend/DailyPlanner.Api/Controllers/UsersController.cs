@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -67,7 +68,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("me/settings")]
-    public async Task<ActionResult<ApiResponse<UserSettingsDto>>> UpdateSettings([FromBody] UpdateSettingsRequest request)
+    public async Task<ActionResult<ApiResponse<UserSettingsDto>>> UpdateSettings([FromBody] JsonElement request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))

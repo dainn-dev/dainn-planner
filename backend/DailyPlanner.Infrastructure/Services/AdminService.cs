@@ -1,10 +1,15 @@
+using System.Text;
 using AutoMapper;
+using ClosedXML.Excel;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace DailyPlanner.Infrastructure.Services;
 
@@ -48,21 +53,137 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<ApiResponse<List<AdminUserDto>>> GetUsersAsync(string? search, int page = 1, int pageSize = 10)
+    public async Task<ApiResponse<AdminUserStatsDto>> GetUserStatsAsync()
     {
+        var now = DateTimeOffset.UtcNow;
+        var totalUsers = await _userManager.Users.CountAsync();
+        var bannedUsers = await _userManager.Users
+            .Where(u => u.LockoutEnd.HasValue && u.LockoutEnd.Value > now)
+            .CountAsync();
+        var activeUsers = await _userManager.Users
+            .Where(u => u.EmailConfirmed && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now))
+            .CountAsync();
+        var pendingUsers = await _userManager.Users
+            .Where(u => !u.EmailConfirmed && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now))
+            .CountAsync();
+
+        var stats = new AdminUserStatsDto
+        {
+            TotalUsers = totalUsers,
+            ActiveUsers = activeUsers,
+            PendingUsers = pendingUsers,
+            BannedUsers = bannedUsers
+        };
+
+        return new ApiResponse<AdminUserStatsDto>
+        {
+            Success = true,
+            Data = stats
+        };
+    }
+
+    public async Task<ApiResponse<UserGrowthResultDto>> GetUserGrowthAsync(int days = 30)
+    {
+        var startDate = DateTime.UtcNow.Date.AddDays(-days);
+        var endDateExclusive = startDate.AddDays(days);
+
+        var countsByDate = await _context.Users
+            .Where(u => u.CreatedAt >= startDate && u.CreatedAt < endDateExclusive)
+            .GroupBy(u => u.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var countLookup = countsByDate.ToDictionary(x => x.Date, x => x.Count);
+        var dataPoints = new List<UserGrowthPointDto>();
+        var totalNewUsers = 0;
+
+        for (var d = startDate; d < endDateExclusive; d = d.AddDays(1))
+        {
+            var count = countLookup.GetValueOrDefault(d, 0);
+            totalNewUsers += count;
+            dataPoints.Add(new UserGrowthPointDto
+            {
+                Date = d.ToString("yyyy-MM-dd"),
+                Count = count
+            });
+        }
+
+        return new ApiResponse<UserGrowthResultDto>
+        {
+            Success = true,
+            Data = new UserGrowthResultDto
+            {
+                DataPoints = dataPoints,
+                TotalNewUsers = totalNewUsers
+            }
+        };
+    }
+
+    public async Task<ApiResponse<PagedUsersResultDto>> GetUsersAsync(string? search, string? status, string? role, string? dateRange, string? sort, int page = 1, int pageSize = 10)
+    {
+        var now = DateTimeOffset.UtcNow;
         var query = _context.Users.AsQueryable();
 
         if (!string.IsNullOrEmpty(search))
         {
-            search = search.ToLower();
+            var searchLower = search.ToLower();
             query = query.Where(u =>
-                u.Email!.ToLower().Contains(search) ||
-                u.FullName.ToLower().Contains(search) ||
-                (u.Phone != null && u.Phone.ToLower().Contains(search)));
+                (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
+                (u.FullName != null && u.FullName.ToLower().Contains(searchLower)) ||
+                (u.Phone != null && u.Phone.ToLower().Contains(searchLower)));
         }
 
+        if (!string.IsNullOrEmpty(status))
+        {
+            query = status switch
+            {
+                "Active" => query.Where(u => u.EmailConfirmed && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
+                "Pending" => query.Where(u => !u.EmailConfirmed && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
+                "Banned" => query.Where(u => u.LockoutEnd.HasValue && u.LockoutEnd.Value > now),
+                "Inactive" => query.Where(u => u.LockoutEnd.HasValue && u.LockoutEnd.Value <= now),
+                _ => query
+            };
+        }
+
+        if (!string.IsNullOrEmpty(role))
+        {
+            var usersInRole = from u in _context.Users
+                join ur in _context.Set<IdentityUserRole<string>>() on u.Id equals ur.UserId
+                join r in _context.Set<IdentityRole>() on ur.RoleId equals r.Id
+                where r.Name == role
+                select u.Id;
+            query = query.Where(u => usersInRole.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrEmpty(dateRange))
+        {
+            var utcNow = DateTime.UtcNow;
+            var (rangeStart, _) = dateRange switch
+            {
+                "today" => (utcNow.Date, utcNow),
+                "week" => (utcNow.AddDays(-7), utcNow),
+                "month" => (utcNow.AddDays(-30), utcNow),
+                "quarter" => (utcNow.AddDays(-90), utcNow),
+                "year" => (utcNow.AddDays(-365), utcNow),
+                _ => (DateTime.MinValue, utcNow)
+            };
+            if (dateRange != "today")
+                query = query.Where(u => u.CreatedAt >= rangeStart);
+            else
+                query = query.Where(u => u.CreatedAt >= rangeStart && u.CreatedAt <= utcNow);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        query = (sort ?? "newest") switch
+        {
+            "oldest" => query.OrderBy(u => u.CreatedAt),
+            "name-asc" => query.OrderBy(u => u.FullName ?? ""),
+            "name-desc" => query.OrderByDescending(u => u.FullName ?? ""),
+            _ => query.OrderByDescending(u => u.CreatedAt)
+        };
+
         var users = await query
-            .OrderByDescending(u => u.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -75,12 +196,12 @@ public class AdminService : IAdminService
             {
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
-                FullName = user.FullName,
+                FullName = user.FullName ?? string.Empty,
                 Phone = user.Phone,
                 Location = user.Location,
                 AvatarUrl = user.AvatarUrl,
-                Timezone = user.Timezone,
-                Language = user.Language,
+                Timezone = user.Timezone ?? string.Empty,
+                Language = user.Language ?? string.Empty,
                 EmailConfirmed = user.EmailConfirmed,
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt,
@@ -89,10 +210,14 @@ public class AdminService : IAdminService
             userDtos.Add(userDto);
         }
 
-        return new ApiResponse<List<AdminUserDto>>
+        return new ApiResponse<PagedUsersResultDto>
         {
             Success = true,
-            Data = userDtos
+            Data = new PagedUsersResultDto
+            {
+                Items = userDtos,
+                TotalCount = totalCount
+            }
         };
     }
 
@@ -212,6 +337,47 @@ public class AdminService : IAdminService
         };
     }
 
+    public async Task<ApiResponse<object>> ResetUserPasswordAsync(string userId, AdminResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.NewPassword))
+        {
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "New password is required."
+            };
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "User not found"
+            };
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => e.Description).ToList();
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = errors.Count > 0 ? string.Join(" ", errors) : "Password reset failed."
+            };
+        }
+
+        return new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Password has been reset successfully."
+        };
+    }
+
     public async Task<ApiResponse<object>> DeleteUserAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
@@ -241,6 +407,203 @@ public class AdminService : IAdminService
             Success = true,
             Message = "User deleted successfully"
         };
+    }
+
+    private const int MaxExportCount = 50_000;
+
+    public async Task<byte[]> GetUsersExportAsync(string format, string? search, string? status, string? role, string? dateRange, string? sort, IReadOnlyList<string>? ids = null)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var query = _context.Users.AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(searchLower)) ||
+                (u.FullName != null && u.FullName.ToLower().Contains(searchLower)) ||
+                (u.Phone != null && u.Phone.ToLower().Contains(searchLower)));
+        }
+
+        if (!string.IsNullOrEmpty(status))
+        {
+            query = status switch
+            {
+                "Active" => query.Where(u => u.EmailConfirmed && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
+                "Pending" => query.Where(u => !u.EmailConfirmed && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
+                "Banned" => query.Where(u => u.LockoutEnd.HasValue && u.LockoutEnd.Value > now),
+                "Inactive" => query.Where(u => u.LockoutEnd.HasValue && u.LockoutEnd.Value <= now),
+                _ => query
+            };
+        }
+
+        if (!string.IsNullOrEmpty(role))
+        {
+            var usersInRole = from u in _context.Users
+                join ur in _context.Set<IdentityUserRole<string>>() on u.Id equals ur.UserId
+                join r in _context.Set<IdentityRole>() on ur.RoleId equals r.Id
+                where r.Name == role
+                select u.Id;
+            query = query.Where(u => usersInRole.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrEmpty(dateRange))
+        {
+            var utcNow = DateTime.UtcNow;
+            var (rangeStart, _) = dateRange switch
+            {
+                "today" => (utcNow.Date, utcNow),
+                "week" => (utcNow.AddDays(-7), utcNow),
+                "month" => (utcNow.AddDays(-30), utcNow),
+                "quarter" => (utcNow.AddDays(-90), utcNow),
+                "year" => (utcNow.AddDays(-365), utcNow),
+                _ => (DateTime.MinValue, utcNow)
+            };
+            if (dateRange != "today")
+                query = query.Where(u => u.CreatedAt >= rangeStart);
+            else
+                query = query.Where(u => u.CreatedAt >= rangeStart && u.CreatedAt <= utcNow);
+        }
+
+        if (ids != null && ids.Count > 0)
+            query = query.Where(u => ids.Contains(u.Id));
+
+        query = (sort ?? "newest") switch
+        {
+            "oldest" => query.OrderBy(u => u.CreatedAt),
+            "name-asc" => query.OrderBy(u => u.FullName ?? ""),
+            "name-desc" => query.OrderByDescending(u => u.FullName ?? ""),
+            _ => query.OrderByDescending(u => u.CreatedAt)
+        };
+
+        var users = await query.Take(MaxExportCount).ToListAsync();
+
+        var userDtos = new List<AdminUserDto>();
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            userDtos.Add(new AdminUserDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName ?? string.Empty,
+                Phone = user.Phone,
+                Location = user.Location,
+                AvatarUrl = user.AvatarUrl,
+                Timezone = user.Timezone ?? string.Empty,
+                Language = user.Language ?? string.Empty,
+                EmailConfirmed = user.EmailConfirmed,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
+                Roles = roles.ToList()
+            });
+        }
+
+        return format.ToLowerInvariant() switch
+        {
+            "csv" => BuildCsv(userDtos),
+            "excel" => BuildExcel(userDtos),
+            "pdf" => BuildPdf(userDtos),
+            _ => throw new ArgumentException("Invalid format. Use csv, excel, or pdf.", nameof(format))
+        };
+    }
+
+    private static byte[] BuildCsv(List<AdminUserDto> users)
+    {
+        var sb = new StringBuilder();
+        string Escape(string? value)
+        {
+            if (value == null) return "";
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            return value;
+        }
+        var headers = "Id,Email,FullName,Phone,Location,Timezone,Language,EmailConfirmed,CreatedAt,UpdatedAt,Roles";
+        sb.AppendLine(headers);
+        foreach (var u in users)
+        {
+            sb.AppendLine(string.Join(",",
+                Escape(u.Id),
+                Escape(u.Email),
+                Escape(u.FullName),
+                Escape(u.Phone ?? ""),
+                Escape(u.Location ?? ""),
+                Escape(u.Timezone),
+                Escape(u.Language),
+                u.EmailConfirmed ? "true" : "false",
+                u.CreatedAt.ToString("O"),
+                u.UpdatedAt?.ToString("O") ?? "",
+                Escape(string.Join(";", u.Roles ?? new List<string>()))));
+        }
+        return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+    }
+
+    private static byte[] BuildExcel(List<AdminUserDto> users)
+    {
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("Users");
+        var row = 1;
+        ws.Cell(row, 1).Value = "Id"; ws.Cell(row, 2).Value = "Email"; ws.Cell(row, 3).Value = "FullName"; ws.Cell(row, 4).Value = "Phone";
+        ws.Cell(row, 5).Value = "Location"; ws.Cell(row, 6).Value = "Timezone"; ws.Cell(row, 7).Value = "Language"; ws.Cell(row, 8).Value = "EmailConfirmed";
+        ws.Cell(row, 9).Value = "CreatedAt"; ws.Cell(row, 10).Value = "UpdatedAt"; ws.Cell(row, 11).Value = "Roles";
+        row++;
+        foreach (var u in users)
+        {
+            ws.Cell(row, 1).Value = u.Id; ws.Cell(row, 2).Value = u.Email; ws.Cell(row, 3).Value = u.FullName; ws.Cell(row, 4).Value = u.Phone ?? "";
+            ws.Cell(row, 5).Value = u.Location ?? ""; ws.Cell(row, 6).Value = u.Timezone; ws.Cell(row, 7).Value = u.Language;
+            ws.Cell(row, 8).Value = u.EmailConfirmed; ws.Cell(row, 9).Value = u.CreatedAt; ws.Cell(row, 10).Value = u.UpdatedAt?.ToString() ?? "";
+            ws.Cell(row, 11).Value = string.Join(";", u.Roles ?? new List<string>());
+            row++;
+        }
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream, false);
+        return stream.ToArray();
+    }
+
+    private static byte[] BuildPdf(List<AdminUserDto> users)
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+        var columns = new[] { "Id", "Email", "FullName", "Phone", "Location", "Roles", "CreatedAt" };
+        var doc = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(20);
+                page.Header().Text("User Export").Bold().FontSize(14);
+                page.Content().Table(table =>
+                {
+                    table.ColumnsDefinition(def =>
+                    {
+                        def.ConstantColumn(30);
+                        def.RelativeColumn(2);
+                        def.RelativeColumn(2);
+                        def.RelativeColumn(1);
+                        def.RelativeColumn(1);
+                        def.RelativeColumn(1);
+                        def.RelativeColumn(1);
+                    });
+                    table.Header(header =>
+                    {
+                        foreach (var col in columns)
+                            header.Cell().BorderBottom(1).Padding(4).Text(col).Bold();
+                    });
+                    foreach (var u in users)
+                    {
+                        table.Cell().Padding(4).Text(u.Id.Length > 8 ? u.Id[..8] + "…" : u.Id);
+                        table.Cell().Padding(4).Text(u.Email);
+                        table.Cell().Padding(4).Text(u.FullName);
+                        table.Cell().Padding(4).Text(u.Phone ?? "");
+                        table.Cell().Padding(4).Text(u.Location ?? "");
+                        table.Cell().Padding(4).Text(string.Join(";", u.Roles ?? new List<string>()));
+                        table.Cell().Padding(4).Text(u.CreatedAt.ToString("yyyy-MM-dd"));
+                    }
+                });
+            });
+        });
+        using var stream = new MemoryStream();
+        doc.GeneratePdf(stream);
+        return stream.ToArray();
     }
 }
 

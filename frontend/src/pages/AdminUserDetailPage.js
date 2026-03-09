@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { adminAPI } from '../services/api';
+import { adminAPI, getAvatarFullUrl } from '../services/api';
 import { isStoredAdmin } from '../utils/auth';
+import { formatDate } from '../utils/dateFormat';
 
 const mapUserDetailFromApi = (u) => ({
   id: u.id,
@@ -12,7 +13,7 @@ const mapUserDetailFromApi = (u) => ({
   avatar: u.avatarUrl ?? u.avatar,
   role: (u.roles && u.roles[0]) ? u.roles[0] : 'User',
   status: u.emailConfirmed ? 'Active' : 'Pending',
-  joinedDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+  joinedDate: u.createdAt ? formatDate(u.createdAt) : '',
   phone: u.phone ?? '',
   location: u.location ?? '',
   timezone: u.timezone ?? '',
@@ -25,6 +26,55 @@ const mapUserDetailFromApi = (u) => ({
   recentActivity: [],
 });
 
+const getInitials = (name) => {
+  if (!name || typeof name !== 'string') return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
+
+const emptyDisplay = (value) => (value && String(value).trim() ? value : '—');
+
+const LoadingSkeleton = () => (
+  <div className="max-w-[1200px] w-full flex flex-col gap-8 animate-pulse">
+    <div className="h-5 w-32 bg-gray-200 rounded" />
+    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row gap-6">
+      <div className="h-24 w-24 rounded-full bg-gray-200 shrink-0" />
+      <div className="flex-1 space-y-3">
+        <div className="h-8 w-48 bg-gray-200 rounded" />
+        <div className="h-4 w-64 bg-gray-100 rounded" />
+        <div className="h-5 w-32 bg-gray-100 rounded mt-4" />
+      </div>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="h-4 w-20 bg-gray-100 rounded mb-3" />
+          <div className="h-8 w-12 bg-gray-200 rounded" />
+        </div>
+      ))}
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="h-5 w-28 bg-gray-200 rounded mb-4" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-10 bg-gray-100 rounded" />
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="h-5 w-32 bg-gray-200 rounded mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 bg-gray-100 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const AdminUserDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -35,6 +85,14 @@ const AdminUserDetailPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [saveMessage, setSaveMessage] = useState({ type: null, text: null });
+  const [avatarError, setAvatarError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+  const [resetPasswordNew, setResetPasswordNew] = useState('');
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetPasswordError, setResetPasswordError] = useState('');
+  const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +108,7 @@ const AdminUserDetailPage = () => {
         const mapped = mapUserDetailFromApi(data);
         setUser(mapped);
         setEditedUser({ ...mapped });
+        setAvatarError(false);
       } catch (error) {
         if (!cancelled) {
           console.error('Failed to load user:', error);
@@ -64,6 +123,7 @@ const AdminUserDetailPage = () => {
   }, [id, navigate]);
 
   const handleEdit = () => {
+    setSaveMessage({ type: null, text: null });
     setIsEditing(true);
     setEditedUser({ ...user });
   };
@@ -71,9 +131,23 @@ const AdminUserDetailPage = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setEditedUser({ ...user });
+    setSaveMessage({ type: null, text: null });
   };
 
+  const isDirty = editedUser && user && (
+    editedUser.name !== user.name ||
+    (editedUser.phone ?? '') !== (user.phone ?? '') ||
+    (editedUser.location ?? '') !== (user.location ?? '') ||
+    (editedUser.timezone ?? '') !== (user.timezone ?? '') ||
+    (editedUser.language ?? '') !== (user.language ?? '') ||
+    editedUser.status !== user.status ||
+    editedUser.role !== user.role
+  );
+
   const handleSave = async () => {
+    if (!isDirty) return;
+    setSaveMessage({ type: null, text: null });
+    setSaving(true);
     try {
       await adminAPI.updateUser(user.id, {
         fullName: editedUser.name,
@@ -84,10 +158,14 @@ const AdminUserDetailPage = () => {
         emailConfirmed: editedUser.status === 'Active',
         roles: editedUser.role ? [editedUser.role] : undefined,
       });
-      setUser(editedUser);
+      setUser({ ...editedUser });
       setIsEditing(false);
+      setSaveMessage({ type: 'success', text: 'Changes saved successfully.' });
     } catch (error) {
       console.error('Failed to update user:', error);
+      setSaveMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -96,6 +174,56 @@ const AdminUserDetailPage = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const openResetPasswordModal = () => {
+    setResetPasswordNew('');
+    setResetPasswordConfirm('');
+    setResetPasswordError('');
+    setResetPasswordModalOpen(true);
+  };
+
+  const closeResetPasswordModal = () => {
+    if (!resetPasswordSubmitting) {
+      setResetPasswordModalOpen(false);
+      setResetPasswordNew('');
+      setResetPasswordConfirm('');
+      setResetPasswordError('');
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setResetPasswordError('');
+    const newP = resetPasswordNew.trim();
+    const confirmP = resetPasswordConfirm.trim();
+    if (!newP) {
+      setResetPasswordError('New password is required.');
+      return;
+    }
+    if (newP.length < 6) {
+      setResetPasswordError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newP !== confirmP) {
+      setResetPasswordError('Passwords do not match.');
+      return;
+    }
+    try {
+      setResetPasswordSubmitting(true);
+      const res = await adminAPI.resetUserPassword(user.id, { newPassword: newP });
+      if (res?.success) {
+        setSaveMessage({ type: 'success', text: 'Password has been reset successfully.' });
+        closeResetPasswordModal();
+      } else {
+        setResetPasswordError(res?.message || 'Failed to reset password.');
+      }
+    } catch (err) {
+      const msg = err?.message || err?.data?.message || 'Failed to reset password.';
+      setResetPasswordError(msg);
+    } finally {
+      setResetPasswordSubmitting(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -147,15 +275,28 @@ const AdminUserDetailPage = () => {
     }
   };
 
-  if (loading || !user) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-500">Đang tải...</p>
+      <div className="bg-[#f6f7f8] text-[#111418] font-display min-h-screen flex flex-row">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header title="User Details" icon="person" notifications={[]} onNotificationsChange={() => {}} onToggleSidebar={() => {}} />
+          <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
+            <LoadingSkeleton />
+          </div>
+        </div>
       </div>
     );
   }
 
+  if (!user) {
+    return null;
+  }
+
   const displayUser = isEditing ? editedUser : user;
+  const avatarUrl = getAvatarFullUrl(displayUser.avatar);
+  const showAvatarFallback = !displayUser.avatar || avatarError;
+  const lastActiveDisplay = user.lastActive && user.lastActive.trim() ? user.lastActive : null;
 
   return (
     <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
@@ -175,142 +316,172 @@ const AdminUserDetailPage = () => {
         {/* Main Content Area */}
         <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
           <div className="max-w-[1200px] flex-1 flex flex-col gap-8 w-full">
-            {/* Back Button */}
-            <button
-              onClick={() => navigate('/admin/users')}
-              className="flex items-center gap-2 text-gray-500 hover:text-[#111418] transition-colors text-sm font-medium self-start"
-            >
-              <span className="material-symbols-outlined text-lg">arrow_back</span>
-              <span>Quay lại danh sách người dùng</span>
-            </button>
+            {/* Back + Save message */}
+            <div className="flex flex-col gap-3 self-start w-full">
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="flex items-center gap-2 text-gray-500 hover:text-[#111418] transition-colors text-sm font-medium min-h-[44px] touch-manipulation"
+                aria-label="Back to user list"
+              >
+                <span className="material-symbols-outlined text-xl">arrow_back</span>
+                <span>Back to users</span>
+              </button>
+              {saveMessage.text && (
+                <div
+                  role="alert"
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium ${
+                    saveMessage.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {saveMessage.type === 'success' ? 'check_circle' : 'error'}
+                  </span>
+                  {saveMessage.text}
+                </div>
+              )}
+            </div>
 
             {/* User Header */}
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-6 bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex flex-col items-center gap-3 shrink-0">
-                <div 
-                  className="h-24 w-24 rounded-full bg-cover bg-center ring-2 ring-gray-200" 
-                  style={{ backgroundImage: `url("${displayUser.avatar}")` }}
-                  alt={`Profile of ${displayUser.name}`}
-                />
+                <div className="h-24 w-24 rounded-full ring-2 ring-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
+                  {showAvatarFallback ? (
+                    <span className="text-2xl font-semibold text-gray-500" aria-hidden="true">
+                      {getInitials(displayUser.name)}
+                    </span>
+                  ) : (
+                    <img
+                      src={avatarUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      onError={() => setAvatarError(true)}
+                    />
+                  )}
+                </div>
                 {isEditing && (
-                  <button className="text-xs text-primary hover:text-blue-700 font-medium">
-                    Change Photo
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:text-blue-700 font-medium"
+                    aria-label="Change photo (not implemented)"
+                  >
+                    Change photo
                   </button>
                 )}
               </div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <div className="flex-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-3">
+                  <div className="flex-1 min-w-0">
                     {isEditing ? (
                       <div className="space-y-3">
                         <input
                           type="text"
                           value={editedUser.name}
                           onChange={(e) => handleFieldChange('name', e.target.value)}
-                          className="w-full text-2xl font-semibold text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full text-xl sm:text-2xl font-semibold text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="Full name"
                         />
                         <input
                           type="email"
                           value={editedUser.email}
                           readOnly
-                          className="w-full text-sm text-gray-500 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 cursor-not-allowed"
-                          placeholder="Email"
+                          className="w-full text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 cursor-not-allowed"
+                          aria-readonly="true"
                         />
                       </div>
                     ) : (
                       <div>
-                        <h2 className="text-2xl font-semibold text-[#111418] mb-1">{user.name}</h2>
-                        <p className="text-gray-500 text-sm">{user.email}</p>
+                        <h2 className="text-xl sm:text-2xl font-semibold text-[#111418] mb-1 truncate">{user.name}</h2>
+                        <p className="text-gray-500 text-sm truncate">{user.email}</p>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {isEditing ? (
                       <>
                         <button
                           onClick={handleSave}
-                          className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+                          disabled={!isDirty || saving}
+                          className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[40px]"
                         >
-                          Lưu
+                          {saving ? 'Saving…' : 'Save'}
                         </button>
                         <button
                           onClick={handleCancel}
-                          className="px-4 py-2 bg-white text-[#111418] text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                          disabled={saving}
+                          className="px-4 py-2 bg-white text-[#111418] text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors min-h-[40px]"
                         >
-                          Hủy
+                          Cancel
                         </button>
                       </>
                     ) : (
-                      <button
-                        onClick={handleEdit}
-                        className="p-2 text-gray-400 hover:text-[#111418] transition-colors rounded-full hover:bg-gray-100"
-                        aria-label="Edit user"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={openResetPasswordModal}
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors touch-manipulation"
+                          aria-label="Reset password for this user"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">lock_reset</span>
+                          <span>Reset password</span>
+                        </button>
+                        <button
+                          onClick={handleEdit}
+                          className="p-2.5 text-gray-400 hover:text-[#111418] hover:bg-gray-100 transition-colors rounded-lg touch-manipulation"
+                          aria-label="Edit user"
+                        >
+                          <span className="material-symbols-outlined text-[22px]">edit</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 mt-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                   <div className="flex items-center gap-1.5">
-                    <span className={`material-symbols-outlined text-[18px] ${displayUser.role === 'Admin' ? 'text-primary' : 'text-gray-500'}`}>
+                    <span className={`material-symbols-outlined text-[18px] ${displayUser.role === 'Admin' ? 'text-primary' : 'text-gray-500'}`} aria-hidden="true">
                       {displayUser.role === 'Admin' ? 'security' : 'person'}
                     </span>
                     <span className="text-[#111418] font-medium">{displayUser.role}</span>
                   </div>
-                  <span className="text-gray-300">•</span>
-                  <div className="relative inline-flex items-center">
-                    <span className={`size-1.5 rounded-full ${getStatusDot(user.status)} absolute left-2.5`}></span>
-                    <select
-                      value={user.status}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setUser({ ...user, status: newStatus });
-                        // In a real app, you would save to API here
-                        // await updateUserStatus(user.id, newStatus);
-                      }}
-                      className={`inline-flex items-center gap-1.5 rounded-full pl-6 pr-8 py-0.5 text-xs font-medium border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary appearance-none ${getStatusBadge(user.status)}`}
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Inactive">Inactive</option>
-                      <option value="Banned">Banned</option>
-                    </select>
-                    <span className="material-symbols-outlined text-[14px] absolute right-1.5 pointer-events-none text-gray-500">arrow_drop_down</span>
-                  </div>
-                  <span className="text-gray-300">•</span>
-                  <span className="text-gray-500 text-sm">Joined: {displayUser.joinedDate}</span>
+                  <span className="text-gray-300" aria-hidden="true">·</span>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full pl-2 pr-2.5 py-0.5 text-xs font-medium border ${getStatusBadge(displayUser.status)}`}>
+                    <span className={`size-1.5 rounded-full ${getStatusDot(displayUser.status)}`} aria-hidden="true" />
+                    {displayUser.status}
+                  </span>
+                  <span className="text-gray-300" aria-hidden="true">·</span>
+                  <span className="text-gray-500 text-sm">Joined {displayUser.joinedDate}</span>
                 </div>
               </div>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-2 p-4 bg-white border border-gray-200 rounded-lg">
+              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Total Goals</span>
-                  <div className="bg-blue-50 text-blue-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">flag</span>
+                  <span className="text-gray-500 text-sm font-medium">Total goals</span>
+                  <div className="bg-blue-50 text-blue-600 p-2 rounded-lg">
+                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">flag</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">{user.totalGoals}</p>
+                <p className="text-2xl font-bold text-[#111418]">{user.totalGoals ?? '—'}</p>
                 <p className="text-xs text-gray-400">{user.completedGoals} completed</p>
               </div>
-              <div className="flex flex-col gap-2 p-4 bg-white border border-gray-200 rounded-lg">
+              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Total Tasks</span>
-                  <div className="bg-violet-50 text-violet-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                  <span className="text-gray-500 text-sm font-medium">Total tasks</span>
+                  <div className="bg-violet-50 text-violet-600 p-2 rounded-lg">
+                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">check_circle</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">{user.totalTasks}</p>
+                <p className="text-2xl font-bold text-[#111418]">{user.totalTasks ?? '—'}</p>
                 <p className="text-xs text-gray-400">{user.completedTasks} completed</p>
               </div>
-              <div className="flex flex-col gap-2 p-4 bg-white border border-gray-200 rounded-lg">
+              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Completion Rate</span>
-                  <div className="bg-emerald-50 text-emerald-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">trending_up</span>
+                  <span className="text-gray-500 text-sm font-medium">Completion rate</span>
+                  <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
+                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">trending_up</span>
                   </div>
                 </div>
                 <p className="text-2xl font-bold text-[#111418]">
@@ -318,15 +489,19 @@ const AdminUserDetailPage = () => {
                 </p>
                 <p className="text-xs text-gray-400">Task completion</p>
               </div>
-              <div className="flex flex-col gap-2 p-4 bg-white border border-gray-200 rounded-lg">
+              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Last Active</span>
-                  <div className="bg-amber-50 text-amber-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">schedule</span>
+                  <span className="text-gray-500 text-sm font-medium">Last active</span>
+                  <div className="bg-amber-50 text-amber-600 p-2 rounded-lg">
+                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">schedule</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">{user.lastActive.split(' ')[0]}</p>
-                <p className="text-xs text-gray-400">{user.lastActive.split(' ').slice(1).join(' ')}</p>
+                <p className="text-2xl font-bold text-[#111418]">
+                  {lastActiveDisplay ? lastActiveDisplay.split(' ')[0] : '—'}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {lastActiveDisplay ? lastActiveDisplay.split(' ').slice(1).join(' ') : 'No data'}
+                </p>
               </div>
             </div>
 
@@ -334,57 +509,90 @@ const AdminUserDetailPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Details */}
               <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-medium text-[#111418]">User Details</h3>
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-[#111418] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-gray-500">person</span>
+                  User details
+                </h3>
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone</label>
                       {isEditing ? (
                         <input
                           type="tel"
-                          value={editedUser.phone}
+                          value={editedUser.phone ?? ''}
                           onChange={(e) => handleFieldChange('phone', e.target.value)}
-                          className="w-full mt-1 text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="Optional"
                         />
                       ) : (
-                        <p className="text-sm text-[#111418] mt-1">{user.phone}</p>
+                        <p className="text-sm text-[#111418]">{emptyDisplay(user.phone)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Location</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Location</label>
                       {isEditing ? (
                         <input
                           type="text"
-                          value={editedUser.location}
+                          value={editedUser.location ?? ''}
                           onChange={(e) => handleFieldChange('location', e.target.value)}
-                          className="w-full mt-1 text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="Optional"
                         />
                       ) : (
-                        <p className="text-sm text-[#111418] mt-1">{user.location}</p>
+                        <p className="text-sm text-[#111418]">{emptyDisplay(user.location)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Timezone</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedUser.timezone ?? ''}
+                          onChange={(e) => handleFieldChange('timezone', e.target.value)}
+                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="e.g. UTC+7"
+                        />
+                      ) : (
+                        <p className="text-sm text-[#111418]">{emptyDisplay(user.timezone)}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Language</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedUser.language ?? ''}
+                          onChange={(e) => handleFieldChange('language', e.target.value)}
+                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="e.g. en"
+                        />
+                      ) : (
+                        <p className="text-sm text-[#111418]">{emptyDisplay(user.language)}</p>
+                      )}
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Role</label>
                       {isEditing ? (
                         <select
                           value={editedUser.role}
                           onChange={(e) => handleFieldChange('role', e.target.value)}
-                          className="w-full mt-1 text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full max-w-xs text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                           <option value="User">User</option>
                           <option value="Admin">Admin</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-[#111418] mt-1">{user.role}</p>
+                        <p className="text-sm text-[#111418]">{user.role}</p>
                       )}
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</label>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
                       {isEditing ? (
                         <select
                           value={editedUser.status}
                           onChange={(e) => handleFieldChange('status', e.target.value)}
-                          className="w-full mt-1 text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full max-w-xs text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                           <option value="Active">Active</option>
                           <option value="Pending">Pending</option>
@@ -392,7 +600,7 @@ const AdminUserDetailPage = () => {
                           <option value="Banned">Banned</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-[#111418] mt-1">{user.status}</p>
+                        <p className="text-sm text-[#111418]">{user.status}</p>
                       )}
                     </div>
                   </div>
@@ -401,27 +609,112 @@ const AdminUserDetailPage = () => {
 
               {/* Recent Activity */}
               <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-medium text-[#111418]">Recent Activity</h3>
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <div className="flex flex-col gap-3">
-                    {user.recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                        <div className="bg-blue-50 text-blue-600 p-2 rounded-lg">
-                          <span className="material-symbols-outlined text-lg">{getActivityIcon(activity.type)}</span>
+                <h3 className="text-lg font-semibold text-[#111418] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-gray-500">history</span>
+                  Recent activity
+                </h3>
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm min-h-[200px]">
+                  {user.recentActivity && user.recentActivity.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {user.recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                          <div className="bg-blue-50 text-blue-600 p-2 rounded-lg shrink-0">
+                            <span className="material-symbols-outlined text-lg" aria-hidden="true">{getActivityIcon(activity.type)}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#111418]">{activity.action}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{activity.date}</p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-[#111418]">{activity.action}</p>
-                          <p className="text-xs text-gray-500 mt-1">{activity.date}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <span className="material-symbols-outlined text-4xl text-gray-300 mb-2" aria-hidden="true">history</span>
+                      <p className="text-sm text-gray-500">No activity yet</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Reset Password Modal */}
+      {resetPasswordModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
+          onClick={closeResetPasswordModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-password-title"
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 pt-6 pb-4">
+              <h3 id="reset-password-title" className="text-lg font-semibold text-[#111418] flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-600">lock_reset</span>
+                Reset password
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">Set a new password for {user?.name ?? user?.email}.</p>
+            </div>
+            <form onSubmit={handleResetPasswordSubmit} className="px-6 pb-6 space-y-4">
+              {resetPasswordError && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200" role="alert">
+                  <span className="material-symbols-outlined text-lg shrink-0">error</span>
+                  {resetPasswordError}
+                </div>
+              )}
+              <div>
+                <label htmlFor="reset-new-password" className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                <input
+                  id="reset-new-password"
+                  type="password"
+                  value={resetPasswordNew}
+                  onChange={(e) => setResetPasswordNew(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
+                  disabled={resetPasswordSubmitting}
+                />
+              </div>
+              <div>
+                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+                <input
+                  id="reset-confirm-password"
+                  type="password"
+                  value={resetPasswordConfirm}
+                  onChange={(e) => setResetPasswordConfirm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  disabled={resetPasswordSubmitting}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={resetPasswordSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                >
+                  {resetPasswordSubmitting ? 'Resetting…' : 'Reset password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeResetPasswordModal}
+                  disabled={resetPasswordSubmitting}
+                  className="px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
@@ -436,8 +729,9 @@ const AdminUserDetailPage = () => {
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
           <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
-          <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+          <button
+            type="button"
+            className="ml-auto p-2 rounded-lg text-gray-600 hover:bg-gray-100 touch-manipulation"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
           >

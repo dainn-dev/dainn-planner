@@ -1,19 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const GoalBreakdown = () => {
+  const { t } = useTranslation();
   const benefits = [
-    {
-      title: 'Visual Progress',
-      description: 'See exactly how close you are to finishing with beautiful charts.'
-    },
-    {
-      title: 'Actionable Steps',
-      description: 'Convert abstract goals into concrete to-do items instantly.'
-    },
-    {
-      title: 'Daily Momentum',
-      description: 'Keep your streak alive with daily check-ins.'
-    }
+    { titleKey: 'home.goalBenefitVisual', descKey: 'home.goalBenefitVisualDesc' },
+    { titleKey: 'home.goalBenefitSteps', descKey: 'home.goalBenefitStepsDesc' },
+    { titleKey: 'home.goalBenefitMomentum', descKey: 'home.goalBenefitMomentumDesc' }
   ];
 
   return (
@@ -39,30 +32,30 @@ const GoalBreakdown = () => {
             </div>
             <div className="rounded-xl bg-gray-50 p-4 flex flex-col justify-center items-center text-center gap-2 border border-gray-200">
               <span className="material-symbols-outlined text-4xl text-primary">flag</span>
-              <div className="font-bold text-gray-900">Milestones</div>
-              <div className="text-xs text-gray-500">Track key achievements</div>
+              <div className="font-bold text-gray-900">{t('home.goalMilestones')}</div>
+              <div className="text-xs text-gray-500">{t('home.goalMilestonesDesc')}</div>
             </div>
           </div>
         </div>
         <div className="w-full md:w-1/2 flex flex-col gap-6 order-1 md:order-2">
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Goal Breakdown</h2>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight">{t('home.goalBreakdownTitle')}</h2>
           <p className="text-lg text-gray-600 leading-relaxed">
-            Big dreams can be overwhelming. PlanLife helps you break them down into manageable daily actions.
+            {t('home.goalBreakdownSubtitle')}
           </p>
           <ul className="flex flex-col gap-4">
             {benefits.map((benefit, index) => (
               <li key={index} className="flex items-start gap-3">
                 <span className="material-symbols-outlined text-primary mt-1">check_circle</span>
                 <div>
-                  <span className="font-bold text-gray-900 block">{benefit.title}</span>
-                  <span className="text-sm text-gray-600">{benefit.description}</span>
+                  <span className="font-bold text-gray-900 block">{t(benefit.titleKey)}</span>
+                  <span className="text-sm text-gray-600">{t(benefit.descKey)}</span>
                 </div>
               </li>
             ))}
           </ul>
           <div className="pt-2">
             <button className="text-primary font-bold hover:underline flex items-center gap-1">
-              Learn more about Goals <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              {t('home.goalLearnMore')} <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>
           </div>
         </div>

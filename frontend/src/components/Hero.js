@@ -1,6 +1,8 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const Hero = () => {
+  const { t } = useTranslation();
   return (
     <section className="w-full max-w-[960px] px-4 py-12 md:py-20 lg:py-24">
       <div className="@container">
@@ -9,21 +11,21 @@ const Hero = () => {
             <div className="flex flex-col gap-4 text-left">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
                 <span className="material-symbols-outlined text-[16px]">new_releases</span>
-                <span>Version 2.0 is live</span>
+                <span>{t('home.versionLive')}</span>
               </div>
               <h1 className="text-4xl font-black leading-tight tracking-tight md:text-5xl lg:text-6xl text-gray-900">
-                All the tools you need to <span className="text-primary">win the day</span>.
+                {t('home.heroTitle')} <span className="text-primary">{t('home.heroTitleHighlight')}</span>.
               </h1>
               <p className="text-lg text-gray-600 leading-relaxed max-w-[500px]">
-                From simple to-do lists to complex project management, PlanLife adapts to your workflow. Explore the features that make planning effortless.
+                {t('home.heroSubtitle')}
               </p>
             </div>
             <div className="flex gap-4 flex-wrap">
               <button className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-base font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
-                Get Started Free
+                {t('home.getStartedFree')}
               </button>
               <button className="flex items-center justify-center rounded-lg h-12 px-6 bg-transparent border border-gray-300 text-gray-900 text-base font-bold hover:bg-gray-50 transition-all">
-                View Demo
+                {t('home.viewDemo')}
               </button>
             </div>
           </div>

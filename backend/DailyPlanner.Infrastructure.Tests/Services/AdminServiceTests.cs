@@ -69,11 +69,13 @@ public class AdminServiceTests : IDisposable
             .ReturnsAsync(new List<string> { "User" });
 
         // Act
-        var result = await _service.GetUsersAsync(null, 1, 10);
+        var result = await _service.GetUsersAsync(null, null, null, null, null, 1, 10);
 
         // Assert
         result.Success.Should().BeTrue();
-        result.Data.Should().HaveCount(2);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(2);
+        result.Data.TotalCount.Should().Be(2);
     }
 
     [Fact]
@@ -91,12 +93,14 @@ public class AdminServiceTests : IDisposable
             .ReturnsAsync(new List<string> { "User" });
 
         // Act
-        var result = await _service.GetUsersAsync("john", 1, 10);
+        var result = await _service.GetUsersAsync("john", null, null, null, null, 1, 10);
 
         // Assert
         result.Success.Should().BeTrue();
-        result.Data.Should().HaveCount(1);
-        result.Data!.First().Email.Should().Contain("john");
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data.Items.First().Email.Should().Contain("john");
+        result.Data.TotalCount.Should().Be(1);
     }
 
     [Fact]
