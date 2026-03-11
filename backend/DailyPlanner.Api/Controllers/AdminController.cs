@@ -129,12 +129,18 @@ public class AdminController : ControllerBase
         if (string.IsNullOrWhiteSpace(file) || !DailyPlanner.Infrastructure.Services.LogStreamService.IsValidFileName(file))
         {
             Response.StatusCode = 400;
+            Response.ContentType = "application/json";
+            await Response.WriteAsJsonAsync(new { success = false, message = "Missing or invalid file name." });
             return;
         }
 
         Response.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Connection = "keep-alive";
+        Response.Headers["X-Accel-Buffering"] = "no";
+
+        var bodyFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseBodyFeature>();
+        bodyFeature?.DisableBuffering();
 
         var ct = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, HttpContext.RequestAborted).Token;
         await _logStreamService.StreamLogFileAsync(file, Response.Body, ct);

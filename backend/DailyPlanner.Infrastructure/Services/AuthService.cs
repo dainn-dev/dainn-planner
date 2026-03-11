@@ -23,6 +23,7 @@ public class AuthService : IAuthService
     private readonly IMapper _mapper;
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IUserActivityService _userActivityService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -30,7 +31,8 @@ public class AuthService : IAuthService
         IJwtService jwtService,
         IMapper mapper,
         ApplicationDbContext context,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IUserActivityService userActivityService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -38,6 +40,7 @@ public class AuthService : IAuthService
         _mapper = mapper;
         _context = context;
         _configuration = configuration;
+        _userActivityService = userActivityService;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -112,9 +115,82 @@ public class AuthService : IAuthService
             };
         }
 
+        var is2FAEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
+        if (is2FAEnabled)
+        {
+            return new ApiResponse<AuthResponse>
+            {
+                Success = true,
+                Message = "Two-factor authentication required",
+                Data = new AuthResponse { RequiresTwoFactor = true }
+            };
+        }
+
         var token = await _jwtService.GenerateTokenAsync(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
         await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+        await _userActivityService.RecordAsync(user.Id, "login", "admin.activity.login");
+        await EnsureUserDeviceAsync(user.Id, request.DeviceId, request.DeviceName, request.Platform);
+        var userDto = await MapUserWithRoleAsync(user);
+
+        return new ApiResponse<AuthResponse>
+        {
+            Success = true,
+            Message = "Login successful",
+            Data = new AuthResponse
+            {
+                Token = token,
+                RefreshToken = refreshToken,
+                User = userDto
+            }
+        };
+    }
+
+    public async Task<ApiResponse<AuthResponse>> Verify2FAAndLoginAsync(Verify2FALoginRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            return new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = "Invalid email or password"
+            };
+        }
+
+        var is2FAEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
+        if (!is2FAEnabled)
+        {
+            return new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = "Two-factor authentication is not enabled for this account"
+            };
+        }
+
+        var isValidCode = await _userManager.VerifyTwoFactorTokenAsync(
+            user,
+            _userManager.Options.Tokens.AuthenticatorTokenProvider,
+            request.Code);
+
+        if (!isValidCode)
+        {
+            var recoveryResult = await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, request.Code);
+            if (!recoveryResult.Succeeded)
+            {
+                return new ApiResponse<AuthResponse>
+                {
+                    Success = false,
+                    Message = "Invalid verification code"
+                };
+            }
+        }
+
+        var token = await _jwtService.GenerateTokenAsync(user);
+        var refreshToken = _jwtService.GenerateRefreshToken();
+        await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+        await _userActivityService.RecordAsync(user.Id, "login", "admin.activity.login");
+        await EnsureUserDeviceAsync(user.Id, request.DeviceId, request.DeviceName, request.Platform);
         var userDto = await MapUserWithRoleAsync(user);
 
         return new ApiResponse<AuthResponse>
@@ -341,6 +417,8 @@ public class AuthService : IAuthService
             var token = await _jwtService.GenerateTokenAsync(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
             await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+            await _userActivityService.RecordAsync(user.Id, "login", "admin.activity.loginSocial");
+            await EnsureUserDeviceAsync(user.Id, request.DeviceId, request.DeviceName, request.Platform);
             var userDto = await MapUserWithRoleAsync(user);
 
             return new ApiResponse<AuthResponse>
@@ -612,6 +690,7 @@ public class AuthService : IAuthService
             var token = await _jwtService.GenerateTokenAsync(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
             await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+            await _userActivityService.RecordAsync(user.Id, "login", "admin.activity.loginExternal");
             var userDto = await MapUserWithRoleAsync(user);
 
             return new ApiResponse<AuthResponse>
@@ -634,6 +713,41 @@ public class AuthService : IAuthService
                 Message = $"External login failed: {ex.Message}"
             };
         }
+    }
+
+    private async Task EnsureUserDeviceAsync(string userId, string? deviceId, string? deviceName, string? platform)
+    {
+        var id = string.IsNullOrWhiteSpace(deviceId) ? "web" : deviceId.Trim();
+        if (id.Length > 200)
+            id = id[..200];
+        var name = string.IsNullOrWhiteSpace(deviceName) ? "Web browser" : (deviceName.Length > 500 ? deviceName[..500] : deviceName);
+        var plat = string.IsNullOrWhiteSpace(platform) ? "web" : (platform.Length > 100 ? platform[..100] : platform);
+
+        var existing = await _context.UserDevices
+            .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceId == id);
+        var now = DateTime.UtcNow;
+
+        if (existing != null)
+        {
+            existing.LastUsedAt = now;
+            existing.DeviceName = name;
+            existing.Platform = plat;
+        }
+        else
+        {
+            _context.UserDevices.Add(new UserDevice
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                DeviceId = id,
+                DeviceName = name,
+                Platform = plat,
+                LastUsedAt = now,
+                CreatedAt = now
+            });
+        }
+
+        await _context.SaveChangesAsync();
     }
 
     private System.Security.Claims.ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)

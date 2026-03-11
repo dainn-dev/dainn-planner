@@ -153,9 +153,11 @@ dotnet restore
 
 ### 5. Run Database Migrations
 
+Run from the **backend** folder (so EF finds `appsettings.json` in the API project):
+
 ```bash
-cd DailyPlanner.Api
-dotnet ef database update
+cd backend
+dotnet ef database update --project DailyPlanner.Infrastructure --startup-project DailyPlanner.Api
 ```
 
 Or the application will automatically run migrations on startup.

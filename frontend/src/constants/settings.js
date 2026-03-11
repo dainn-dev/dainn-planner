@@ -45,24 +45,7 @@ export const INITIAL_SECURITY_SETTINGS = {
   newPassword: '',
   confirmPassword: '',
   twoFactorAuth: false,
-  devices: [
-    {
-      id: 1,
-      name: 'Macbook Pro - Chrome',
-      location: 'Hà Nội, Việt Nam',
-      lastActive: 'Vừa xong',
-      isCurrent: true,
-      type: 'laptop_mac',
-    },
-    {
-      id: 2,
-      name: 'iPhone 14 Pro - Ứng dụng',
-      location: 'Hồ Chí Minh, Việt Nam',
-      lastActive: 'Hoạt động 2 giờ trước',
-      isCurrent: false,
-      type: 'smartphone',
-    },
-  ],
+  devices: [],
 };
 
 export const INITIAL_LOGS_SETTINGS = {

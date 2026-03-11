@@ -116,6 +116,23 @@ const GoalDetailPage = () => {
   const [goalTasks, setGoalTasks] = useState([]);
   const [togglingTaskId, setTogglingTaskId] = useState(null);
   const [togglingMilestoneId, setTogglingMilestoneId] = useState(null);
+  const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [dropTargetMilestoneId, setDropTargetMilestoneId] = useState(null);
+  const [movingTaskId, setMovingTaskId] = useState(null);
+
+  const handleMoveTaskToMilestone = async (taskId, targetMilestoneId) => {
+    if (!id || !taskId || !targetMilestoneId) return;
+    setMovingTaskId(taskId);
+    try {
+      await tasksAPI.updateTask(taskId, { goalMilestoneId: targetMilestoneId });
+      const items = await loadGoalTasks(id);
+      setGoalTasks(items ?? []);
+    } catch (err) {
+      console.error('Failed to move task:', err);
+    } finally {
+      setMovingTaskId(null);
+    }
+  };
 
   const handleToggleGoalTask = async (taskId) => {
     if (togglingTaskId) return;
@@ -348,12 +365,12 @@ const GoalDetailPage = () => {
   const overallProgress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
   return (
-    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-hidden h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         <Header 
           title={goal ? `${t('goals.manageGoalsSlash')}${goal.title}` : t('goals.detailTitle')}
           icon="info"
@@ -363,8 +380,8 @@ const GoalDetailPage = () => {
         />
 
         {/* Main Content Area - mobile-friendly padding and spacing */}
-        <div className="flex-1 flex justify-center py-4 sm:py-6 px-3 sm:px-4 md:px-8 overflow-y-auto">
-          <div className="max-w-[1024px] flex-1 flex flex-col gap-5 sm:gap-8 w-full">
+        <div className="flex-1 min-h-0 flex justify-center py-4 sm:py-6 px-3 sm:px-4 md:px-8 overflow-y-auto">
+          <div className="max-w-[1024px] flex-1 flex flex-col gap-5 sm:gap-8 w-full min-h-0">
           {/* Back Button - larger touch target on mobile */}
           <button
             type="button"
@@ -746,64 +763,102 @@ const GoalDetailPage = () => {
                       {!isEditing && (() => {
                         const milestoneIdStr = milestone.id != null ? String(milestone.id) : '';
                         const tasksForMilestone = goalTasks.filter(t => t.goalMilestoneId != null && String(t.goalMilestoneId) === milestoneIdStr);
-                        if (tasksForMilestone.length === 0) return null;
                         const formatTaskDate = (d) => {
                           if (!d) return '';
                           return formatDate(typeof d === 'string' ? new Date(d) : d);
                         };
+                        const isDropTarget = dropTargetMilestoneId != null && String(dropTargetMilestoneId) === milestoneIdStr;
                         return (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div
+                            className={`mt-3 pt-3 border-t border-gray-100 rounded-lg transition-colors min-h-[44px] ${isDropTarget ? 'bg-primary/5 border-2 border-dashed border-primary' : ''}`}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              setDropTargetMilestoneId(milestone.id);
+                            }}
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetMilestoneId(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDropTargetMilestoneId(null);
+                              try {
+                                const data = JSON.parse(e.dataTransfer.getData('application/json') || '{}');
+                                const { taskId: droppedTaskId, sourceMilestoneId } = data;
+                                if (droppedTaskId && sourceMilestoneId !== milestoneIdStr) {
+                                  handleMoveTaskToMilestone(droppedTaskId, milestone.id);
+                                }
+                              } catch (_) {}
+                            }}
+                          >
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t('goals.taskList')}</p>
-                            <ul className="space-y-2">
-                              {tasksForMilestone.map((task) => (
-                                <li key={task.id} className="flex items-center gap-2 text-sm min-w-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleGoalTask(task.id)}
-                                    disabled={!!togglingTaskId}
-                                    className={`shrink-0 min-h-[40px] min-w-[40px] p-1.5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 touch-manipulation ${task.isCompleted ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-600 hover:text-primary hover:bg-primary/10'}`}
-                                    aria-label={task.isCompleted ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
+                            {tasksForMilestone.length === 0 ? (
+                              <p className="text-xs text-gray-400 py-2">{isDropTarget ? t('goals.dropTaskHere') : t('goals.noTasksInMilestone')}</p>
+                            ) : (
+                              <ul className="space-y-2">
+                                {tasksForMilestone.map((task) => (
+                                  <li
+                                    key={task.id}
+                                    draggable
+                                    onDragStart={(e) => {
+                                      e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, sourceMilestoneId: milestoneIdStr }));
+                                      e.dataTransfer.effectAllowed = 'move';
+                                      setDraggingTaskId(task.id);
+                                    }}
+                                    onDragEnd={() => setDraggingTaskId(null)}
+                                    className={`flex items-center gap-2 text-sm min-w-0 rounded-lg transition-opacity ${draggingTaskId === task.id ? 'opacity-50' : ''} ${movingTaskId === task.id ? 'opacity-70' : ''}`}
                                   >
-                                    <span className="material-symbols-outlined text-lg">
-                                      {task.isCompleted ? 'check_circle' : 'radio_button_unchecked'}
+                                    <span className="shrink-0 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 touch-none" title={t('goals.dragToMove')} aria-hidden>
+                                      <span className="material-symbols-outlined text-lg">drag_indicator</span>
                                     </span>
-                                  </button>
-                                  <span className={`flex-1 min-w-0 truncate ${task.isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                                    {task.title}
-                                  </span>
-                                  {task.date && (
-                                    <span className={`text-xs shrink-0 hidden sm:inline ${(() => {
-                                      if (!task.isCompleted || !task.completedDate || !task.date) return 'text-gray-400';
-                                      const cDay = new Date(task.completedDate); cDay.setHours(0, 0, 0, 0);
-                                      const dDay = new Date(task.date); dDay.setHours(0, 0, 0, 0);
-                                      return cDay > dDay ? 'text-red-600' : 'text-green-600';
-                                    })()}`}>{formatTaskDate(task.date)}</span>
-                                  )}
-                                  {!task.isCompleted && (
-                                    <div className="flex items-center gap-0.5 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
-                                        className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                                        aria-label={t('goals.editTaskAria', { title: task.title })}
-                                        title={t('goals.edit')}
-                                      >
-                                        <span className="material-symbols-outlined text-lg">edit</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteGoalTask(task.id)}
-                                        className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-                                        aria-label={t('goals.deleteTaskAria', { title: task.title })}
-                                        title={t('common.delete')}
-                                      >
-                                        <span className="material-symbols-outlined text-lg">delete</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleGoalTask(task.id)}
+                                      disabled={!!togglingTaskId}
+                                      className={`shrink-0 min-h-[40px] min-w-[40px] p-1.5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 touch-manipulation ${task.isCompleted ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-600 hover:text-primary hover:bg-primary/10'}`}
+                                      aria-label={task.isCompleted ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
+                                    >
+                                      <span className="material-symbols-outlined text-lg">
+                                        {task.isCompleted ? 'check_circle' : 'radio_button_unchecked'}
+                                      </span>
+                                    </button>
+                                    <span className={`flex-1 min-w-0 truncate ${task.isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                                      {task.title}
+                                    </span>
+                                    {task.date && (
+                                      <span className={`text-xs shrink-0 hidden sm:inline ${(() => {
+                                        if (!task.isCompleted || !task.completedDate || !task.date) return 'text-gray-400';
+                                        const cDay = new Date(task.completedDate); cDay.setHours(0, 0, 0, 0);
+                                        const dDay = new Date(task.date); dDay.setHours(0, 0, 0, 0);
+                                        return cDay > dDay ? 'text-red-600' : 'text-green-600';
+                                      })()}`}>{formatTaskDate(task.date)}</span>
+                                    )}
+                                    {!task.isCompleted && (
+                                      <div className="flex items-center gap-0.5 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                          aria-label={t('goals.editTaskAria', { title: task.title })}
+                                          title={t('goals.edit')}
+                                        >
+                                          <span className="material-symbols-outlined text-lg">edit</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteGoalTask(task.id)}
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                          aria-label={t('goals.deleteTaskAria', { title: task.title })}
+                                          title={t('common.delete')}
+                                        >
+                                          <span className="material-symbols-outlined text-lg">delete</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         );
                       })()}

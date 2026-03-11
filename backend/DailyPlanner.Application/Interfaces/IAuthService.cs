@@ -7,6 +7,7 @@ public interface IAuthService
 {
     Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
     Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request);
+    Task<ApiResponse<AuthResponse>> Verify2FAAndLoginAsync(Verify2FALoginRequest request);
     Task<ApiResponse<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request);
     Task<ApiResponse<object>> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ApiResponse<object>> ResetPasswordAsync(ResetPasswordRequest request);

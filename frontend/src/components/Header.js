@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { getAvatarFullUrl } from '../services/api';
 
 const Header = ({ 
   title, 
@@ -12,8 +13,20 @@ const Header = ({
   onToggleSidebar
 }) => {
   const { t } = useTranslation();
-  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
-  
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+
+  const avatarUrl = getAvatarFullUrl(storedUser?.avatarUrl ?? storedUser?.avatar);
+  const showAvatarFallback = !avatarUrl || avatarError;
+
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const handleMarkAllAsRead = () => {
@@ -155,14 +168,22 @@ const Header = ({
           </div>
 
           <div 
-            className="bg-center bg-no-repeat bg-cover rounded-full size-10 cursor-pointer ring-2 ring-transparent hover:ring-primary transition-all" 
-            style={{
-              backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBr3X7Z7D9oVzqv59WsWDkRyy7yyUi86zJzG0vYqzFaaGh60Qw5psjFjeEh7oCRNQMb9pV2RNcGZ7LdYuSCCXKNFvIuW_u3KWXWL45QWH4DESIVyRG1t2l4Li_LiWgFjDjzgpaGbmp6v-bJBrouwxbq731SsEPCb6dMx0HOmrZjFpR4YJZ2PZr9ckec2y5gpszHLn_zL10DWuQkfb2ocg5mZ2rT7WUFuO8euRXp4-mErpqaeriYEsTgIevz0gS-hwFDr7N3T-y6mNpV")'
-            }}
+            className="rounded-full size-10 cursor-pointer ring-2 ring-transparent hover:ring-primary transition-all flex items-center justify-center bg-gray-200 shrink-0 overflow-hidden" 
             role="button"
             aria-label={t('common.userProfile')}
             tabIndex={0}
-          />
+          >
+            {showAvatarFallback ? (
+              <span className="material-symbols-outlined text-gray-500 text-2xl" aria-hidden>person</span>
+            ) : (
+              <img
+                src={avatarUrl}
+                alt=""
+                className="w-full h-full rounded-full object-cover"
+                onError={() => setAvatarError(true)}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

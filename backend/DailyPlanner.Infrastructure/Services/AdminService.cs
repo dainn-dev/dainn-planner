@@ -19,17 +19,20 @@ public class AdminService : IAdminService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IMapper _mapper;
+    private readonly IUserActivityService _userActivityService;
 
     public AdminService(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
-        IMapper mapper)
+        IMapper mapper,
+        IUserActivityService userActivityService)
     {
         _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
         _mapper = mapper;
+        _userActivityService = userActivityService;
     }
 
     public async Task<ApiResponse<AdminDashboardStatsDto>> GetDashboardStatsAsync()
@@ -234,6 +237,23 @@ public class AdminService : IAdminService
         }
 
         var roles = await _userManager.GetRolesAsync(user);
+        const int recentActivityLimit = 50;
+        var recentActivities = await _context.UserActivities
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(recentActivityLimit)
+            .Select(a => new UserActivityItemDto
+            {
+                Id = a.Id,
+                Type = a.Type,
+                Action = a.Action,
+                Date = a.CreatedAt,
+                EntityType = a.EntityType,
+                EntityId = a.EntityId
+            })
+            .ToListAsync();
+        await ResolveActivityEntityTitlesAsync(recentActivities);
+
         var userDto = new AdminUserDto
         {
             Id = user.Id,
@@ -247,7 +267,8 @@ public class AdminService : IAdminService
             EmailConfirmed = user.EmailConfirmed,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt,
-            Roles = roles.ToList()
+            Roles = roles.ToList(),
+            RecentActivity = recentActivities
         };
 
         return new ApiResponse<AdminUserDto>
@@ -285,6 +306,7 @@ public class AdminService : IAdminService
 
         user.UpdatedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
+        await _userActivityService.RecordAsync(userId, "account", request.EmailConfirmed == false ? "admin.activity.accountDeactivatedByAdmin" : "admin.activity.profileUpdatedByAdmin");
 
         // Update roles if provided
         if (request.Roles != null)
@@ -313,6 +335,22 @@ public class AdminService : IAdminService
         // Return updated user
         var updatedUser = await _userManager.FindByIdAsync(userId);
         var updatedRoles = await _userManager.GetRolesAsync(updatedUser!);
+        const int recentActivityLimit = 50;
+        var recentActivities = await _context.UserActivities
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(recentActivityLimit)
+            .Select(a => new UserActivityItemDto
+            {
+                Id = a.Id,
+                Type = a.Type,
+                Action = a.Action,
+                Date = a.CreatedAt,
+                EntityType = a.EntityType,
+                EntityId = a.EntityId
+            })
+            .ToListAsync();
+        await ResolveActivityEntityTitlesAsync(recentActivities);
         var userDto = new AdminUserDto
         {
             Id = updatedUser!.Id,
@@ -326,7 +364,8 @@ public class AdminService : IAdminService
             EmailConfirmed = updatedUser.EmailConfirmed,
             CreatedAt = updatedUser.CreatedAt,
             UpdatedAt = updatedUser.UpdatedAt,
-            Roles = updatedRoles.ToList()
+            Roles = updatedRoles.ToList(),
+            RecentActivity = recentActivities
         };
 
         return new ApiResponse<AdminUserDto>
@@ -335,6 +374,48 @@ public class AdminService : IAdminService
             Message = "User updated successfully",
             Data = userDto
         };
+    }
+
+    private async Task ResolveActivityEntityTitlesAsync(List<UserActivityItemDto> activities)
+    {
+        var taskIds = activities
+            .Where(a => string.Equals(a.EntityType, "DailyTask", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(a.EntityId))
+            .Select(a => Guid.TryParse(a.EntityId, out var id) ? id : (Guid?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        var goalIds = activities
+            .Where(a => string.Equals(a.EntityType, "LongTermGoal", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(a.EntityId))
+            .Select(a => Guid.TryParse(a.EntityId, out var id) ? id : (Guid?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        var taskLookup = new Dictionary<string, string>();
+        var goalLookup = new Dictionary<string, string>();
+        if (taskIds.Count > 0)
+        {
+            var taskTitles = await _context.DailyTasks.Where(t => taskIds.Contains(t.Id)).Select(t => new { t.Id, t.Title }).ToListAsync();
+            foreach (var x in taskTitles)
+                taskLookup[x.Id.ToString()] = x.Title;
+        }
+        if (goalIds.Count > 0)
+        {
+            var goalTitles = await _context.LongTermGoals.Where(g => goalIds.Contains(g.Id)).Select(g => new { g.Id, g.Title }).ToListAsync();
+            foreach (var x in goalTitles)
+                goalLookup[x.Id.ToString()] = x.Title;
+        }
+
+        foreach (var a in activities)
+        {
+            if (string.IsNullOrEmpty(a.EntityId)) continue;
+            if (string.Equals(a.EntityType, "DailyTask", StringComparison.OrdinalIgnoreCase) && taskLookup.TryGetValue(a.EntityId, out var taskTitle))
+                a.EntityTitle = taskTitle;
+            else if (string.Equals(a.EntityType, "LongTermGoal", StringComparison.OrdinalIgnoreCase) && goalLookup.TryGetValue(a.EntityId, out var goalTitle))
+                a.EntityTitle = goalTitle;
+        }
     }
 
     public async Task<ApiResponse<object>> ResetUserPasswordAsync(string userId, AdminResetPasswordRequest request)

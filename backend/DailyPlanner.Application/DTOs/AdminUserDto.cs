@@ -14,5 +14,6 @@ public class AdminUserDto
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<string> Roles { get; set; } = new();
+    public List<UserActivityItemDto> RecentActivity { get; set; } = new();
 }
 

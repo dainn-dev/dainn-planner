@@ -12,6 +12,26 @@ export const getAvatarFullUrl = (path) => {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 };
 
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    h = ((h << 5) - h) + c;
+    h = h & h;
+  }
+  return Math.abs(h).toString(36);
+}
+
+function getDeviceLabel() {
+  if (typeof navigator === 'undefined') return undefined;
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua)) return 'Edge';
+  if (/Chrome\//.test(ua) && !/Edg\//.test(ua)) return 'Chrome';
+  if (/Firefox\//.test(ua)) return 'Firefox';
+  if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return 'Safari';
+  return 'Web';
+}
+
 // In-flight GET request de-dupe (prevents duplicate GETs in React StrictMode/dev)
 const inflightGetRequests = new Map();
 
@@ -180,22 +200,57 @@ export const authAPI = {
   },
 
   login: async (email, password) => {
+    const deviceId = (typeof localStorage !== 'undefined' && localStorage.getItem('deviceId')) || (typeof navigator !== 'undefined' && navigator.userAgent ? `web-${hashString(navigator.userAgent).slice(0, 24)}` : undefined);
+    const deviceName = typeof navigator !== 'undefined' ? getDeviceLabel() : undefined;
+    const platform = 'web';
+    const body = { email, password };
+    if (deviceId) body.deviceId = deviceId;
+    if (deviceName) body.deviceName = deviceName;
+    body.platform = platform;
     const response = await apiRequest('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     });
-    
-    // Response is already unwrapped by apiRequest, so response should contain { token, user }
+
+    if (response.requiresTwoFactor) {
+      return { ...response, requiresTwoFactor: true };
+    }
+
     const token = response.token;
     const user = response.user;
-    
     if (token) {
       setAuthToken(token);
       if (user) {
         localStorage.setItem('user', JSON.stringify(user));
       }
+      if (deviceId && typeof localStorage !== 'undefined' && !localStorage.getItem('deviceId')) {
+        localStorage.setItem('deviceId', deviceId);
+      }
     }
-    
+    return { ...response, user, token };
+  },
+
+  verify2FA: async (email, code, devicePayload = {}) => {
+    const deviceId = devicePayload.deviceId ?? (typeof localStorage !== 'undefined' && localStorage.getItem('deviceId')) ?? (typeof navigator !== 'undefined' && navigator.userAgent ? `web-${hashString(navigator.userAgent).slice(0, 24)}` : undefined);
+    const deviceName = devicePayload.deviceName ?? (typeof navigator !== 'undefined' ? getDeviceLabel() : undefined);
+    const platform = devicePayload.platform ?? 'web';
+    const body = { email, code, deviceId, deviceName, platform };
+    const response = await apiRequest('/auth/verify-2fa', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const token = response.token;
+    const user = response.user;
+    if (token) {
+      setAuthToken(token);
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      const deviceId = devicePayload.deviceId || (typeof localStorage !== 'undefined' && localStorage.getItem('deviceId'));
+      if (deviceId && typeof localStorage !== 'undefined' && !localStorage.getItem('deviceId')) {
+        localStorage.setItem('deviceId', deviceId);
+      }
+    }
     return { ...response, user, token };
   },
 
@@ -300,6 +355,46 @@ export const userAPI = {
       }
     }
     return settings;
+  },
+
+  getDevices: async () => {
+    const list = await apiRequest('/users/me/devices');
+    return Array.isArray(list) ? list : [];
+  },
+
+  revokeDevice: async (deviceId) => {
+    await apiRequest(`/users/me/devices/${deviceId}`, { method: 'DELETE' });
+  },
+
+  changePassword: async ({ currentPassword, newPassword }) => {
+    await apiRequest('/users/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+
+  get2FAStatus: async () => {
+    const result = await apiRequest('/users/me/2fa/status');
+    return result === true || result === false ? result : (result?.data ?? false);
+  },
+
+  setup2FA: async () => {
+    const result = await apiRequest('/users/me/2fa/setup');
+    return result?.sharedKey != null ? result : (result?.data ?? result);
+  },
+
+  enable2FA: async ({ code }) => {
+    await apiRequest('/users/me/2fa/enable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  disable2FA: async ({ code }) => {
+    await apiRequest('/users/me/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
   },
 };
 
@@ -562,7 +657,7 @@ export const adminAPI = {
 
   getLogFiles: async () => {
     const res = await apiRequest('/admin/logs');
-    return res?.data ?? [];
+    return Array.isArray(res) ? res : (res?.data ?? []);
   },
 
   getLogContent: async (fileName, options = {}) => {
@@ -577,18 +672,33 @@ export const adminAPI = {
   },
 
   subscribeLogStream: (fileName, onMessage, onError) => {
+    if (!fileName || typeof fileName !== 'string' || !fileName.trim()) {
+      onError?.(new Error('File name is required for stream'));
+      return () => {};
+    }
     const token = getAuthToken();
-    const url = `${API_BASE_URL}/admin/logs/stream?file=${encodeURIComponent(fileName)}`;
+    const url = `${API_BASE_URL}/admin/logs/stream?file=${encodeURIComponent(fileName.trim())}`;
     const controller = new AbortController();
 
     (async () => {
       try {
         const response = await fetch(url, {
-          headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+          method: 'GET',
+          headers: {
+            Accept: 'text/event-stream',
+            ...(token && { Authorization: `Bearer ${token}` })
+          },
+          credentials: 'include',
           signal: controller.signal
         });
         if (!response.ok) {
-          onError?.(new Error('Stream failed'));
+          const errBody = await response.text();
+          let msg = 'Stream failed';
+          try {
+            const json = JSON.parse(errBody);
+            if (json.message) msg = json.message;
+          } catch (_) {}
+          onError?.(new Error(msg));
           return;
         }
         const reader = response.body.getReader();

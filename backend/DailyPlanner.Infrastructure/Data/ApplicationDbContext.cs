@@ -22,6 +22,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<UserDevice> UserDevices { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
+    public DbSet<UserActivity> UserActivities { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -167,6 +168,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.User)
                 .WithOne(u => u.UserSettings)
                 .HasForeignKey<UserSettings>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UserActivity
+        builder.Entity<UserActivity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Action).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+            entity.Property(e => e.EntityId).HasMaxLength(100);
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.UserActivities)
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

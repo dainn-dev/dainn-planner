@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { adminAPI, getAvatarFullUrl } from '../services/api';
@@ -23,7 +24,15 @@ const mapUserDetailFromApi = (u) => ({
   completedGoals: 0,
   totalTasks: 0,
   completedTasks: 0,
-  recentActivity: [],
+  recentActivity: (u.recentActivity || []).map((a) => ({
+    id: a.id,
+    type: a.type,
+    action: a.action,
+    date: a.date ? formatDate(a.date) : '',
+    entityType: a.entityType ?? null,
+    entityId: a.entityId ?? null,
+    entityTitle: a.entityTitle ?? null,
+  })),
 });
 
 const getInitials = (name) => {
@@ -78,6 +87,7 @@ const LoadingSkeleton = () => (
 const AdminUserDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const isAdmin = isStoredAdmin();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -160,10 +170,10 @@ const AdminUserDetailPage = () => {
       });
       setUser({ ...editedUser });
       setIsEditing(false);
-      setSaveMessage({ type: 'success', text: 'Changes saved successfully.' });
+      setSaveMessage({ type: 'success', text: t('admin.changesSavedSuccess') });
     } catch (error) {
       console.error('Failed to update user:', error);
-      setSaveMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+      setSaveMessage({ type: 'error', text: t('admin.saveFailedTryAgain') });
     } finally {
       setSaving(false);
     }
@@ -198,28 +208,28 @@ const AdminUserDetailPage = () => {
     const newP = resetPasswordNew.trim();
     const confirmP = resetPasswordConfirm.trim();
     if (!newP) {
-      setResetPasswordError('New password is required.');
+      setResetPasswordError(t('admin.newPasswordRequired'));
       return;
     }
     if (newP.length < 6) {
-      setResetPasswordError('Password must be at least 6 characters.');
+      setResetPasswordError(t('admin.passwordMinLength'));
       return;
     }
     if (newP !== confirmP) {
-      setResetPasswordError('Passwords do not match.');
+      setResetPasswordError(t('admin.passwordsDoNotMatch'));
       return;
     }
     try {
       setResetPasswordSubmitting(true);
       const res = await adminAPI.resetUserPassword(user.id, { newPassword: newP });
       if (res?.success) {
-        setSaveMessage({ type: 'success', text: 'Password has been reset successfully.' });
+        setSaveMessage({ type: 'success', text: t('admin.resetPasswordSuccess') });
         closeResetPasswordModal();
       } else {
-        setResetPasswordError(res?.message || 'Failed to reset password.');
+        setResetPasswordError(res?.message || t('admin.saveFailedTryAgain'));
       }
     } catch (err) {
-      const msg = err?.message || err?.data?.message || 'Failed to reset password.';
+      const msg = err?.message || err?.data?.message || t('admin.saveFailedTryAgain');
       setResetPasswordError(msg);
     } finally {
       setResetPasswordSubmitting(false);
@@ -280,7 +290,7 @@ const AdminUserDetailPage = () => {
       <div className="bg-[#f6f7f8] text-[#111418] font-display min-h-screen flex flex-row">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Header title="User Details" icon="person" notifications={[]} onNotificationsChange={() => {}} onToggleSidebar={() => {}} />
+          <Header title={t('admin.userDetails')} icon="person" notifications={[]} onNotificationsChange={() => {}} onToggleSidebar={() => {}} />
           <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
             <LoadingSkeleton />
           </div>
@@ -306,7 +316,7 @@ const AdminUserDetailPage = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header 
-          title={user ? `User Management / ${user.name}` : "User Details"}
+          title={user ? `${t('admin.userManagement')} / ${user.name}` : t('admin.userDetails')}
           icon="person"
           notifications={notifications}
           onNotificationsChange={setNotifications}
@@ -324,7 +334,7 @@ const AdminUserDetailPage = () => {
                 aria-label="Back to user list"
               >
                 <span className="material-symbols-outlined text-xl">arrow_back</span>
-                <span>Back to users</span>
+                <span>{t('admin.backToUsers')}</span>
               </button>
               {saveMessage.text && (
                 <div
@@ -366,7 +376,7 @@ const AdminUserDetailPage = () => {
                     className="text-xs text-primary hover:text-blue-700 font-medium"
                     aria-label="Change photo (not implemented)"
                   >
-                    Change photo
+                    {t('admin.changePhoto')}
                   </button>
                 )}
               </div>
@@ -380,7 +390,7 @@ const AdminUserDetailPage = () => {
                           value={editedUser.name}
                           onChange={(e) => handleFieldChange('name', e.target.value)}
                           className="w-full text-xl sm:text-2xl font-semibold text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          placeholder="Full name"
+                          placeholder={t('admin.fullName')}
                         />
                         <input
                           type="email"
@@ -405,14 +415,14 @@ const AdminUserDetailPage = () => {
                           disabled={!isDirty || saving}
                           className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[40px]"
                         >
-                          {saving ? 'Saving…' : 'Save'}
+                          {saving ? t('admin.saving') : t('admin.save')}
                         </button>
                         <button
                           onClick={handleCancel}
                           disabled={saving}
                           className="px-4 py-2 bg-white text-[#111418] text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors min-h-[40px]"
                         >
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </>
                     ) : (
@@ -424,7 +434,7 @@ const AdminUserDetailPage = () => {
                           aria-label="Reset password for this user"
                         >
                           <span className="material-symbols-outlined text-[18px]">lock_reset</span>
-                          <span>Reset password</span>
+                          <span>{t('admin.resetPassword')}</span>
                         </button>
                         <button
                           onClick={handleEdit}
@@ -442,15 +452,15 @@ const AdminUserDetailPage = () => {
                     <span className={`material-symbols-outlined text-[18px] ${displayUser.role === 'Admin' ? 'text-primary' : 'text-gray-500'}`} aria-hidden="true">
                       {displayUser.role === 'Admin' ? 'security' : 'person'}
                     </span>
-                    <span className="text-[#111418] font-medium">{displayUser.role}</span>
+                    <span className="text-[#111418] font-medium">{displayUser.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</span>
                   </div>
                   <span className="text-gray-300" aria-hidden="true">·</span>
                   <span className={`inline-flex items-center gap-1.5 rounded-full pl-2 pr-2.5 py-0.5 text-xs font-medium border ${getStatusBadge(displayUser.status)}`}>
                     <span className={`size-1.5 rounded-full ${getStatusDot(displayUser.status)}`} aria-hidden="true" />
-                    {displayUser.status}
+                    {displayUser.status === 'Active' ? t('admin.statusActive') : displayUser.status === 'Pending' ? t('admin.statusPending') : displayUser.status === 'Inactive' ? t('admin.statusInactive') : displayUser.status === 'Banned' ? t('admin.statusBanned') : displayUser.status}
                   </span>
                   <span className="text-gray-300" aria-hidden="true">·</span>
-                  <span className="text-gray-500 text-sm">Joined {displayUser.joinedDate}</span>
+                  <span className="text-gray-500 text-sm">{t('admin.joined')} {displayUser.joinedDate}</span>
                 </div>
               </div>
             </div>
@@ -459,27 +469,27 @@ const AdminUserDetailPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Total goals</span>
+                  <span className="text-gray-500 text-sm font-medium">{t('admin.totalGoals')}</span>
                   <div className="bg-blue-50 text-blue-600 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">flag</span>
                   </div>
                 </div>
                 <p className="text-2xl font-bold text-[#111418]">{user.totalGoals ?? '—'}</p>
-                <p className="text-xs text-gray-400">{user.completedGoals} completed</p>
+                <p className="text-xs text-gray-400">{t('admin.completedCount', { count: user.completedGoals })}</p>
               </div>
               <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Total tasks</span>
+                  <span className="text-gray-500 text-sm font-medium">{t('admin.totalTasks')}</span>
                   <div className="bg-violet-50 text-violet-600 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">check_circle</span>
                   </div>
                 </div>
                 <p className="text-2xl font-bold text-[#111418]">{user.totalTasks ?? '—'}</p>
-                <p className="text-xs text-gray-400">{user.completedTasks} completed</p>
+                <p className="text-xs text-gray-400">{t('admin.completedCount', { count: user.completedTasks })}</p>
               </div>
               <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Completion rate</span>
+                  <span className="text-gray-500 text-sm font-medium">{t('admin.completionRate')}</span>
                   <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">trending_up</span>
                   </div>
@@ -487,11 +497,11 @@ const AdminUserDetailPage = () => {
                 <p className="text-2xl font-bold text-[#111418]">
                   {user.totalTasks > 0 ? Math.round((user.completedTasks / user.totalTasks) * 100) : 0}%
                 </p>
-                <p className="text-xs text-gray-400">Task completion</p>
+                <p className="text-xs text-gray-400">{t('admin.taskCompletion')}</p>
               </div>
               <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">Last active</span>
+                  <span className="text-gray-500 text-sm font-medium">{t('admin.lastActive')}</span>
                   <div className="bg-amber-50 text-amber-600 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">schedule</span>
                   </div>
@@ -500,7 +510,7 @@ const AdminUserDetailPage = () => {
                   {lastActiveDisplay ? lastActiveDisplay.split(' ')[0] : '—'}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {lastActiveDisplay ? lastActiveDisplay.split(' ').slice(1).join(' ') : 'No data'}
+                  {lastActiveDisplay ? lastActiveDisplay.split(' ').slice(1).join(' ') : t('common.noData')}
                 </p>
               </div>
             </div>
@@ -511,96 +521,96 @@ const AdminUserDetailPage = () => {
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold text-[#111418] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[22px] text-gray-500">person</span>
-                  User details
+                  {t('admin.userDetailsTitle')}
                 </h3>
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.phone')}</label>
                       {isEditing ? (
                         <input
                           type="tel"
                           value={editedUser.phone ?? ''}
                           onChange={(e) => handleFieldChange('phone', e.target.value)}
                           className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          placeholder="Optional"
+                          placeholder={t('admin.optional')}
                         />
                       ) : (
                         <p className="text-sm text-[#111418]">{emptyDisplay(user.phone)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Location</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.location')}</label>
                       {isEditing ? (
                         <input
                           type="text"
                           value={editedUser.location ?? ''}
                           onChange={(e) => handleFieldChange('location', e.target.value)}
                           className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          placeholder="Optional"
+                          placeholder={t('admin.optional')}
                         />
                       ) : (
                         <p className="text-sm text-[#111418]">{emptyDisplay(user.location)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Timezone</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.timezone')}</label>
                       {isEditing ? (
                         <input
                           type="text"
                           value={editedUser.timezone ?? ''}
                           onChange={(e) => handleFieldChange('timezone', e.target.value)}
                           className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          placeholder="e.g. UTC+7"
+                          placeholder={t('admin.timezonePlaceholder')}
                         />
                       ) : (
                         <p className="text-sm text-[#111418]">{emptyDisplay(user.timezone)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Language</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.language')}</label>
                       {isEditing ? (
                         <input
                           type="text"
                           value={editedUser.language ?? ''}
                           onChange={(e) => handleFieldChange('language', e.target.value)}
                           className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          placeholder="e.g. en"
+                          placeholder={t('admin.languagePlaceholder')}
                         />
                       ) : (
                         <p className="text-sm text-[#111418]">{emptyDisplay(user.language)}</p>
                       )}
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Role</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.role')}</label>
                       {isEditing ? (
                         <select
                           value={editedUser.role}
                           onChange={(e) => handleFieldChange('role', e.target.value)}
                           className="w-full max-w-xs text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
-                          <option value="User">User</option>
-                          <option value="Admin">Admin</option>
+                          <option value="User">{t('admin.roleUser')}</option>
+                          <option value="Admin">{t('admin.roleAdmin')}</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-[#111418]">{user.role}</p>
+                        <p className="text-sm text-[#111418]">{user.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</p>
                       )}
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.status')}</label>
                       {isEditing ? (
                         <select
                           value={editedUser.status}
                           onChange={(e) => handleFieldChange('status', e.target.value)}
                           className="w-full max-w-xs text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
-                          <option value="Active">Active</option>
-                          <option value="Pending">Pending</option>
-                          <option value="Inactive">Inactive</option>
-                          <option value="Banned">Banned</option>
+                          <option value="Active">{t('admin.statusActive')}</option>
+                          <option value="Pending">{t('admin.statusPending')}</option>
+                          <option value="Inactive">{t('admin.statusInactive')}</option>
+                          <option value="Banned">{t('admin.statusBanned')}</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-[#111418]">{user.status}</p>
+                        <p className="text-sm text-[#111418]">{user.status === 'Active' ? t('admin.statusActive') : user.status === 'Pending' ? t('admin.statusPending') : user.status === 'Inactive' ? t('admin.statusInactive') : user.status === 'Banned' ? t('admin.statusBanned') : user.status}</p>
                       )}
                     </div>
                   </div>
@@ -611,7 +621,7 @@ const AdminUserDetailPage = () => {
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold text-[#111418] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[22px] text-gray-500">history</span>
-                  Recent activity
+                  {t('admin.recentActivity')}
                 </h3>
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm min-h-[200px]">
                   {user.recentActivity && user.recentActivity.length > 0 ? (
@@ -622,8 +632,15 @@ const AdminUserDetailPage = () => {
                             <span className="material-symbols-outlined text-lg" aria-hidden="true">{getActivityIcon(activity.type)}</span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[#111418]">{activity.action}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{activity.date}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-[#111418] min-w-0">{activity.action?.startsWith('admin.activity.') ? t(activity.action) : activity.action}</p>
+                              <span className="text-xs text-gray-500 shrink-0">{activity.date}</span>
+                            </div>
+                            {activity.entityTitle && (
+                              <p className="text-xs text-gray-600 mt-0.5 truncate" title={activity.entityTitle}>
+                                {activity.entityTitle}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -631,7 +648,7 @@ const AdminUserDetailPage = () => {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center">
                       <span className="material-symbols-outlined text-4xl text-gray-300 mb-2" aria-hidden="true">history</span>
-                      <p className="text-sm text-gray-500">No activity yet</p>
+                      <p className="text-sm text-gray-500">{t('admin.noActivityYet')}</p>
                     </div>
                   )}
                 </div>
@@ -657,9 +674,9 @@ const AdminUserDetailPage = () => {
             <div className="px-6 pt-6 pb-4">
               <h3 id="reset-password-title" className="text-lg font-semibold text-[#111418] flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-600">lock_reset</span>
-                Reset password
+                {t('admin.resetPasswordTitle')}
               </h3>
-              <p className="text-sm text-gray-500 mt-1">Set a new password for {user?.name ?? user?.email}.</p>
+              <p className="text-sm text-gray-500 mt-1">{t('admin.resetPasswordDesc', { name: user?.name ?? user?.email })}</p>
             </div>
             <form onSubmit={handleResetPasswordSubmit} className="px-6 pb-6 space-y-4">
               {resetPasswordError && (
@@ -669,27 +686,27 @@ const AdminUserDetailPage = () => {
                 </div>
               )}
               <div>
-                <label htmlFor="reset-new-password" className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                <label htmlFor="reset-new-password" className="block text-sm font-medium text-gray-700 mb-1">{t('admin.newPassword')}</label>
                 <input
                   id="reset-new-password"
                   type="password"
                   value={resetPasswordNew}
                   onChange={(e) => setResetPasswordNew(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="At least 6 characters"
+                  placeholder={t('admin.newPasswordPlaceholder')}
                   autoComplete="new-password"
                   disabled={resetPasswordSubmitting}
                 />
               </div>
               <div>
-                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">{t('admin.confirmPassword')}</label>
                 <input
                   id="reset-confirm-password"
                   type="password"
                   value={resetPasswordConfirm}
                   onChange={(e) => setResetPasswordConfirm(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Confirm new password"
+                  placeholder={t('admin.confirmPasswordPlaceholder')}
                   autoComplete="new-password"
                   disabled={resetPasswordSubmitting}
                 />
@@ -700,7 +717,7 @@ const AdminUserDetailPage = () => {
                   disabled={resetPasswordSubmitting}
                   className="flex-1 px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
                 >
-                  {resetPasswordSubmitting ? 'Resetting…' : 'Reset password'}
+                  {resetPasswordSubmitting ? t('admin.resetting') : t('admin.resetPasswordButton')}
                 </button>
                 <button
                   type="button"
@@ -708,7 +725,7 @@ const AdminUserDetailPage = () => {
                   disabled={resetPasswordSubmitting}
                   className="px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -747,7 +764,7 @@ const AdminUserDetailPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
-                <span>Dashboard</span>
+                <span>{t('sidebar.dashboard')}</span>
               </Link>
               <Link
                 to="/admin/users"
@@ -755,7 +772,7 @@ const AdminUserDetailPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">people</span>
-                <span>Users</span>
+                <span>{t('sidebar.users')}</span>
               </Link>
               <Link
                 to="/admin/logs"
@@ -763,7 +780,7 @@ const AdminUserDetailPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
-                <span>Logs</span>
+                <span>{t('sidebar.logs')}</span>
               </Link>
               <div className="my-2 border-t border-gray-100" />
             </>
@@ -774,7 +791,7 @@ const AdminUserDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
-            <span>Kế hoạch hôm nay</span>
+            <span>{t('sidebar.dailyPlan')}</span>
           </Link>
           <Link 
             to="/goals" 
@@ -782,7 +799,7 @@ const AdminUserDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
-            <span>Quản lý mục tiêu</span>
+            <span>{t('sidebar.goals')}</span>
           </Link>
           <Link 
             to="/calendar" 
@@ -790,7 +807,7 @@ const AdminUserDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
-            <span>Lịch biểu</span>
+            <span>{t('sidebar.calendar')}</span>
           </Link>
           <Link 
             to="/settings" 
@@ -798,7 +815,7 @@ const AdminUserDetailPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span>Thiết lập</span>
+            <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
             <button 
@@ -808,7 +825,7 @@ const AdminUserDetailPage = () => {
               }}
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
+              <span>{t('sidebar.logout')}</span>
             </button>
           </div>
         </div>

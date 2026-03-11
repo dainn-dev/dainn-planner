@@ -11,13 +11,15 @@ public class LongTermGoalService : ILongTermGoalService
 {
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IUserActivityService _userActivityService;
 
     private static DateTime ToUtc(DateTime d) => d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
 
-    public LongTermGoalService(ApplicationDbContext context, IMapper mapper)
+    public LongTermGoalService(ApplicationDbContext context, IMapper mapper, IUserActivityService userActivityService)
     {
         _context = context;
         _mapper = mapper;
+        _userActivityService = userActivityService;
     }
 
     public async Task<ApiResponse<List<LongTermGoalDto>>> GetGoalsAsync(string userId, string? status, string? category, int page = 1, int pageSize = 10)
@@ -87,6 +89,7 @@ public class LongTermGoalService : ILongTermGoalService
 
         _context.LongTermGoals.Add(goal);
         await _context.SaveChangesAsync();
+        await _userActivityService.RecordAsync(userId, "goal", "admin.activity.goalCreated", "LongTermGoal", goal.Id.ToString());
 
         return new ApiResponse<LongTermGoalDto>
         {

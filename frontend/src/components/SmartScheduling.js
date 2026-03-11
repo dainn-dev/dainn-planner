@@ -10,7 +10,7 @@ const SmartScheduling = () => {
   ];
 
   return (
-    <section className="w-full bg-gray-50 border-y border-gray-200">
+    <section id="features" className="w-full bg-gray-50 border-y border-gray-200">
       <div className="w-full max-w-[960px] px-4 py-16 mx-auto">
         <div className="flex flex-col gap-12">
           <div className="text-center max-w-[700px] mx-auto">

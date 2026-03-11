@@ -31,6 +31,13 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : Unauthorized(result);
     }
 
+    [HttpPost("verify-2fa")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Verify2FA([FromBody] Verify2FALoginRequest request)
+    {
+        var result = await _authService.Verify2FAAndLoginAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("refresh-token")]
     public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
     {

@@ -23,11 +23,11 @@ public class GlobalExceptionHandlerMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
-                "An unhandled exception occurred. Path: {Path}, Method: {Method}, StatusCode: {StatusCode}",
+            _logger.LogError(ex,
+                "An unhandled exception occurred. Path: {Path}, Method: {Method}, TraceId: {TraceId}",
                 context.Request.Path,
                 context.Request.Method,
-                context.Response.StatusCode);
+                context.TraceIdentifier);
             await HandleExceptionAsync(context, ex);
         }
     }

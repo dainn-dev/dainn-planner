@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
@@ -78,6 +79,17 @@ public class UsersController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpPost("me/change-password")]
+    public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _userService.ChangePasswordAsync(userId, request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     // 2FA Endpoints
     [HttpGet("me/2fa/setup")]
     public async Task<ActionResult<ApiResponse<Setup2FAResponse>>> Setup2FA()
@@ -132,6 +144,30 @@ public class UsersController : ControllerBase
 
         var result = await _userService.GenerateRecoveryCodesAsync(userId);
         return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpGet("me/devices")]
+    public async Task<ActionResult<ApiResponse<List<UserDeviceDto>>>> GetMyDevices()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _userService.GetMyDevicesAsync(userId);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
+
+    [HttpDelete("me/devices/{id}")]
+    public async Task<ActionResult> RevokeDevice(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _userService.RevokeDeviceAsync(userId, id);
+        if (!result.Success)
+            return NotFound(result);
+        return NoContent();
     }
 }
 

@@ -62,9 +62,6 @@ const FormSelect = ({
             </option>
           ))}
         </select>
-        <span className="material-symbols-outlined absolute right-3 top-2.5 text-zinc-400 pointer-events-none text-[18px]">
-          expand_more
-        </span>
       </div>
       {error && (
         <p id={`${id}-error`} className="text-xs text-red-500" role="alert">

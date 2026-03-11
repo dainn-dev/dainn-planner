@@ -19,17 +19,20 @@ public class UserService : IUserService
     private readonly IMapper _mapper;
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
+    private readonly IUserActivityService _userActivityService;
 
     public UserService(
         UserManager<ApplicationUser> userManager,
         IMapper mapper,
         ApplicationDbContext context,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IUserActivityService userActivityService)
     {
         _userManager = userManager;
         _mapper = mapper;
         _context = context;
         _environment = environment;
+        _userActivityService = userActivityService;
     }
 
     public async Task<ApiResponse<UserDto>> GetCurrentUserAsync(string userId)
@@ -105,6 +108,7 @@ public class UserService : IUserService
 
         user.UpdatedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
+        await _userActivityService.RecordAsync(userId, "settings", "admin.activity.updatedProfile");
 
         return new ApiResponse<UserDto>
         {
@@ -142,6 +146,7 @@ public class UserService : IUserService
         user.AvatarUrl = avatarUrl;
         user.UpdatedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
+        await _userActivityService.RecordAsync(userId, "settings", "admin.activity.updatedAvatar");
 
         return new ApiResponse<string>
         {
@@ -435,6 +440,82 @@ public class UserService : IUserService
             Success = true,
             Message = "Recovery codes have been regenerated. Old codes are no longer valid. Please save these codes securely.",
             Data = recoveryCodesArray
+        };
+    }
+
+    public async Task<ApiResponse<List<UserDeviceDto>>> GetMyDevicesAsync(string userId)
+    {
+        var devices = await _context.UserDevices
+            .Where(d => d.UserId == userId)
+            .OrderByDescending(d => d.LastUsedAt)
+            .Select(d => new UserDeviceDto
+            {
+                Id = d.Id,
+                DeviceId = d.DeviceId,
+                DeviceName = d.DeviceName,
+                Platform = d.Platform,
+                LastUsedAt = d.LastUsedAt,
+                CreatedAt = d.CreatedAt
+            })
+            .ToListAsync();
+
+        return new ApiResponse<List<UserDeviceDto>>
+        {
+            Success = true,
+            Data = devices
+        };
+    }
+
+    public async Task<ApiResponse<object>> RevokeDeviceAsync(string userId, Guid deviceId)
+    {
+        var device = await _context.UserDevices
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+        if (device == null)
+        {
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Device not found or access denied"
+            };
+        }
+
+        _context.UserDevices.Remove(device);
+        await _context.SaveChangesAsync();
+
+        return new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Device revoked"
+        };
+    }
+
+    public async Task<ApiResponse<object>> ChangePasswordAsync(string userId, ChangePasswordRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "User not found"
+            };
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            var message = result.Errors?.FirstOrDefault()?.Description ?? "Failed to change password";
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = message
+            };
+        }
+
+        return new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Password changed successfully"
         };
     }
 }

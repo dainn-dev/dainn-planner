@@ -13,6 +13,8 @@ import {
   validateEmail,
   validateText,
   validateDescription,
+  validatePassword,
+  validateConfirmPassword,
 } from '../utils/formValidation';
 import { isStoredAdmin } from '../utils/auth';
 import {
@@ -56,6 +58,14 @@ const SettingsPage = () => {
   const [profileErrors, setProfileErrors] = useState({});
   const [warningMessage, setWarningMessage] = useState('');
   const [notifications, setNotifications] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [devicesError, setDevicesError] = useState(null);
+  const [modal2FA, setModal2FA] = useState(null);
+  const [setup2FAData, setSetup2FAData] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorError, setTwoFactorError] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [securityPasswordErrors, setSecurityPasswordErrors] = useState({ currentPassword: null, newPassword: null, confirmPassword: null });
 
   // Hydrate settings state from a fetched or stored settings object (general, plans, notifications, logs)
   const applySettingsToState = (settings) => {
@@ -136,6 +146,67 @@ const SettingsPage = () => {
     load();
   }, []);
 
+  // Load logged-in devices when Security tab is active
+  useEffect(() => {
+    if (activeTab !== 'security') return;
+
+    const formatLastActive = (dateStr) => {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return t('settings.justNow', 'Just now');
+      if (diffMins < 60) return t('settings.minutesAgo', { count: diffMins }, `${diffMins} min ago`);
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return t('settings.hoursAgo', { count: diffHours }, `${diffHours} hour(s) ago`);
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return t('settings.daysAgo', { count: diffDays }, `${diffDays} day(s) ago`);
+      return d.toLocaleDateString();
+    };
+
+    const platformToIcon = (platform) => {
+      if (!platform) return 'computer';
+      const p = String(platform).toLowerCase();
+      if (p === 'ios' || p === 'android') return 'smartphone';
+      return 'computer';
+    };
+
+    const loadDevices = async () => {
+      setDevicesLoading(true);
+      setDevicesError(null);
+      try {
+        const list = await userAPI.getDevices();
+        const currentDeviceId = (typeof localStorage !== 'undefined' && localStorage.getItem('deviceId')) || 'web';
+        const mapped = (list || []).map((d) => ({
+          id: String(d.id),
+          name: d.deviceName || d.platform || 'Web device',
+          platform: d.platform || '—',
+          lastActive: formatLastActive(d.lastUsedAt),
+          isCurrent: d.deviceId === currentDeviceId,
+          type: platformToIcon(d.platform),
+        }));
+        setSecuritySettings(prev => ({ ...prev, devices: mapped }));
+      } catch (err) {
+        setDevicesError(err?.message || t('settings.devicesLoadError', 'Failed to load devices'));
+        setSecuritySettings(prev => ({ ...prev, devices: [] }));
+      } finally {
+        setDevicesLoading(false);
+      }
+    };
+
+    const load2FAStatus = async () => {
+      try {
+        const enabled = await userAPI.get2FAStatus();
+        setSecuritySettings(prev => ({ ...prev, twoFactorAuth: !!enabled }));
+      } catch (_) {
+        // leave toggle as-is on error
+      }
+    };
+
+    loadDevices();
+    load2FAStatus();
+  }, [activeTab, t]);
+
   // Generic handler for state updates
   const createHandler = (setter) => (field, value) => {
     setter(prev => ({ ...prev, [field]: value }));
@@ -213,6 +284,39 @@ const SettingsPage = () => {
       return;
     }
 
+    if (activeTab === 'security') {
+      const { currentPassword, newPassword, confirmPassword } = securitySettings;
+      const anyFilled = currentPassword || newPassword || confirmPassword;
+      if (!anyFilled) {
+        showWarning(t('settings.savedSuccess'));
+        return;
+      }
+      const errors = {
+        currentPassword: validatePassword(currentPassword, true),
+        newPassword: validatePassword(newPassword, true),
+        confirmPassword: validateConfirmPassword(newPassword, confirmPassword, true),
+      };
+      const hasErrors = Object.values(errors).some(e => e != null);
+      if (hasErrors) {
+        setSecurityPasswordErrors(errors);
+        return;
+      }
+      setSecurityPasswordErrors({ currentPassword: null, newPassword: null, confirmPassword: null });
+      try {
+        await userAPI.changePassword({ currentPassword, newPassword });
+        setSecuritySettings(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        }));
+        showWarning(t('settings.passwordChangedSuccess', 'Password changed successfully'));
+      } catch (error) {
+        showWarning(error.message || t('settings.passwordChangeError', 'Failed to change password'));
+      }
+      return;
+    }
+
     try {
       await userAPI.updateSettings({
         general: generalSettings,
@@ -237,14 +341,93 @@ const SettingsPage = () => {
     setSecuritySettings(INITIAL_SECURITY_SETTINGS);
     setLogsSettings(INITIAL_LOGS_SETTINGS);
     setProfileErrors({});
+    setSecurityPasswordErrors({ currentPassword: null, newPassword: null, confirmPassword: null });
   };
 
-  const handleLogoutDevice = (deviceId) => {
+  const handleLogoutDevice = async (deviceId) => {
     setWarningMessage('');
-    setSecuritySettings(prev => ({
-      ...prev,
-      devices: prev.devices.filter(device => device.id !== deviceId)
-    }));
+    try {
+      await userAPI.revokeDevice(deviceId);
+      setSecuritySettings(prev => ({
+        ...prev,
+        devices: prev.devices.filter(device => device.id !== deviceId),
+      }));
+    } catch (err) {
+      setWarningMessage(err?.message || t('settings.revokeDeviceError', 'Failed to revoke device'));
+    }
+  };
+
+  // When Enable 2FA modal opens, fetch setup data (QR + key)
+  useEffect(() => {
+    if (modal2FA !== 'enable') return;
+    setSetup2FAData(null);
+    setTwoFactorError('');
+    setTwoFactorCode('');
+    const load = async () => {
+      try {
+        const data = await userAPI.setup2FA();
+        setSetup2FAData({ sharedKey: data?.sharedKey ?? data?.SharedKey ?? '', qrCodeUri: data?.qrCodeUri ?? data?.QrCodeUri ?? '' });
+      } catch (err) {
+        setTwoFactorError(err?.message || t('settings.twoFactorSetupError'));
+      }
+    };
+    load();
+  }, [modal2FA, t]);
+
+  const close2FAModal = () => {
+    setModal2FA(null);
+    setSetup2FAData(null);
+    setTwoFactorCode('');
+    setTwoFactorError('');
+  };
+
+  const handle2FAToggle = (e) => {
+    e.preventDefault();
+    if (securitySettings.twoFactorAuth) {
+      setModal2FA('disable');
+      setTwoFactorCode('');
+      setTwoFactorError('');
+    } else {
+      setModal2FA('enable');
+    }
+  };
+
+  const handleEnable2FASubmit = async () => {
+    setTwoFactorError('');
+    if (!twoFactorCode.trim()) {
+      setTwoFactorError(t('settings.twoFactorCodeRequired'));
+      return;
+    }
+    setTwoFactorLoading(true);
+    try {
+      await userAPI.enable2FA({ code: twoFactorCode.trim() });
+      setSecuritySettings(prev => ({ ...prev, twoFactorAuth: true }));
+      close2FAModal();
+      showWarning(t('settings.twoFactorEnabledSuccess'));
+    } catch (err) {
+      setTwoFactorError(err?.message || t('settings.twoFactorEnableError'));
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleDisable2FASubmit = async () => {
+    setTwoFactorError('');
+    if (!twoFactorCode.trim()) {
+      setTwoFactorError(t('settings.twoFactorCodeRequired'));
+      return;
+    }
+    setTwoFactorLoading(true);
+    try {
+      await userAPI.disable2FA({ code: twoFactorCode.trim() });
+      setSecuritySettings(prev => ({ ...prev, twoFactorAuth: false }));
+      close2FAModal();
+      showWarning(t('settings.twoFactorDisabledSuccess'));
+    } catch (err) {
+      setTwoFactorError(err?.message || t('settings.twoFactorDisableError'));
+    } finally {
+      setTwoFactorLoading(false);
+    }
   };
 
   const handleImageSelect = (e) => {
@@ -281,7 +464,14 @@ const SettingsPage = () => {
     try {
       const url = await userAPI.uploadAvatar(selectedImage);
       const path = typeof url === 'string' ? url : (url?.data ?? url);
-      if (path) setAvatarUrl(path);
+      if (path) {
+        setAvatarUrl(path);
+        try {
+          const u = JSON.parse(localStorage.getItem('user') || '{}');
+          u.avatarUrl = path;
+          localStorage.setItem('user', JSON.stringify(u));
+        } catch (e) { /* ignore */ }
+      }
       showWarning(t('settings.savedSuccess'));
       setUploadImageModalOpen(false);
       setSelectedImage(null);
@@ -1001,54 +1191,6 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                {/* General Configuration Section */}
-                <div className="flex flex-col gap-6">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-zinc-900">tune</span>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.generalConfig')}</h3>
-                  </div>
-                  <div className="bg-white rounded-lg border border-border-light shadow-sm p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-zinc-900" htmlFor="frequency">
-                        {t('settings.emailFrequency')}
-                      </label>
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none bg-background-subtle border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all cursor-pointer hover:bg-white"
-                          id="frequency"
-                          value={notificationSettings.emailFrequency}
-                          onChange={(e) => handleNotificationSettingChange('emailFrequency', e.target.value)}
-                        >
-                          <option>Ngay lập tức</option>
-                          <option>Tổng hợp hàng ngày</option>
-                          <option>Tổng hợp hàng tuần</option>
-                        </select>
-                      </div>
-                      <p className="text-xs text-secondary">{t('settings.emailFrequencyHint')}</p>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-zinc-900" htmlFor="sound">
-                        {t('settings.notificationSound')}
-                      </label>
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none bg-background-subtle border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all cursor-pointer hover:bg-white"
-                          id="sound"
-                          value={notificationSettings.notificationSound}
-                          onChange={(e) => handleNotificationSettingChange('notificationSound', e.target.value)}
-                        >
-                          <option>Mặc định (Ping)</option>
-                          <option>Nhẹ nhàng (Ripple)</option>
-                          <option>Vui nhộn (Bounce)</option>
-                          <option>Tắt âm thanh</option>
-                        </select>
-                        <span className="material-symbols-outlined absolute right-3 top-2.5 text-zinc-400 pointer-events-none text-[18px]">volume_up</span>
-                      </div>
-                      <p className="text-xs text-secondary">{t('settings.notificationSoundHint')}</p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light">
                   <button
@@ -1101,13 +1243,19 @@ const SettingsPage = () => {
                       </label>
                       <div className="relative">
                         <input
-                          className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400"
+                          className={`w-full bg-white border rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 ${securityPasswordErrors.currentPassword ? 'border-red-500' : 'border-border-light'}`}
                           id="current-password"
                           placeholder={t('settings.currentPasswordPlaceholder')}
                           type="password"
                           value={securitySettings.currentPassword}
-                          onChange={(e) => handleSecuritySettingChange('currentPassword', e.target.value)}
+                          onChange={(e) => {
+                            handleSecuritySettingChange('currentPassword', e.target.value);
+                            if (securityPasswordErrors.currentPassword) setSecurityPasswordErrors(prev => ({ ...prev, currentPassword: null }));
+                          }}
                         />
+                        {securityPasswordErrors.currentPassword && (
+                          <p className="text-xs text-red-500 mt-1" role="alert">{securityPasswordErrors.currentPassword}</p>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -1116,13 +1264,19 @@ const SettingsPage = () => {
                       </label>
                       <div className="relative">
                         <input
-                          className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400"
+                          className={`w-full bg-white border rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 ${securityPasswordErrors.newPassword ? 'border-red-500' : 'border-border-light'}`}
                           id="new-password"
                           placeholder={t('settings.newPasswordPlaceholder')}
                           type="password"
                           value={securitySettings.newPassword}
-                          onChange={(e) => handleSecuritySettingChange('newPassword', e.target.value)}
+                          onChange={(e) => {
+                            handleSecuritySettingChange('newPassword', e.target.value);
+                            if (securityPasswordErrors.newPassword) setSecurityPasswordErrors(prev => ({ ...prev, newPassword: null }));
+                          }}
                         />
+                        {securityPasswordErrors.newPassword && (
+                          <p className="text-xs text-red-500 mt-1" role="alert">{securityPasswordErrors.newPassword}</p>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -1131,13 +1285,19 @@ const SettingsPage = () => {
                       </label>
                       <div className="relative">
                         <input
-                          className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400"
+                          className={`w-full bg-white border rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 ${securityPasswordErrors.confirmPassword ? 'border-red-500' : 'border-border-light'}`}
                           id="confirm-password"
                           placeholder={t('settings.confirmPasswordPlaceholder')}
                           type="password"
                           value={securitySettings.confirmPassword}
-                          onChange={(e) => handleSecuritySettingChange('confirmPassword', e.target.value)}
+                          onChange={(e) => {
+                            handleSecuritySettingChange('confirmPassword', e.target.value);
+                            if (securityPasswordErrors.confirmPassword) setSecurityPasswordErrors(prev => ({ ...prev, confirmPassword: null }));
+                          }}
                         />
+                        {securityPasswordErrors.confirmPassword && (
+                          <p className="text-xs text-red-500 mt-1" role="alert">{securityPasswordErrors.confirmPassword}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1162,7 +1322,7 @@ const SettingsPage = () => {
                         className="sr-only peer"
                         type="checkbox"
                         checked={securitySettings.twoFactorAuth}
-                        onChange={(e) => handleSecuritySettingChange('twoFactorAuth', e.target.checked)}
+                        onChange={handle2FAToggle}
                       />
                       <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
                     </label>
@@ -1178,7 +1338,16 @@ const SettingsPage = () => {
                     <p className="text-sm text-secondary mt-1">{t('settings.activeDevicesDesc')}</p>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {securitySettings.devices.map((device) => (
+                    {devicesLoading && (
+                      <p className="text-sm text-secondary py-4">{t('common.loading', 'Loading...')}</p>
+                    )}
+                    {!devicesLoading && devicesError && (
+                      <p className="text-sm text-red-600 py-2">{devicesError}</p>
+                    )}
+                    {!devicesLoading && !devicesError && securitySettings.devices.length === 0 && (
+                      <p className="text-sm text-secondary py-4">{t('settings.noLoggedInDevices')}</p>
+                    )}
+                    {!devicesLoading && !devicesError && securitySettings.devices.map((device) => (
                       <div
                         key={device.id}
                         className={`flex items-center justify-between p-4 bg-white border border-border-light rounded-lg shadow-sm ${
@@ -1194,12 +1363,12 @@ const SettingsPage = () => {
                               <p className="text-sm font-semibold text-zinc-900">{device.name}</p>
                               {device.isCurrent && (
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-700 uppercase tracking-wide">
-                                  Hiện tại
+                                  {t('settings.currentDevice')}
                                 </span>
                               )}
                             </div>
                             <p className="text-xs text-secondary mt-0.5">
-                              {device.location} • {device.lastActive}
+                              {device.platform} • {device.lastActive}
                             </p>
                           </div>
                         </div>
@@ -1519,6 +1688,129 @@ const SettingsPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Enable 2FA Modal */}
+      {modal2FA === 'enable' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={close2FAModal}
+        >
+          <div
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-zinc-900">{t('settings.twoFactorEnableTitle')}</h3>
+              <button onClick={close2FAModal} className="p-2 rounded-full hover:bg-gray-100" aria-label={t('common.close')}>
+                <span className="material-symbols-outlined text-gray-400">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {twoFactorError && (
+                <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{twoFactorError}</p>
+              )}
+              {!setup2FAData && !twoFactorError && (
+                <p className="text-sm text-secondary">{t('common.loading', 'Loading...')}</p>
+              )}
+              {setup2FAData && setup2FAData.qrCodeUri && (
+                <>
+                  <p className="text-sm text-secondary">{t('settings.twoFactorScanQR')}</p>
+                  <div className="flex justify-center p-4 bg-white border border-border-light rounded-lg">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(setup2FAData.qrCodeUri)}`}
+                      alt="QR code"
+                      width={200}
+                      height={200}
+                    />
+                  </div>
+                  {setup2FAData.sharedKey && (
+                    <div>
+                      <p className="text-sm text-secondary mb-1">{t('settings.twoFactorManualKey')}</p>
+                      <p className="text-xs font-mono bg-zinc-100 p-2 rounded break-all">{setup2FAData.sharedKey}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-medium text-zinc-900 block mb-1">{t('settings.twoFactorEnterCode')}</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={8}
+                      placeholder="000000"
+                      className="w-full border border-border-light rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+              <button onClick={close2FAModal} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg">
+                {t('settings.cancel')}
+              </button>
+              <button
+                onClick={handleEnable2FASubmit}
+                disabled={!setup2FAData || !twoFactorCode.trim() || twoFactorLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {twoFactorLoading ? t('common.processing', 'Processing...') : t('settings.twoFactorVerifyEnable')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable 2FA Modal */}
+      {modal2FA === 'disable' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={close2FAModal}
+        >
+          <div
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-zinc-900">{t('settings.twoFactorDisableTitle')}</h3>
+              <button onClick={close2FAModal} className="p-2 rounded-full hover:bg-gray-100" aria-label={t('common.close')}>
+                <span className="material-symbols-outlined text-gray-400">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-secondary">{t('settings.twoFactorDisableDesc')}</p>
+              {twoFactorError && (
+                <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{twoFactorError}</p>
+              )}
+              <div>
+                <label className="text-sm font-medium text-zinc-900 block mb-1">{t('settings.twoFactorEnterCode')}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  placeholder="000000"
+                  className="w-full border border-border-light rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+              <button onClick={close2FAModal} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg">
+                {t('settings.cancel')}
+              </button>
+              <button
+                onClick={handleDisable2FASubmit}
+                disabled={!twoFactorCode.trim() || twoFactorLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {twoFactorLoading ? t('common.processing', 'Processing...') : t('settings.twoFactorDisableButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upload Image Modal */}
       {uploadImageModalOpen && (

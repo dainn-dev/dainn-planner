@@ -214,7 +214,7 @@ const AdminUsersPage = () => {
       await adminAPI.exportUsers(params);
       setExportModalOpen(false);
     } catch (err) {
-      setExportError(err.message || 'Export failed');
+      setExportError(err.message || t('admin.exportFailed'));
     } finally {
       setExporting(false);
     }
@@ -249,15 +249,15 @@ const AdminUsersPage = () => {
   const getSortLabel = (sortOption) => {
     switch (sortOption) {
       case 'newest':
-        return 'Newest';
+        return t('admin.sortNewestFirst');
       case 'oldest':
-        return 'Oldest';
+        return t('admin.sortOldestFirst');
       case 'name-asc':
-        return 'Name (A-Z)';
+        return t('admin.nameAZ');
       case 'name-desc':
-        return 'Name (Z-A)';
+        return t('admin.nameZA');
       default:
-        return 'Newest';
+        return t('admin.sortNewestFirst');
     }
   };
 
@@ -274,7 +274,7 @@ const AdminUsersPage = () => {
           title={t('admin.userManagement')}
           icon="group"
           actionButton={{
-            text: 'Add New User',
+            text: t('admin.addNewUser'),
             icon: 'add',
             onClick: () => console.log('Add new user clicked')
           }}
@@ -289,17 +289,17 @@ const AdminUsersPage = () => {
             {/* Breadcrumb */}
             <div className="flex flex-wrap gap-2 text-sm">
               <Link to="/admin/dashboard" className="text-gray-500 font-medium hover:text-primary transition-colors">
-                Admin
+                {t('admin.admin')}
               </Link>
               <span className="text-gray-500 font-medium">/</span>
-              <span className="text-[#111418] font-semibold">User Management</span>
+              <span className="text-[#111418] font-semibold">{t('admin.userManagement')}</span>
             </div>
 
             {/* Page Heading */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <h1 className="text-[#111418] text-3xl font-black leading-tight tracking-[-0.033em]">User Management</h1>
-                <p className="text-gray-500 text-base font-normal">View, manage, and edit user accounts and permissions.</p>
+                <h1 className="text-[#111418] text-3xl font-black leading-tight tracking-[-0.033em]">{t('admin.userManagement')}</h1>
+                <p className="text-gray-500 text-base font-normal">{t('admin.userManagementSubtitle')}</p>
               </div>
               <div className="flex gap-3">
                 <button 
@@ -307,7 +307,7 @@ const AdminUsersPage = () => {
                   className="flex items-center justify-center rounded-lg h-10 px-4 bg-white border border-gray-200 text-[#111418] text-sm font-bold hover:bg-gray-50 hover:text-primary transition-colors gap-2 shadow-sm"
                 >
                   <span className="material-symbols-outlined text-[20px]">download</span>
-                  <span className="hidden sm:inline">Export</span>
+                  <span className="hidden sm:inline">{t('admin.export')}</span>
                 </button>
               </div>
             </div>
@@ -382,7 +382,7 @@ const AdminUsersPage = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-gray-50 text-[#111418] text-sm rounded-lg pl-10 pr-4 py-2 border-gray-200 focus:ring-2 focus:ring-primary focus:bg-white transition-all"
-                placeholder="Search users..."
+                placeholder={t('admin.searchUsersPlaceholder')}
                 type="text"
               />
               </div>
@@ -395,7 +395,7 @@ const AdminUsersPage = () => {
                     }`}
                   >
                     <span className="material-symbols-outlined text-[18px] text-gray-500">filter_list</span>
-                    <span>Filter</span>
+                    <span>{t('admin.filter')}</span>
                     {hasActiveFilters && (
                       <span className="size-2 bg-primary rounded-full"></span>
                     )}
@@ -409,7 +409,7 @@ const AdminUsersPage = () => {
                       <div className="absolute left-0 top-full mt-2 w-80 min-w-[280px] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
                         <div className="p-4 border-b border-gray-200">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-[#111418] text-sm">Filter Users</h3>
+                            <h3 className="font-bold text-[#111418] text-sm">{t('admin.filterUsers')}</h3>
                             <button
                               onClick={() => setFilterOpen(false)}
                               className="p-1 text-gray-400 hover:text-gray-600 rounded-md"
@@ -422,51 +422,51 @@ const AdminUsersPage = () => {
                           {/* Status Filter */}
                           <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                              Status
+                              {t('admin.status')}
                             </label>
                             <select
                               value={filters.status}
                               onChange={(e) => handleFilterChange('status', e.target.value)}
                               className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                              <option value="">All Status</option>
-                              <option value="Active">Active</option>
-                              <option value="Pending">Pending</option>
-                              <option value="Inactive">Inactive</option>
-                              <option value="Banned">Banned</option>
+                              <option value="">{t('admin.allStatus')}</option>
+                              <option value="Active">{t('admin.statusActive')}</option>
+                              <option value="Pending">{t('admin.statusPending')}</option>
+                              <option value="Inactive">{t('admin.statusInactive')}</option>
+                              <option value="Banned">{t('admin.statusBanned')}</option>
                             </select>
                           </div>
                           {/* Role Filter */}
                           <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                              Role
+                              {t('admin.role')}
                             </label>
                             <select
                               value={filters.role}
                               onChange={(e) => handleFilterChange('role', e.target.value)}
                               className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                              <option value="">All Roles</option>
-                              <option value="Admin">Admin</option>
-                              <option value="User">User</option>
+                              <option value="">{t('admin.allRoles')}</option>
+                              <option value="Admin">{t('admin.roleAdmin')}</option>
+                              <option value="User">{t('admin.roleUser')}</option>
                             </select>
                           </div>
                           {/* Date Range Filter */}
                           <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                              Joined Date
+                              {t('admin.joinedDate')}
                             </label>
                             <select
                               value={filters.dateRange}
                               onChange={(e) => handleFilterChange('dateRange', e.target.value)}
                               className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                              <option value="">All Time</option>
-                              <option value="today">Today</option>
-                              <option value="week">This Week</option>
-                              <option value="month">This Month</option>
-                              <option value="quarter">This Quarter</option>
-                              <option value="year">This Year</option>
+                              <option value="">{t('admin.allTime')}</option>
+                              <option value="today">{t('admin.today')}</option>
+                              <option value="week">{t('admin.thisWeek')}</option>
+                              <option value="month">{t('admin.thisMonth')}</option>
+                              <option value="quarter">{t('admin.thisQuarter')}</option>
+                              <option value="year">{t('admin.thisYear')}</option>
                             </select>
                           </div>
                         </div>
@@ -475,13 +475,13 @@ const AdminUsersPage = () => {
                             onClick={handleClearFilters}
                             className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-[#111418] hover:bg-gray-50 rounded-lg transition-colors"
                           >
-                            Clear
+                            {t('admin.clear')}
                           </button>
                           <button
                             onClick={handleApplyFilters}
                             className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors"
                           >
-                            Apply Filters
+                            {t('admin.applyFilters')}
                           </button>
                         </div>
                       </div>
@@ -494,7 +494,7 @@ const AdminUsersPage = () => {
                     className="flex items-center gap-2 text-sm font-medium text-[#111418] bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[18px] text-gray-500">sort</span>
-                    <span>Sort: {getSortLabel(selectedSort)}</span>
+                    <span>{t('daily.sort')}: {getSortLabel(selectedSort)}</span>
                   </button>
                   {sortOpen && (
                     <>
@@ -505,7 +505,7 @@ const AdminUsersPage = () => {
                       <div className="absolute left-0 top-full mt-2 w-64 min-w-[240px] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
                         <div className="p-4 border-b border-gray-200">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-[#111418] text-sm">Sort Users</h3>
+                            <h3 className="font-bold text-[#111418] text-sm">{t('admin.sortUsers')}</h3>
                             <button
                               onClick={() => setSortOpen(false)}
                               className="p-1 text-gray-400 hover:text-gray-600 rounded-md"
@@ -526,7 +526,7 @@ const AdminUsersPage = () => {
                             <span className="material-symbols-outlined text-[18px]">
                               {selectedSort === 'newest' ? 'radio_button_checked' : 'radio_button_unchecked'}
                             </span>
-                            <span>Newest First</span>
+                            <span>{t('admin.sortNewestFirst')}</span>
                           </button>
                           <button
                             onClick={() => handleSortChange('oldest')}
@@ -539,7 +539,7 @@ const AdminUsersPage = () => {
                             <span className="material-symbols-outlined text-[18px]">
                               {selectedSort === 'oldest' ? 'radio_button_checked' : 'radio_button_unchecked'}
                             </span>
-                            <span>Oldest First</span>
+                            <span>{t('admin.sortOldestFirst')}</span>
                           </button>
                           <button
                             onClick={() => handleSortChange('name-asc')}
@@ -552,7 +552,7 @@ const AdminUsersPage = () => {
                             <span className="material-symbols-outlined text-[18px]">
                               {selectedSort === 'name-asc' ? 'radio_button_checked' : 'radio_button_unchecked'}
                             </span>
-                            <span>Name (A-Z)</span>
+                            <span>{t('admin.nameAZ')}</span>
                           </button>
                           <button
                             onClick={() => handleSortChange('name-desc')}
@@ -565,7 +565,7 @@ const AdminUsersPage = () => {
                             <span className="material-symbols-outlined text-[18px]">
                               {selectedSort === 'name-desc' ? 'radio_button_checked' : 'radio_button_unchecked'}
                             </span>
-                            <span>Name (Z-A)</span>
+                            <span>{t('admin.nameZA')}</span>
                           </button>
                         </div>
                       </div>
@@ -574,7 +574,7 @@ const AdminUsersPage = () => {
                 </div>
               </div>
               <div className="hidden sm:flex flex-1 justify-end text-gray-500 text-sm font-medium">
-                Showing <span className="text-[#111418] mx-1 font-bold">{totalCount === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)}</span> of <span className="text-[#111418] ml-1 font-bold">{totalCount}</span>
+                {t('admin.showingOf', { from: totalCount === 0 ? 0 : (page - 1) * pageSize + 1, to: Math.min(page * pageSize, totalCount), total: totalCount })}
               </div>
             </div>
 
@@ -591,20 +591,20 @@ const AdminUsersPage = () => {
                           onChange={handleSelectAll}
                           disabled={users.length === 0}
                           className="rounded border-gray-300 bg-white text-primary focus:ring-primary"
-                          aria-label="Select all users"
+                          aria-label={t('admin.selectAllUsers')}
                         />
                       </th>
-                      <th className="px-6 py-4" scope="col">User</th>
-                      <th className="px-6 py-4" scope="col">Role</th>
-                      <th className="px-6 py-4" scope="col">Status</th>
-                      <th className="px-6 py-4" scope="col">Joined Date</th>
-                      <th className="px-6 py-4 text-right" scope="col">Actions</th>
+                      <th className="px-6 py-4" scope="col">{t('admin.tableUser')}</th>
+                      <th className="px-6 py-4" scope="col">{t('admin.tableRole')}</th>
+                      <th className="px-6 py-4" scope="col">{t('admin.tableStatus')}</th>
+                      <th className="px-6 py-4" scope="col">{t('admin.joinedDate')}</th>
+                      <th className="px-6 py-4 text-right" scope="col">{t('admin.usersTableActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {usersLoading ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Đang tải...</td>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">{t('common.loading')}</td>
                       </tr>
                     ) : (
                     users.map((user) => (
@@ -615,7 +615,7 @@ const AdminUsersPage = () => {
                             checked={selectedUserIds.includes(user.id)}
                             onChange={() => handleSelectOne(user.id)}
                             className="rounded border-gray-300 bg-white text-primary focus:ring-primary"
-                            aria-label={`Select ${user.name}`}
+                            aria-label={t('admin.selectUser', { name: user.name })}
                           />
                         </td>
                         <td className="px-6 py-4">
@@ -636,13 +636,13 @@ const AdminUsersPage = () => {
                             <span className={`material-symbols-outlined text-[18px] ${user.role === 'Admin' ? 'text-primary' : 'text-gray-500'}`}>
                               {user.role === 'Admin' ? 'security' : 'person'}
                             </span>
-                            <span className="text-[#111418] font-medium">{user.role}</span>
+                            <span className="text-[#111418] font-medium">{user.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${getStatusBadge(user.status)}`}>
                             <span className={`size-1.5 rounded-full ${getStatusDot(user.status)}`}></span>
-                            {user.status}
+                            {user.status === 'Active' ? t('admin.statusActive') : user.status === 'Pending' ? t('admin.statusPending') : user.status === 'Inactive' ? t('admin.statusInactive') : user.status === 'Banned' ? t('admin.statusBanned') : user.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 font-medium">{user.joinedDate}</td>
@@ -673,7 +673,7 @@ const AdminUsersPage = () => {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Rows per page:</span>
+                  <span className="text-sm text-gray-500">{t('admin.rowsPerPage')}</span>
                   <select
                     value={pageSize}
                     onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
@@ -767,7 +767,7 @@ const AdminUsersPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
-                <span>Dashboard</span>
+                <span>{t('sidebar.dashboard')}</span>
               </Link>
               <Link
                 to="/admin/users"
@@ -775,7 +775,7 @@ const AdminUsersPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">people</span>
-                <span>Users</span>
+                <span>{t('sidebar.users')}</span>
               </Link>
               <Link
                 to="/admin/logs"
@@ -783,7 +783,7 @@ const AdminUsersPage = () => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
-                <span>Logs</span>
+                <span>{t('sidebar.logs')}</span>
               </Link>
               <div className="my-2 border-t border-gray-100" />
             </>
@@ -794,7 +794,7 @@ const AdminUsersPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
-            <span>Kế hoạch hôm nay</span>
+            <span>{t('sidebar.dailyPlan')}</span>
           </Link>
           <Link 
             to="/goals" 
@@ -802,7 +802,7 @@ const AdminUsersPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
-            <span>Quản lý mục tiêu</span>
+            <span>{t('sidebar.goals')}</span>
           </Link>
           <Link 
             to="/calendar" 
@@ -810,7 +810,7 @@ const AdminUsersPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
-            <span>Lịch biểu</span>
+            <span>{t('sidebar.calendar')}</span>
           </Link>
           <Link 
             to="/settings" 
@@ -818,7 +818,7 @@ const AdminUsersPage = () => {
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span>Thiết lập</span>
+            <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
             <button 
@@ -828,7 +828,7 @@ const AdminUsersPage = () => {
               }}
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
+              <span>{t('sidebar.logout')}</span>
             </button>
           </div>
         </div>
@@ -850,13 +850,13 @@ const AdminUsersPage = () => {
                   <span className="material-symbols-outlined text-red-600 text-3xl">warning</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-[#111418]">Xóa người dùng</h3>
-                  <p className="text-sm text-gray-500 mt-1">Hành động này không thể hoàn tác</p>
+                  <h3 className="text-xl font-bold text-[#111418]">{t('admin.deleteUserTitle')}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{t('admin.deleteUserCannotUndo')}</p>
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <p className="text-sm text-gray-700">
-                  Bạn có chắc chắn muốn xóa người dùng <span className="font-semibold text-[#111418]">{userToDelete.name}</span>?
+                  {t('admin.deleteUserConfirm', { name: userToDelete.name })}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">{userToDelete.email}</p>
               </div>
@@ -866,13 +866,13 @@ const AdminUsersPage = () => {
                 onClick={handleDeleteCancel}
                 className="px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-gray-200 transition-colors text-sm"
               >
-                Hủy
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleDeleteConfirm}
                 className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors text-sm"
               >
-                Xóa người dùng
+                {t('admin.deleteUserButton')}
               </button>
             </div>
           </div>
@@ -895,8 +895,8 @@ const AdminUsersPage = () => {
                   <span className="material-symbols-outlined text-primary text-3xl">download</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-[#111418]">Export Users</h3>
-                  <p className="text-sm text-gray-500 mt-1">Choose export format</p>
+                  <h3 className="text-xl font-bold text-[#111418]">{t('admin.exportUsersTitle')}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{t('admin.exportUsersDesc')}</p>
                 </div>
                 <button
                   onClick={handleExportCancel}
@@ -908,7 +908,7 @@ const AdminUsersPage = () => {
               {exporting && (
                 <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
                   <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                  <span>Exporting...</span>
+                  <span>{t('admin.exporting')}</span>
                 </div>
               )}
               <div className={`space-y-2 ${exporting ? 'pointer-events-none opacity-60' : ''}`}>
@@ -922,8 +922,8 @@ const AdminUsersPage = () => {
                     <span className="material-symbols-outlined text-blue-600 group-hover:text-primary">description</span>
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-[#111418]">Export as CSV</p>
-                    <p className="text-xs text-gray-500">Comma-separated values file</p>
+                    <p className="text-sm font-medium text-[#111418]">{t('admin.exportAsCsv')}</p>
+                    <p className="text-xs text-gray-500">{t('admin.exportCsvDesc')}</p>
                   </div>
                   <span className="material-symbols-outlined text-gray-400">chevron_right</span>
                 </button>
@@ -937,8 +937,8 @@ const AdminUsersPage = () => {
                     <span className="material-symbols-outlined text-green-600 group-hover:text-primary">table_chart</span>
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-[#111418]">Export as Excel</p>
-                    <p className="text-xs text-gray-500">Microsoft Excel spreadsheet</p>
+                    <p className="text-sm font-medium text-[#111418]">{t('admin.exportAsExcel')}</p>
+                    <p className="text-xs text-gray-500">{t('admin.exportExcelDesc')}</p>
                   </div>
                   <span className="material-symbols-outlined text-gray-400">chevron_right</span>
                 </button>
@@ -952,8 +952,8 @@ const AdminUsersPage = () => {
                     <span className="material-symbols-outlined text-red-600 group-hover:text-primary">picture_as_pdf</span>
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-[#111418]">Export as PDF</p>
-                    <p className="text-xs text-gray-500">Portable Document Format</p>
+                    <p className="text-sm font-medium text-[#111418]">{t('admin.exportAsPdf')}</p>
+                    <p className="text-xs text-gray-500">{t('admin.exportPdfDesc')}</p>
                   </div>
                   <span className="material-symbols-outlined text-gray-400">chevron_right</span>
                 </button>
@@ -968,7 +968,7 @@ const AdminUsersPage = () => {
                 onClick={handleExportCancel}
                 className="px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-gray-200 transition-colors text-sm"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>

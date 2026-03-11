@@ -11,14 +11,16 @@ public class DailyTaskService : IDailyTaskService
 {
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IUserActivityService _userActivityService;
 
     private static DateTime ToUtc(DateTime d) => DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
     private static DateTime ToUtcFull(DateTime d) => d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
 
-    public DailyTaskService(ApplicationDbContext context, IMapper mapper)
+    public DailyTaskService(ApplicationDbContext context, IMapper mapper, IUserActivityService userActivityService)
     {
         _context = context;
         _mapper = mapper;
+        _userActivityService = userActivityService;
     }
 
     public async Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize, int? priority = null, string? tag = null, string? sortOrder = null, Guid? goalId = null)
@@ -128,6 +130,7 @@ public class DailyTaskService : IDailyTaskService
 
         _context.DailyTasks.Add(task);
         await _context.SaveChangesAsync();
+        await _userActivityService.RecordAsync(userId, "task", "admin.activity.taskCreated", "DailyTask", task.Id.ToString());
 
         return new ApiResponse<DailyTaskDto>
         {
@@ -250,6 +253,7 @@ public class DailyTaskService : IDailyTaskService
         task.CompletedDate = task.IsCompleted ? DateTime.UtcNow : null;
         task.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+        await _userActivityService.RecordAsync(userId, "task", task.IsCompleted ? "admin.activity.taskCompleted" : "admin.activity.taskUncompleted", "DailyTask", task.Id.ToString());
 
         return new ApiResponse<DailyTaskDto>
         {

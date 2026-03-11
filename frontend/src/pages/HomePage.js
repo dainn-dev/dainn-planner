@@ -34,7 +34,7 @@ const HomePage = () => {
   }, [navigate]);
 
   return (
-    <div className="bg-background-light font-display text-gray-900 overflow-x-hidden">
+    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden">
       <PublicHeader />
       <main className="flex flex-col items-center">
         <Hero />
@@ -42,7 +42,7 @@ const HomePage = () => {
         <GoalBreakdown />
         <FocusMode />
         <AdditionalFeatures />
-        <CTA />
+        {/* <CTA /> */}
         <Footer />
       </main>
     </div>

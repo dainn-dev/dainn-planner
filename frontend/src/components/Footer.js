@@ -13,7 +13,7 @@ const Footer = () => {
               <div className="size-7 text-primary flex items-center justify-center">
                 <span className="material-symbols-outlined text-[28px]">task_alt</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">PlanLife</span>
+              <span className="text-xl font-bold text-gray-900 tracking-tight">PlanDaily</span>
             </div>
             <p className="text-sm text-gray-500">{t('footer.copyright')}</p>
           </div>

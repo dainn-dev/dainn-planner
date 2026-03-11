@@ -3,12 +3,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const PublicHeader = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
   const isLoginPage = location.pathname === '/login';
   const isRegisterPage = location.pathname === '/register';
+
+  const currentLang = (i18n.language || 'vi').startsWith('vi') ? 'vi' : 'en';
+  const handleLanguageChange = (e) => {
+    const locale = e.target.value;
+    i18n.changeLanguage(locale);
+    localStorage.setItem('app_lang', locale);
+  };
 
   return (
     <>
@@ -42,7 +49,16 @@ const PublicHeader = () => {
               {t('header.contact')}
             </Link>
           </nav>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <select
+              value={currentLang}
+              onChange={handleLanguageChange}
+              className="h-10 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
+              aria-label={t('settings.language')}
+            >
+              <option value="vi">{t('settings.languageVi')}</option>
+              <option value="en">{t('settings.languageEn')}</option>
+            </select>
             {!isLoginPage && (
               <Link 
                 to="/login" 
@@ -100,6 +116,18 @@ const PublicHeader = () => {
             >
               {t('header.contact')}
             </Link>
+            <div className="flex items-center gap-2 px-4 py-3">
+              <span className="text-sm font-medium text-gray-500">{t('settings.language')}</span>
+              <select
+                value={currentLang}
+                onChange={handleLanguageChange}
+                className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                aria-label={t('settings.language')}
+              >
+                <option value="vi">{t('settings.languageVi')}</option>
+                <option value="en">{t('settings.languageEn')}</option>
+              </select>
+            </div>
             <div className="border-t border-gray-200 my-2"></div>
             {!isLoginPage && (
               <Link 

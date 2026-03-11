@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using DailyPlanner.Application.DTOs;
 
@@ -17,5 +18,9 @@ public interface IUserService
     Task<ApiResponse<object>> Disable2FAAsync(string userId, Verify2FARequest request);
     Task<ApiResponse<bool>> Is2FAEnabledAsync(string userId);
     Task<ApiResponse<string[]>> GenerateRecoveryCodesAsync(string userId);
+
+    Task<ApiResponse<List<UserDeviceDto>>> GetMyDevicesAsync(string userId);
+    Task<ApiResponse<object>> RevokeDeviceAsync(string userId, Guid deviceId);
+    Task<ApiResponse<object>> ChangePasswordAsync(string userId, ChangePasswordRequest request);
 }
 

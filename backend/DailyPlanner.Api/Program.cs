@@ -12,8 +12,40 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Serilog;
+using Serilog.Events;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog from appsettings and DI; add two file sinks: errors only, and info+warning only
+var logTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
+builder.Host.UseSerilog((ctx, services, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(ctx.Configuration)
+        .ReadFrom.Services(services)
+        .WriteTo.File(
+            path: "wwwroot/logs/dailyplanner-errors-.log",
+            restrictedToMinimumLevel: LogEventLevel.Error,
+            rollingInterval: Serilog.RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            outputTemplate: logTemplate,
+            shared: true)
+        .WriteTo.Conditional(
+            evt => evt.Level < LogEventLevel.Error,
+            wt => wt.File(
+                path: "wwwroot/logs/dailyplanner-.log",
+                rollingInterval: Serilog.RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: logTemplate,
+                shared: true));
+});
+
+// Request logging configuration (paths to exclude from Serilog request logs)
+var requestLoggingExcludedPaths = builder.Configuration
+    .GetSection("RequestLogging:ExcludedPaths")
+    .Get<string[]>() ?? Array.Empty<string>();
 
 // When behind a reverse proxy (nginx, Cloudflare, etc.), trust forwarded headers
 // so HTTPS redirection doesn't loop (proxy terminates SSL and forwards HTTP)
@@ -149,8 +181,60 @@ builder.Services.AddDirectoryBrowser();
 
 var app = builder.Build();
 
+// Ensure wwwroot directories exist (uploads/avatars for serving, logs for file sink)
+var env = app.Services.GetRequiredService<IWebHostEnvironment>();
+var webRoot = env.WebRootPath ?? env.ContentRootPath;
+Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "avatars"));
+Directory.CreateDirectory(Path.Combine(webRoot, "logs"));
+
 // Configure the HTTP request pipeline
 app.UseForwardedHeaders();
+
+// Structured HTTP request logging via Serilog
+app.UseSerilogRequestLogging(options =>
+{
+    // Include query string in the logged request path
+    options.IncludeQueryInRequestPath = true;
+
+    // Map status codes/exceptions to log levels
+    options.GetLevel = (httpContext, elapsedMs, exception) =>
+    {
+        if (exception != null || httpContext.Response.StatusCode >= 500)
+        {
+            return LogEventLevel.Error;
+        }
+
+        if (httpContext.Response.StatusCode >= 400)
+        {
+            return LogEventLevel.Warning;
+        }
+
+        return LogEventLevel.Information;
+    };
+
+    // Enrich diagnostic context with additional request information
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var request = httpContext.Request;
+        var user = httpContext.User;
+
+        diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString());
+        diagnosticContext.Set("UserAgent", request.Headers["User-Agent"].ToString());
+        diagnosticContext.Set("TraceIdentifier", httpContext.TraceIdentifier);
+        diagnosticContext.Set("RequestHost", request.Host.Value);
+        diagnosticContext.Set("RequestProtocol", request.Protocol);
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? user.FindFirst("sub")?.Value;
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                diagnosticContext.Set("UserId", userId);
+            }
+        }
+    };
+});
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>

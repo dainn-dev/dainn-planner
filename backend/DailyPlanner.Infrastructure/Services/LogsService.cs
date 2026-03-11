@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.RegularExpressions;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
@@ -8,14 +9,14 @@ namespace DailyPlanner.Infrastructure.Services;
 public class LogsService : ILogsService
 {
     private readonly IWebHostEnvironment _env;
-    private static readonly Regex SafeFileNameRegex = new(@"^dailyplanner-\d{8}\.log$", RegexOptions.Compiled);
+    private static readonly Regex SafeFileNameRegex = new(@"^dailyplanner(-errors)?-\d{8}\.log$", RegexOptions.Compiled);
 
     public LogsService(IWebHostEnvironment env)
     {
         _env = env;
     }
 
-    private string LogsDirectory => Path.Combine(_env.ContentRootPath, "logs");
+    private string LogsDirectory => Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, "logs");
 
     public Task<ApiResponse<List<LogFileEntryDto>>> GetLogFilesAsync(CancellationToken cancellationToken = default)
     {
@@ -85,16 +86,26 @@ public class LogsService : ILogsService
                 return Task.FromResult(result);
             }
 
-            var allLines = System.IO.File.ReadAllLines(fullPath);
-            var totalCount = allLines.Length;
+            // Read with FileShare.ReadWrite so we can read while Serilog has the file open for appending
+            List<string> allLines;
+            using (var fs = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var reader = new StreamReader(fs))
+            {
+                allLines = new List<string>();
+                string? line;
+                while ((line = reader.ReadLine()) != null)
+                    allLines.Add(line);
+            }
+
+            var totalCount = allLines.Count;
 
             IReadOnlyList<string> slice;
             int startLine;
             if (tail.HasValue && tail.Value > 0)
             {
-                var take = Math.Min(tail.Value, allLines.Length);
-                slice = allLines.Skip(allLines.Length - take).ToList();
-                startLine = allLines.Length - take + 1;
+                var take = Math.Min(tail.Value, totalCount);
+                slice = allLines.Skip(totalCount - take).ToList();
+                startLine = totalCount - take + 1;
             }
             else if (offset.HasValue || limit.HasValue)
             {
@@ -105,9 +116,9 @@ public class LogsService : ILogsService
             }
             else
             {
-                var take = Math.Min(500, allLines.Length);
-                slice = allLines.Skip(allLines.Length - take).ToList();
-                startLine = allLines.Length - take + 1;
+                var take = Math.Min(500, totalCount);
+                slice = allLines.Skip(totalCount - take).ToList();
+                startLine = totalCount - take + 1;
             }
 
             var lines = ParseLines(slice, startLine);

@@ -7,14 +7,14 @@ namespace DailyPlanner.Infrastructure.Services;
 public class LogStreamService
 {
     private readonly IWebHostEnvironment _env;
-    private static readonly Regex SafeFileNameRegex = new(@"^dailyplanner-\d{8}\.log$", RegexOptions.Compiled);
+    private static readonly Regex SafeFileNameRegex = new(@"^dailyplanner(-errors)?-\d{8}\.log$", RegexOptions.Compiled);
 
     public LogStreamService(IWebHostEnvironment env)
     {
         _env = env;
     }
 
-    private string LogsDirectory => Path.Combine(_env.ContentRootPath, "logs");
+    private string LogsDirectory => Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, "logs");
 
     public static bool IsValidFileName(string? fileName) =>
         !string.IsNullOrWhiteSpace(fileName) && SafeFileNameRegex.IsMatch(fileName);

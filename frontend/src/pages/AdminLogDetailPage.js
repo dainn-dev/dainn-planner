@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { isStoredAdmin } from '../utils/auth';
 import { adminAPI } from '../services/api';
+
+const formatSize = (bytes) => {
+  if (bytes == null || bytes < 0) return '–';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatLogDate = (dateUtc) => {
+  if (!dateUtc) return '–';
+  const d = new Date(dateUtc);
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
 const parseLevel = (text) => {
   if (!text) return 'INF';
@@ -13,10 +26,42 @@ const parseLevel = (text) => {
   return 'INF';
 };
 
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const renderLineWithHighlight = (text, query) => {
+  if (!query || !query.trim()) return text;
+  const q = query.trim();
+  const re = new RegExp(escapeRegex(q), 'gi');
+  const segments = [];
+  let lastIndex = 0;
+  let match;
+  const str = String(text);
+  re.lastIndex = 0;
+  while ((match = re.exec(str)) !== null) {
+    segments.push({ type: 'text', value: str.slice(lastIndex, match.index) });
+    segments.push({ type: 'mark', value: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+  segments.push({ type: 'text', value: str.slice(lastIndex) });
+  if (segments.length === 1 && segments[0].type === 'text' && !segments[0].value) return text;
+  if (segments.every(s => s.type === 'text' && s.value === (segments.length === 1 ? str : ''))) return text;
+  return segments.map((seg, i) =>
+    seg.type === 'mark' ? (
+      <mark key={i} className="bg-yellow-300 dark:bg-yellow-600/60 text-slate-900 dark:text-slate-100 rounded px-0.5">
+        {seg.value}
+      </mark>
+    ) : (
+      seg.value
+    )
+  );
+};
+
 const AdminLogDetailPage = () => {
   const { fileName } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = isStoredAdmin();
+  const fileMeta = location.state?.file;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [logContent, setLogContent] = useState(null);
@@ -27,6 +72,11 @@ const AdminLogDetailPage = () => {
   const [streamConnected, setStreamConnected] = useState(false);
   const unsubscribeRef = useRef(null);
   const nextLineRef = useRef(1);
+  const searchInputRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
+  const viewerScrollRef = useRef(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [copyRawCopied, setCopyRawCopied] = useState(false);
 
   useEffect(() => {
     if (!fileName) {
@@ -42,16 +92,16 @@ const AdminLogDetailPage = () => {
       try {
         const res = await adminAPI.getLogContent(decodedFileName, { tail: 2000 });
         if (cancelled) return;
-        const data = res?.data;
-        if (!data) {
+        const data = res?.data ?? res;
+        if (!data || !Array.isArray(data.lines)) {
           setError('No content');
-          navigate('/admin/logs');
+          setLoading(false);
           return;
         }
         const lines = (data.lines || []).map((l) => ({
-          line: l.lineNumber,
-          level: l.level || 'INF',
-          text: l.text ?? ''
+          line: l.lineNumber ?? l.LineNumber,
+          level: l.level ?? l.Level ?? 'INF',
+          text: (l.text ?? l.Text) ?? ''
         }));
         nextLineRef.current = (data.totalLineCount ?? 0) + 1;
         if (lines.length > 0) nextLineRef.current = Math.max(nextLineRef.current, lines[lines.length - 1].line + 1);
@@ -59,9 +109,9 @@ const AdminLogDetailPage = () => {
         setLogFile({
           name: data.fileName || decodedFileName,
           displayName: data.fileName || decodedFileName,
-          size: '–',
-          createdAt: '–',
-          server: '–',
+          size: formatSize(fileMeta?.sizeBytes),
+          createdAt: formatLogDate(fileMeta?.lastWriteUtc),
+          server: typeof window !== 'undefined' ? window.location.origin : '–',
           priority: 'Log file',
           priorityColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
           lines: data.totalLineCount ?? lines.length
@@ -154,12 +204,37 @@ const AdminLogDetailPage = () => {
   const handleCopyRaw = () => {
     if (!logContent?.length) return;
     const content = logContent.map((line) => `[${line.level}] ${line.text}`).join('\n');
-    navigator.clipboard.writeText(content).then(() => {});
+    navigator.clipboard.writeText(content).then(() => {
+      setCopyRawCopied(true);
+      setTimeout(() => setCopyRawCopied(false), 2000);
+    });
   };
 
   const handleBack = () => {
     navigate('/admin/logs');
   };
+
+  const q = searchQuery.trim().toLowerCase();
+  const displayLines = q
+    ? (logContent || []).filter((line) => String(line.text || '').toLowerCase().includes(q))
+    : (logContent || []);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (mobileSearchOpen) {
+      mobileSearchInputRef.current?.focus();
+    }
+  }, [mobileSearchOpen]);
 
   if (loading) {
     return (
@@ -169,17 +244,31 @@ const AdminLogDetailPage = () => {
     );
   }
 
+  if (error && (!logFile || !logContent)) {
+    return (
+      <div className="bg-[#f6f7f8] dark:bg-[#101922] min-h-screen flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
+        <button
+          onClick={() => navigate('/admin/logs')}
+          className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 transition-colors"
+        >
+          Back to Logs
+        </button>
+      </div>
+    );
+  }
+
   if (!logFile || !logContent) {
     return null;
   }
 
   return (
-    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-slate-900 dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-slate-900 dark:text-slate-100 font-display overflow-hidden h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#f6f7f8] dark:bg-[#101922] relative overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#f6f7f8] dark:bg-[#101922] relative overflow-hidden">
         {/* Header Section */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 z-10">
           <div className="max-w-[1600px] mx-auto px-6 py-4">
@@ -203,9 +292,6 @@ const AdminLogDetailPage = () => {
                     <span className="material-symbols-outlined">arrow_back</span>
                   </button>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{logFile.displayName}</h2>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium border ${logFile.priorityColor}`}>
-                    {logFile.priority}
-                  </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pl-12 text-sm text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1.5">
@@ -227,15 +313,23 @@ const AdminLogDetailPage = () => {
               {/* Right: Actions */}
               <div className="flex items-center gap-3 pl-12 lg:pl-0">
                 {/* Search within file */}
-                <div className="relative hidden sm:block group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors text-[20px]">search</span>
-                  <input 
-                    className="h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm w-64 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-slate-700 dark:text-slate-200 placeholder-slate-400" 
-                    placeholder="Find in file (Ctrl+F)" 
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors text-[20px]">search</span>
+                    <input
+                      ref={searchInputRef}
+                      className="h-10 pl-10 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm w-52 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-slate-700 dark:text-slate-200 placeholder-slate-400"
+                      placeholder="Find in file (Ctrl+F)"
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  {q && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {displayLines.length} {displayLines.length === 1 ? 'match' : 'matches'}
+                    </span>
+                  )}
                 </div>
                 <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
                 <button 
@@ -261,8 +355,8 @@ const AdminLogDetailPage = () => {
                   onClick={handleCopyRaw}
                   className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white hover:bg-blue-600 transition-colors shadow-sm shadow-blue-500/20 text-sm font-medium"
                 >
-                  <span className="material-symbols-outlined text-[20px]">content_copy</span>
-                  <span className="hidden md:inline">Copy Raw</span>
+                  <span className="material-symbols-outlined text-[20px]">{copyRawCopied ? 'check' : 'content_copy'}</span>
+                  <span className="hidden md:inline">{copyRawCopied ? 'Copied' : 'Copy Raw'}</span>
                 </button>
               </div>
             </div>
@@ -270,54 +364,63 @@ const AdminLogDetailPage = () => {
         </header>
 
         {/* File Viewer Content */}
-        <div className="flex-1 overflow-hidden relative flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col">
           {/* Viewer Wrapper with Scroll */}
-          <div className="flex-1 overflow-auto bg-slate-50 dark:bg-[#0d1117] custom-scrollbar">
+          <div ref={viewerScrollRef} className="flex-1 min-h-0 overflow-auto bg-slate-50 dark:bg-[#0d1117] custom-scrollbar">
             <div className="max-w-[1600px] mx-auto min-h-full">
               <div className="flex font-mono text-sm leading-6">
                 {/* Line Numbers */}
                 <div className="w-12 md:w-16 shrink-0 text-right pr-4 py-6 select-none bg-slate-100/50 dark:bg-[#0d1117] text-slate-400 dark:text-slate-600 border-r border-slate-200 dark:border-slate-800 sticky left-0 z-10 hidden sm:block">
-                  {logContent.map((line) => {
-                    const isError = line.level === 'ERROR';
-                    const isWarn = line.level === 'WARN';
-                    const hasHighlight = isError || isWarn;
-                    
-                    return (
-                      <div 
-                        key={line.line} 
-                        className={`leading-6 ${
-                          hasHighlight 
-                            ? isError
-                              ? 'bg-red-100 dark:bg-red-900/20 border-l-2 border-red-500 -ml-12 pl-12 md:-ml-16 md:pl-16'
-                              : 'bg-yellow-100 dark:bg-yellow-900/20 border-l-2 border-yellow-500 -ml-12 pl-12 md:-ml-16 md:pl-16'
-                            : ''
-                        }`}
-                      >
-                        {line.line}
-                      </div>
-                    );
-                  })}
-                  {logFile.lines > logContent.length && (
+                  {displayLines.length === 0 && q ? (
+                    <div className="leading-6 text-slate-500 dark:text-slate-400">No matches</div>
+                  ) : (
+                    displayLines.map((line) => {
+                      const isError = line.level === 'ERROR';
+                      const isWarn = line.level === 'WARN';
+                      const hasHighlight = isError || isWarn;
+
+                      return (
+                        <div
+                          key={line.line}
+                          className={`leading-6 ${
+                            hasHighlight
+                              ? isError
+                                ? 'bg-red-100 dark:bg-red-900/20 border-l-2 border-red-500 -ml-12 pl-12 md:-ml-16 md:pl-16'
+                                : 'bg-yellow-100 dark:bg-yellow-900/20 border-l-2 border-yellow-500 -ml-12 pl-12 md:-ml-16 md:pl-16'
+                              : ''
+                          }`}
+                        >
+                          {line.line}
+                        </div>
+                      );
+                    })
+                  )}
+                  {!q && logFile.lines > logContent.length && (
                     <div className="opacity-50 text-xs mt-2 text-center">...</div>
                   )}
                 </div>
                 {/* Code Content */}
                 <div className="flex-1 py-6 px-4 md:px-6 overflow-x-auto">
                   <div className="min-w-max text-slate-800 dark:text-slate-300">
-                    {logContent.map((line) => {
-                      const lineBg = getLineBg(line.level);
-                      const levelColor = getLevelColor(line.level);
-                      const isStackTrace = line.text.startsWith('at ');
-                      
-                      return (
-                        <div 
-                          key={line.line} 
-                          className={`leading-6 ${lineBg ? `${lineBg} -mx-4 px-4 md:-mx-6 md:px-6` : ''} ${isStackTrace ? 'text-slate-500 dark:text-slate-400 ml-4' : ''}`}
-                        >
-                          <span className={`${levelColor} font-bold`}>[{line.level}]</span> {line.text}
-                        </div>
-                      );
-                    })}
+                    {displayLines.length === 0 && q ? (
+                      <div className="leading-6 text-slate-500 dark:text-slate-400">No lines match &quot;{searchQuery.trim()}&quot;</div>
+                    ) : (
+                      displayLines.map((line) => {
+                        const lineBg = getLineBg(line.level);
+                        const levelColor = getLevelColor(line.level);
+                        const isStackTrace = line.text.startsWith('at ');
+
+                        return (
+                          <div
+                            key={line.line}
+                            className={`leading-6 ${lineBg ? `${lineBg} -mx-4 px-4 md:-mx-6 md:px-6` : ''} ${isStackTrace ? 'text-slate-500 dark:text-slate-400 ml-4' : ''}`}
+                          >
+                            <span className={`${levelColor} font-bold`}>[{line.level}]</span>{' '}
+                            {renderLineWithHighlight(line.text, searchQuery)}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </div>
@@ -341,8 +444,49 @@ const AdminLogDetailPage = () => {
           </div>
         </div>
 
-        {/* Floating Action Button (Mobile Only) */}
-        <button className="fixed bottom-16 right-6 md:hidden size-12 rounded-full bg-primary text-white shadow-lg shadow-blue-500/30 flex items-center justify-center z-50">
+        {/* Mobile search overlay - shown when FAB is clicked */}
+        {mobileSearchOpen && (
+          <div className="fixed inset-0 z-50 md:hidden" aria-modal="true" role="dialog">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileSearchOpen(false)} aria-hidden="true" />
+            <div className="absolute left-0 right-0 top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 p-4 shadow-lg">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+                  <input
+                    ref={mobileSearchInputRef}
+                    className="w-full h-12 pl-10 pr-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    placeholder="Find in file"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoComplete="off"
+                  />
+                  {q && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400">
+                      {displayLines.length}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSearchOpen(false)}
+                  className="shrink-0 size-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  aria-label="Close search"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Action Button (Mobile Only) - opens search */}
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen(true)}
+          className="fixed bottom-16 right-6 md:hidden size-12 rounded-full bg-primary text-white shadow-lg shadow-blue-500/30 flex items-center justify-center z-40"
+          aria-label="Open search"
+        >
           <span className="material-symbols-outlined">search</span>
         </button>
       </div>

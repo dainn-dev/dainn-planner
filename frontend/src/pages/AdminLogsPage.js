@@ -1,10 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { isStoredAdmin } from '../utils/auth';
 import { adminAPI } from '../services/api';
+
+const isLogInDateRange = (log, dateFilter) => {
+  if (!dateFilter || dateFilter === 'all') return true;
+  const date = log.lastWriteUtc ? new Date(log.lastWriteUtc) : null;
+  if (!date || isNaN(date.getTime())) return false;
+  const now = new Date();
+  if (dateFilter === 'today') {
+    return date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }
+  const cutoff = new Date(now);
+  if (dateFilter === '7d') cutoff.setDate(cutoff.getDate() - 7);
+  else if (dateFilter === '30d') cutoff.setDate(cutoff.getDate() - 30);
+  else return true;
+  return date >= cutoff;
+};
 
 const formatSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,6 +42,11 @@ const AdminLogsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilterOpen, setDateFilterOpen] = useState(false);
+  const [dateFilterPosition, setDateFilterPosition] = useState(null);
+  const dateFilterRef = useRef(null);
+  const dateFilterDropdownRef = useRef(null);
   const [logFiles, setLogFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -96,8 +117,28 @@ const AdminLogsPage = () => {
 
   const filteredLogs = logFiles.filter(log => {
     const matchesSearch = log.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    const matchesDate = isLogInDateRange(log, dateFilter);
+    return matchesSearch && matchesDate;
   });
+
+  useLayoutEffect(() => {
+    if (dateFilterOpen && dateFilterRef.current) {
+      const rect = dateFilterRef.current.getBoundingClientRect();
+      setDateFilterPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    } else {
+      setDateFilterPosition(null);
+    }
+  }, [dateFilterOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const inTrigger = dateFilterRef.current?.contains(e.target);
+      const inDropdown = dateFilterDropdownRef.current?.contains(e.target);
+      if (!inTrigger && !inDropdown) setDateFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const totalSizeBytes = logFiles.reduce((acc, f) => acc + (f.sizeBytes || 0), 0);
 
@@ -105,23 +146,9 @@ const AdminLogsPage = () => {
     loadLogs();
   };
 
-  const handleExport = () => {
-    if (logFiles.length === 0) return;
-    const lines = logFiles.map(f => `${f.name},${formatSize(f.sizeBytes || 0)},${formatLogDate(f.lastWriteUtc, i18n.language)}`).join('\n');
-    const blob = new Blob([`${t('admin.logsCsvHeader')}\n${lines}`], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'log_files_report.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const handleViewLog = (log) => {
     if (log?.name) {
-      navigate(`/admin/logs/${encodeURIComponent(log.name)}`);
+      navigate(`/admin/logs/${encodeURIComponent(log.name)}`, { state: { file: log } });
     }
   };
 
@@ -129,20 +156,15 @@ const AdminLogsPage = () => {
     if (!log?.name) return;
     try {
       const res = await adminAPI.getLogContent(log.name, { tail: 50000 });
-      const data = res?.data;
-      if (!data?.lines?.length) {
-        const blob = new Blob([''], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = log.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        return;
-      }
-      const text = data.lines.map(l => (l.level ? `[${l.level}] ${l.text}` : l.text)).join('\n');
+      const data = res?.data ?? res;
+      const lines = data?.lines ?? [];
+      const text = lines.length
+        ? lines.map((l) => {
+            const level = l.level ?? l.Level;
+            const lineText = l.text ?? l.Text ?? '';
+            return level ? `[${level}] ${lineText}` : lineText;
+          }).join('\n')
+        : '';
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -201,13 +223,6 @@ const AdminLogsPage = () => {
                 >
                   <span className="material-symbols-outlined text-[20px]">refresh</span>
                   {t('admin.refresh')}
-                </button>
-                <button 
-                  onClick={handleExport}
-                  className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm shadow-blue-200 dark:shadow-none"
-                >
-                  <span className="material-symbols-outlined text-[20px]">download</span>
-                  {t('admin.exportReport')}
                 </button>
               </div>
             </div>
@@ -278,10 +293,60 @@ const AdminLogsPage = () => {
               </div>
               {/* Filters */}
               <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-                <button className="whitespace-nowrap flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-[#e7edf3] dark:bg-slate-700 dark:text-white px-4 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                  <span className="text-sm font-medium">{t('admin.filterTime')}</span>
-                  <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                </button>
+                <div className="relative shrink-0" ref={dateFilterRef}>
+                  <button
+                    type="button"
+                    onClick={() => setDateFilterOpen((o) => !o)}
+                    className={`whitespace-nowrap flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg px-4 transition-colors ${
+                      dateFilter !== 'all' ? 'bg-primary text-white' : 'bg-[#e7edf3] dark:bg-slate-700 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">{t('admin.filterTime')}</span>
+                    <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+                    {dateFilter !== 'all' && (
+                      <span className="text-xs opacity-90">({t(dateFilter === 'today' ? 'admin.filterTimeToday' : dateFilter === '7d' ? 'admin.filterTimeLast7' : 'admin.filterTimeLast30')})</span>
+                    )}
+                  </button>
+                  {dateFilterOpen &&
+                    dateFilterPosition &&
+                    createPortal(
+                      <div
+                        ref={dateFilterDropdownRef}
+                        className="fixed z-[100] min-w-[160px] py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-lg"
+                        style={{ top: dateFilterPosition.top, left: dateFilterPosition.left }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setDateFilter('all'); setDateFilterOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${dateFilter === 'all' ? 'bg-primary/10 text-primary dark:text-blue-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                        >
+                          {t('admin.filterTimeAll')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setDateFilter('today'); setDateFilterOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${dateFilter === 'today' ? 'bg-primary/10 text-primary dark:text-blue-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                        >
+                          {t('admin.filterTimeToday')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setDateFilter('7d'); setDateFilterOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${dateFilter === '7d' ? 'bg-primary/10 text-primary dark:text-blue-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                        >
+                          {t('admin.filterTimeLast7')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setDateFilter('30d'); setDateFilterOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${dateFilter === '30d' ? 'bg-primary/10 text-primary dark:text-blue-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                        >
+                          {t('admin.filterTimeLast30')}
+                        </button>
+                      </div>,
+                      document.body
+                    )}
+                </div>
                 <div className="h-9 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
                 <button 
                   onClick={() => setSelectedFilter('all')}
@@ -302,17 +367,7 @@ const AdminLogsPage = () => {
                   }`}
                 >
                   <span className="text-sm font-medium">{t('admin.filterError')}</span>
-                </button>
-                <button 
-                  onClick={() => setSelectedFilter('warning')}
-                  className={`whitespace-nowrap flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg px-4 transition-colors ${
-                    selectedFilter === 'warning' 
-                      ? 'bg-primary text-white shadow-sm shadow-blue-200 dark:shadow-none' 
-                      : 'border border-[#cfdbe7] dark:border-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <span className="text-sm font-medium">{t('admin.filterWarning')}</span>
-                </button>
+                </button>                
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
@@ -7,6 +7,8 @@ import { adminAPI, tasksAPI } from '../services/api';
 import { TAG_I18N_KEYS } from '../constants/tasks';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate } from '../utils/dateFormat';
+
+const DAYS_OPTIONS = [7, 30, 90];
 
 const getTagLabel = (tag, t) => {
   const key = TAG_I18N_KEYS[tag];
@@ -26,6 +28,9 @@ const AdminDashboardPage = () => {
   const [tagsLoading, setTagsLoading] = useState(true);
   const [userGrowth, setUserGrowth] = useState(null);
   const [userGrowthLoading, setUserGrowthLoading] = useState(true);
+  const [daysFilter, setDaysFilter] = useState(30);
+  const [daysFilterOpen, setDaysFilterOpen] = useState(false);
+  const daysFilterRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -44,8 +49,9 @@ const AdminDashboardPage = () => {
 
   useEffect(() => {
     const load = async () => {
+      setUserGrowthLoading(true);
       try {
-        const data = await adminAPI.getUserGrowth({ days: 30 });
+        const data = await adminAPI.getUserGrowth({ days: daysFilter });
         setUserGrowth(data);
       } catch (error) {
         console.error('Failed to load user growth:', error);
@@ -54,6 +60,14 @@ const AdminDashboardPage = () => {
       }
     };
     load();
+  }, [daysFilter]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (daysFilterRef.current && !daysFilterRef.current.contains(e.target)) setDaysFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -109,9 +123,30 @@ const AdminDashboardPage = () => {
                 <h1 className="text-3xl font-bold text-[#111418] tracking-tight">{t('admin.dashboardOverview')}</h1>
                 <p className="text-gray-500">{t('admin.welcomeBack')}</p>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-500 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                <span>{t('admin.last30Days')}</span>
+              <div className="relative shrink-0" ref={daysFilterRef}>
+                <button
+                  type="button"
+                  onClick={() => setDaysFilterOpen((o) => !o)}
+                  className="flex items-center gap-2 text-sm text-gray-500 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+                  <span>{daysFilter === 7 ? t('admin.last7Days') : daysFilter === 90 ? t('admin.last90Days') : t('admin.last30Days')}</span>
+                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                </button>
+                {daysFilterOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-20 min-w-[140px] py-1 rounded-lg bg-white border border-gray-200 shadow-lg">
+                    {DAYS_OPTIONS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => { setDaysFilter(d); setDaysFilterOpen(false); }}
+                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${daysFilter === d ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        {d === 7 ? t('admin.last7Days') : d === 90 ? t('admin.last90Days') : t('admin.last30Days')}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -131,7 +166,7 @@ const AdminDashboardPage = () => {
                   </p>
                   <p className="text-emerald-600 text-sm font-medium flex items-center gap-1 mt-1">
                     <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span className="text-gray-400 font-normal">Total users</span>
+                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleTotalUsers')}</span>
                   </p>
                 </div>
               </div>
@@ -150,7 +185,7 @@ const AdminDashboardPage = () => {
                   </p>
                   <p className="text-emerald-600 text-sm font-medium flex items-center gap-1 mt-1">
                     <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span className="text-gray-400 font-normal">Active users</span>
+                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleActiveUsers')}</span>
                   </p>
                 </div>
               </div>
@@ -169,7 +204,7 @@ const AdminDashboardPage = () => {
                   </p>
                   <p className="text-emerald-600 text-sm font-medium flex items-center gap-1 mt-1">
                     <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span className="text-gray-400 font-normal">Total goals</span>
+                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleTotalGoals')}</span>
                   </p>
                 </div>
               </div>
@@ -188,7 +223,7 @@ const AdminDashboardPage = () => {
                   </p>
                   <p className="text-gray-400 text-sm font-medium flex items-center gap-1 mt-1">
                     <span className="material-symbols-outlined text-[16px]">event</span>
-                    <span className="text-gray-400 font-normal">Calendar events</span>
+                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleCalendarEvents')}</span>
                   </p>
                 </div>
               </div>

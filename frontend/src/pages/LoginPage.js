@@ -13,6 +13,10 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorError, setTwoFactorError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -54,26 +58,26 @@ const LoginPage = () => {
 
     try {
       const response = await authAPI.login(email, password);
-      
-      // Check if login was successful
+
+      if (response.requiresTwoFactor) {
+        setShow2FAModal(true);
+        setTwoFactorCode('');
+        setTwoFactorError('');
+        setErrors({});
+        return;
+      }
+
       if (response.token || response.success) {
-        // Fetch and persist user settings to localStorage
         try {
           await userAPI.getSettings();
-        } catch (_) {
-          // Continue on failure; settings will load when user opens Settings page
-        }
+        } catch (_) {}
 
-        // Get user from response or localStorage
         const user = response.user || JSON.parse(localStorage.getItem('user') || '{}');
-
-        // Redirect based on user role
         if (user.role === 'Admin') {
           navigate('/admin/dashboard');
         } else if (user.role === 'User' || !user.role) {
           navigate('/daily');
         } else {
-          // Default redirect for other roles
           navigate('/daily');
         }
       } else {
@@ -83,6 +87,42 @@ const LoginPage = () => {
       setErrors({ submit: error.message || t('auth.loginFail') });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const close2FAModal = () => {
+    setShow2FAModal(false);
+    setTwoFactorCode('');
+    setTwoFactorError('');
+  };
+
+  const handle2FAVerify = async (e) => {
+    e.preventDefault();
+    setTwoFactorError('');
+    if (!twoFactorCode.trim()) {
+      setTwoFactorError(t('auth.twoFactorInvalidCode'));
+      return;
+    }
+    setIsVerifying(true);
+    try {
+      const response = await authAPI.verify2FA(email, twoFactorCode.trim());
+      if (response.token || response.user) {
+        try {
+          await userAPI.getSettings();
+        } catch (_) {}
+        const user = response.user || JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.role === 'Admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/daily');
+        }
+      } else {
+        setTwoFactorError(response.message || t('auth.twoFactorInvalidCode'));
+      }
+    } catch (error) {
+      setTwoFactorError(error.message || t('auth.twoFactorInvalidCode'));
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -190,6 +230,54 @@ const LoginPage = () => {
           </div>
         </div>
       </main>
+
+      {show2FAModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true" aria-labelledby="2fa-modal-title">
+          <div className="w-full max-w-sm bg-surface-light rounded-2xl shadow-soft border border-white p-6 flex flex-col gap-4">
+            <h2 id="2fa-modal-title" className="text-lg font-semibold text-text-main">
+              {t('auth.twoFactorRequired')}
+            </h2>
+            <p className="text-text-muted text-sm">
+              {t('auth.twoFactorEnterCode')}
+            </p>
+            <form onSubmit={handle2FAVerify} className="flex flex-col gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder={t('auth.twoFactorPlaceholder')}
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                className="input-minimal text-center text-lg tracking-[0.5em]"
+                maxLength={8}
+                aria-invalid={!!twoFactorError}
+                aria-describedby={twoFactorError ? '2fa-error' : undefined}
+              />
+              {twoFactorError && (
+                <p id="2fa-error" className="text-xs text-red-500" role="alert">
+                  {twoFactorError}
+                </p>
+              )}
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={close2FAModal}
+                  className="flex-1 btn-secondary"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifying}
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isVerifying ? t('common.processing') : t('auth.twoFactorVerify')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
