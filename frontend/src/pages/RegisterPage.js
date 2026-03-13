@@ -88,16 +88,7 @@ const RegisterPage = () => {
     <div className="bg-subtle-bg font-display text-primary-register antialiased selection:bg-primary-register selection:text-white min-h-screen">
       <PublicHeader />
       <div className="flex min-h-screen w-full flex-col justify-center items-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-[480px]">
-          <div className="flex flex-col items-center mb-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-register text-white mb-4 shadow-soft-register">
-              <span className="material-symbols-outlined text-2xl">event_note</span>
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight text-primary-register">{t('auth.registerTitle')}</h2>
-            <p className="text-secondary-text text-sm mt-2">
-              {t('auth.registerSubtitle')}
-            </p>
-          </div>
+        <div className="w-full max-w-[480px]">          
           <div className="bg-card-bg shadow-soft-register rounded-2xl p-8 border border-accent-border">
             <div className="mb-6">
               <h1 className="text-xl font-semibold text-primary-register">{t('auth.createAccount')}</h1>

@@ -53,7 +53,7 @@ const PublicHeader = () => {
             <select
               value={currentLang}
               onChange={handleLanguageChange}
-              className="h-10 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
+              className="h-10 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer"
               aria-label={t('settings.language')}
             >
               <option value="vi">{t('settings.languageVi')}</option>

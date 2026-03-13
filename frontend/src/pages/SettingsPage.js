@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
@@ -28,7 +28,7 @@ import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_ROUTES,
 } from '../constants/settings';
-import { userAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
+import { userAPI, notificationsAPI, contactAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
 
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
@@ -66,6 +66,13 @@ const SettingsPage = () => {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [securityPasswordErrors, setSecurityPasswordErrors] = useState({ currentPassword: null, newPassword: null, confirmPassword: null });
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportError, setSupportError] = useState('');
+  const [supportSuccess, setSupportSuccess] = useState(false);
+  const [supportRecaptchaToken, setSupportRecaptchaToken] = useState('');
+  const recaptchaWidgetIdRef = useRef(null);
+  const recaptchaContainerRef = useRef(null);
 
   // Hydrate settings state from a fetched or stored settings object (general, plans, notifications, logs)
   const applySettingsToState = (settings) => {
@@ -184,6 +191,7 @@ const SettingsPage = () => {
           lastActive: formatLastActive(d.lastUsedAt),
           isCurrent: d.deviceId === currentDeviceId,
           type: platformToIcon(d.platform),
+          ipAddress: d.ipAddress ?? null,
         }));
         setSecuritySettings(prev => ({ ...prev, devices: mapped }));
       } catch (err) {
@@ -357,6 +365,101 @@ const SettingsPage = () => {
     }
   };
 
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
+    setSupportError('');
+    setSupportSuccess(false);
+    if (!supportMessage.trim()) {
+      setSupportError(t('settings.supportErrorMissingMessage'));
+      return;
+    }
+    if (!supportRecaptchaToken) {
+      setSupportError(t('settings.supportErrorMissingCaptcha'));
+      return;
+    }
+    setSupportSubmitting(true);
+    try {
+      const name = profileForm.fullname || profileForm.fullName || '';
+      const email = profileForm.email || '';
+      const res = await contactAPI.submitContact({
+        name,
+        email,
+        message: supportMessage.trim(),
+        source: 'settings',
+        recaptchaToken: supportRecaptchaToken,
+      });
+      const ok = res?.success ?? res?.Success ?? false;
+      if (ok) {
+        setSupportSuccess(true);
+        setSupportMessage('');
+        setSupportRecaptchaToken('');
+        if (typeof window !== 'undefined' && window.grecaptcha && recaptchaWidgetIdRef.current != null) {
+          try {
+            window.grecaptcha.reset(recaptchaWidgetIdRef.current);
+          } catch (_) {}
+        }
+      } else {
+        setSupportError(res?.message || res?.Message || t('settings.supportErrorSubmit'));
+      }
+    } catch (err) {
+      setSupportError(err?.message || t('settings.supportErrorSubmit'));
+      if (typeof window !== 'undefined' && window.grecaptcha && recaptchaWidgetIdRef.current != null) {
+        try {
+          window.grecaptcha.reset(recaptchaWidgetIdRef.current);
+          setSupportRecaptchaToken('');
+        } catch (_) {}
+      }
+    } finally {
+      setSupportSubmitting(false);
+    }
+  };
+
+  // Load reCAPTCHA script and render widget when Support tab is active
+  useEffect(() => {
+    if (activeTab !== 'support' || !recaptchaContainerRef.current) return;
+    const siteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
+    if (!siteKey) return;
+
+    const onload = () => {
+      if (!window.grecaptcha || !recaptchaContainerRef.current) return;
+      try {
+        const widgetId = window.grecaptcha.render(recaptchaContainerRef.current, {
+          sitekey: siteKey,
+          callback: (token) => setSupportRecaptchaToken(token),
+          'expired-callback': () => setSupportRecaptchaToken(''),
+        });
+        recaptchaWidgetIdRef.current = widgetId;
+      } catch (_) {}
+    };
+
+    if (window.grecaptcha && window.grecaptcha.render) {
+      onload();
+      return () => {
+        if (recaptchaWidgetIdRef.current != null && window.grecaptcha?.reset) {
+          try { window.grecaptcha.reset(recaptchaWidgetIdRef.current); } catch (_) {}
+        }
+        recaptchaWidgetIdRef.current = null;
+      };
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?onload=__recaptchaSupportOnload&render=explicit`;
+    script.async = true;
+    script.defer = true;
+    window.__recaptchaSupportOnload = onload;
+    script.onload = () => {
+      if (window.grecaptcha && window.grecaptcha.render) onload();
+    };
+    document.head.appendChild(script);
+    return () => {
+      delete window.__recaptchaSupportOnload;
+      if (recaptchaWidgetIdRef.current != null && window.grecaptcha?.reset) {
+        try { window.grecaptcha.reset(recaptchaWidgetIdRef.current); } catch (_) {}
+      }
+      recaptchaWidgetIdRef.current = null;
+    };
+  }, [activeTab]);
+
   // When Enable 2FA modal opens, fetch setup data (QR + key)
   useEffect(() => {
     if (modal2FA !== 'enable') return;
@@ -513,6 +616,7 @@ const SettingsPage = () => {
                   item.id === 'plans' ? '/settings/goals' :
                   item.id === 'notifications' ? '/settings/notification' :
                   item.id === 'security' ? '/settings/security' :
+                  item.id === 'support' ? '/settings/support' :
                 '/settings';
               const isActive = activeTab === item.id;
               return (
@@ -543,6 +647,7 @@ const SettingsPage = () => {
                     item.id === 'plans' ? '/settings/goals' :
                     item.id === 'notifications' ? '/settings/notification' :
                     item.id === 'security' ? '/settings/security' :
+                    item.id === 'support' ? '/settings/support' :
                   '/settings';
                 return (
                   <Link
@@ -1369,6 +1474,7 @@ const SettingsPage = () => {
                             </div>
                             <p className="text-xs text-secondary mt-0.5">
                               {device.platform} • {device.lastActive}
+                              {device.ipAddress ? ` • ${device.ipAddress}` : ''}
                             </p>
                           </div>
                         </div>
@@ -1405,6 +1511,64 @@ const SettingsPage = () => {
                     {t('settings.saveChanges')}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Support Tab */}
+            {activeTab === 'support' && (
+              <div className="flex flex-col gap-10">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
+                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.supportTitle')}</h1>
+                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                    {t('settings.supportSubtitle')}
+                  </p>
+                </div>
+
+                <form onSubmit={handleSupportSubmit} className="flex flex-col gap-6 max-w-xl">
+                  {supportSuccess && (
+                    <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm" role="status">
+                      {t('settings.supportSuccess')}
+                    </div>
+                  )}
+                  {supportError && (
+                    <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" role="alert">
+                      {supportError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="support-message">
+                      {t('settings.supportMessageLabel')}
+                    </label>
+                    <textarea
+                      id="support-message"
+                      className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 min-h-[120px] resize-y"
+                      placeholder={t('settings.supportMessagePlaceholder')}
+                      value={supportMessage}
+                      onChange={(e) => setSupportMessage(e.target.value)}
+                      disabled={supportSubmitting}
+                      rows={4}
+                    />
+                  </div>
+
+                  {process.env.REACT_APP_RECAPTCHA_SITE_KEY ? (
+                    <div ref={recaptchaContainerRef} className="flex items-center justify-start" />
+                  ) : (
+                    <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      {t('settings.supportErrorMissingCaptcha')} (REACT_APP_RECAPTCHA_SITE_KEY not set)
+                    </p>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={supportSubmitting || !supportRecaptchaToken || !process.env.REACT_APP_RECAPTCHA_SITE_KEY}
+                      className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    >
+                      {supportSubmitting ? t('settings.supportSubmitting') : t('settings.supportSubmit')}
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 

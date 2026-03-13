@@ -1,11 +1,13 @@
 using Xunit;
 using DailyPlanner.Application.DTOs;
+using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using DailyPlanner.Infrastructure.Services;
 using DailyPlanner.Infrastructure.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using AutoMapper;
 
 namespace DailyPlanner.Infrastructure.Tests.Services;
@@ -20,7 +22,8 @@ public class LongTermGoalServiceTests : IDisposable
     {
         _context = TestHelpers.CreateInMemoryDbContext();
         _mapper = TestHelpers.CreateMapper();
-        _service = new LongTermGoalService(_context, _mapper);
+        var userActivityServiceMock = new Mock<IUserActivityService>();
+        _service = new LongTermGoalService(_context, _mapper, userActivityServiceMock.Object);
     }
 
     [Fact]

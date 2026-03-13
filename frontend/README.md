@@ -42,6 +42,15 @@ npm start
 
 The app will open at [http://localhost:3000](http://localhost:3000)
 
+### Environment variables
+
+Optional, for social login on the login page:
+
+- `REACT_APP_GOOGLE_CLIENT_ID` – Google OAuth 2.0 Web client ID (Google Cloud Console). Required for "Continue with Google".
+- `REACT_APP_FACEBOOK_APP_ID` – Facebook App ID (Meta for Developers). Required for "Continue with Facebook".
+
+Create a `.env` file in the frontend root and add these variables when using Google or Facebook sign-in.
+
 ### Build for Production
 
 ```bash

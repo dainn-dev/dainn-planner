@@ -4,6 +4,7 @@ using DailyPlanner.Application.DTOs.Auth;
 using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +25,7 @@ public class AuthService : IAuthService
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IUserActivityService _userActivityService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -32,7 +34,8 @@ public class AuthService : IAuthService
         IMapper mapper,
         ApplicationDbContext context,
         IConfiguration configuration,
-        IUserActivityService userActivityService)
+        IUserActivityService userActivityService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -41,6 +44,7 @@ public class AuthService : IAuthService
         _context = context;
         _configuration = configuration;
         _userActivityService = userActivityService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -726,12 +730,15 @@ public class AuthService : IAuthService
         var existing = await _context.UserDevices
             .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceId == id);
         var now = DateTime.UtcNow;
+        var ipRaw = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+        var ip = string.IsNullOrEmpty(ipRaw) ? null : (ipRaw.Length > 45 ? ipRaw[..45] : ipRaw);
 
         if (existing != null)
         {
             existing.LastUsedAt = now;
             existing.DeviceName = name;
             existing.Platform = plat;
+            existing.IpAddress = ip;
         }
         else
         {
@@ -742,6 +749,7 @@ public class AuthService : IAuthService
                 DeviceId = id,
                 DeviceName = name,
                 Platform = plat,
+                IpAddress = ip,
                 LastUsedAt = now,
                 CreatedAt = now
             });

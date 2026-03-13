@@ -59,6 +59,15 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpPost("social-login")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> SocialLogin([FromBody] SocialLoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Provider) || string.IsNullOrWhiteSpace(request.AccessToken))
+            return BadRequest(new ApiResponse<AuthResponse> { Success = false, Message = "Provider and AccessToken are required." });
+        var result = await _authService.SocialLoginAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     [HttpPost("logout")]
     [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<ActionResult<ApiResponse<object>>> Logout()

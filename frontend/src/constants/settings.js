@@ -70,6 +70,7 @@ export const SETTINGS_MENU_ITEMS = [
   { id: 'plans', label: 'Kế hoạch & Mục tiêu', icon: 'calendar_month' },
   { id: 'notifications', label: 'Thông báo', icon: 'notifications' },
   { id: 'security', label: 'Bảo mật', icon: 'lock' },
+  { id: 'support', label: 'Hỗ trợ', icon: 'support_agent' },
   { id: 'logs', label: 'Nhật ký', icon: 'description' },
 ];
 
@@ -80,6 +81,7 @@ export const SETTINGS_ROUTES = {
   '/settings/goals': 'plans',
   '/settings/notification': 'notifications',
   '/settings/security': 'security',
+  '/settings/support': 'support',
   '/settings/logs': 'logs',
 };
 

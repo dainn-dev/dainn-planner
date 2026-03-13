@@ -52,12 +52,7 @@ const GoalBreakdown = () => {
                 </div>
               </li>
             ))}
-          </ul>
-          <div className="pt-2">
-            <button className="text-primary font-bold hover:underline flex items-center gap-1">
-              {t('home.goalLearnMore')} <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </button>
-          </div>
+          </ul>          
         </div>
       </div>
     </section>

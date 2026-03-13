@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-const Hero = () => {
+const Hero = ({ onGetStarted, onViewDemo }) => {
   const { t } = useTranslation();
   return (
     <section className="w-full max-w-[960px] px-4 py-12 md:py-20 lg:py-24">
@@ -21,10 +21,18 @@ const Hero = () => {
               </p>
             </div>
             <div className="flex gap-4 flex-wrap">
-              <button className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-base font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
+              <button
+                type="button"
+                onClick={onGetStarted}
+                className="flex items-center justify-center rounded-lg h-12 px-6 bg-primary text-white text-base font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+              >
                 {t('home.getStartedFree')}
               </button>
-              <button className="flex items-center justify-center rounded-lg h-12 px-6 bg-transparent border border-gray-300 text-gray-900 text-base font-bold hover:bg-gray-50 transition-all">
+              <button
+                type="button"
+                onClick={onViewDemo}
+                className="flex items-center justify-center rounded-lg h-12 px-6 bg-transparent border border-gray-300 text-gray-900 text-base font-bold hover:bg-gray-50 transition-all"
+              >
                 {t('home.viewDemo')}
               </button>
             </div>

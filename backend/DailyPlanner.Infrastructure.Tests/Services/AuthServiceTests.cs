@@ -38,6 +38,7 @@ public class AuthServiceTests : IDisposable
         var store = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
         _userManagerMock.Setup(x => x.Users).Returns(new List<ApplicationUser>().AsQueryable().BuildMock());
+        _userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(new List<string>());
 
         var contextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
         var claimsFactory = new Mock<IUserClaimsPrincipalFactory<ApplicationUser>>();
@@ -52,13 +53,17 @@ public class AuthServiceTests : IDisposable
         _jwtServiceMock.Setup(x => x.GenerateTokenAsync(It.IsAny<ApplicationUser>())).ReturnsAsync("test-token");
         _jwtServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("refresh-token");
 
+        var userActivityServiceMock = new Mock<IUserActivityService>();
+
         _service = new AuthService(
             _userManagerMock.Object,
             _signInManagerMock.Object,
             _jwtServiceMock.Object,
             _mapper,
             _context,
-            _configurationMock.Object);
+            _configurationMock.Object,
+            userActivityServiceMock.Object,
+            contextAccessor.Object);
     }
 
     [Fact]

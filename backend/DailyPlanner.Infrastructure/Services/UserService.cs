@@ -454,6 +454,7 @@ public class UserService : IUserService
                 DeviceId = d.DeviceId,
                 DeviceName = d.DeviceName,
                 Platform = d.Platform,
+                IpAddress = d.IpAddress,
                 LastUsedAt = d.LastUsedAt,
                 CreatedAt = d.CreatedAt
             })

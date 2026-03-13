@@ -254,6 +254,36 @@ export const authAPI = {
     return { ...response, user, token };
   },
 
+  socialLogin: async (provider, accessToken, devicePayload = {}) => {
+    const deviceId = devicePayload.deviceId ?? (typeof localStorage !== 'undefined' && localStorage.getItem('deviceId')) ?? (typeof navigator !== 'undefined' && navigator.userAgent ? `web-${hashString(navigator.userAgent).slice(0, 24)}` : undefined);
+    const deviceName = devicePayload.deviceName ?? (typeof navigator !== 'undefined' ? getDeviceLabel() : undefined);
+    const platform = devicePayload.platform ?? 'web';
+    const body = { provider, accessToken };
+    if (deviceId) body.deviceId = deviceId;
+    if (deviceName) body.deviceName = deviceName;
+    body.platform = platform;
+    const response = await apiRequest('/auth/social-login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const token = response.token;
+    const user = response.user;
+    const refreshToken = response.refreshToken;
+    if (token) {
+      setAuthToken(token);
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      if (refreshToken && typeof localStorage !== 'undefined') {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
+      if (deviceId && typeof localStorage !== 'undefined' && !localStorage.getItem('deviceId')) {
+        localStorage.setItem('deviceId', deviceId);
+      }
+    }
+    return { ...response, user, token };
+  },
+
   forgotPassword: async (email) => {
     return await apiRequest('/auth/forgot-password', {
       method: 'POST',

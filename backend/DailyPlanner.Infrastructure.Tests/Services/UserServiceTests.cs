@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Xunit;
 using DailyPlanner.Application.DTOs;
+using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using DailyPlanner.Infrastructure.Services;
@@ -34,7 +35,9 @@ public class UserServiceTests : IDisposable
         _environmentMock.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
         _environmentMock.Setup(e => e.WebRootPath).Returns((string)null);
 
-        _service = new UserService(_userManagerMock.Object, _mapper, _context, _environmentMock.Object);
+        var userActivityServiceMock = new Mock<IUserActivityService>();
+
+        _service = new UserService(_userManagerMock.Object, _mapper, _context, _environmentMock.Object, userActivityServiceMock.Object);
     }
 
     [Fact]

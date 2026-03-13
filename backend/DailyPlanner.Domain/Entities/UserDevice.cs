@@ -8,6 +8,7 @@ public class UserDevice
     public string? DeviceName { get; set; }
     public string? Platform { get; set; }
     public string? PushToken { get; set; }
+    public string? IpAddress { get; set; }
     public DateTime LastUsedAt { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

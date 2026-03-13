@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
@@ -7,17 +7,24 @@ import ErrorMessage from '../components/ErrorMessage';
 import { validateEmail, validatePassword } from '../utils/formValidation';
 import { authAPI, userAPI } from '../services/api';
 
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID || '';
+
 const LoginPage = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [show2FAModal, setShow2FAModal] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [twoFactorError, setTwoFactorError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
+  const googleTokenClientRef = useRef(null);
+  const pendingGoogleCallbackRef = useRef(null);
+  const googleFallbackTimerRef = useRef(null);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -37,6 +44,146 @@ const LoginPage = () => {
       }
     }
   }, [navigate]);
+
+  // Load Google Identity Services and init token client
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || typeof window === 'undefined') return;
+    const initClient = () => {
+      if (!window.google?.accounts?.oauth2) return;
+      googleTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+        callback: (res) => {
+          const fn = pendingGoogleCallbackRef.current;
+          if (fn && res?.access_token) fn(res.access_token);
+        },
+      });
+    };
+    if (window.google?.accounts?.oauth2) {
+      initClient();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = initClient;
+    document.head.appendChild(script);
+    return () => {};
+  }, []);
+
+  // Load Facebook SDK
+  useEffect(() => {
+    if (!FACEBOOK_APP_ID || typeof window === 'undefined') return;
+    if (window.FB) return;
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0',
+      });
+    };
+    const script = document.createElement('script');
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
+
+  const redirectAfterSocialLogin = (response) => {
+    try {
+      userAPI.getSettings().catch(() => {});
+    } catch (_) {}
+    const user = response?.user || (() => {
+      try {
+        return JSON.parse(localStorage.getItem('user') || '{}');
+      } catch {
+        return {};
+      }
+    })();
+    if (user?.role === 'Admin') {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/daily');
+    }
+  };
+
+  const handleGoogleClick = () => {
+    if (!GOOGLE_CLIENT_ID) {
+      setErrors((prev) => ({ ...prev, submit: t('auth.socialNotConfigured') }));
+      return;
+    }
+    const client = googleTokenClientRef.current;
+    if (!client) {
+      setErrors((prev) => ({ ...prev, submit: t('auth.socialNotReady') }));
+      return;
+    }
+    setErrors((prev => ({ ...prev, submit: null })));
+    setIsSocialLoading(true);
+    pendingGoogleCallbackRef.current = async (accessToken) => {
+      if (googleFallbackTimerRef.current) {
+        clearTimeout(googleFallbackTimerRef.current);
+        googleFallbackTimerRef.current = null;
+      }
+      try {
+        const response = await authAPI.socialLogin('Google', accessToken);
+        if (response?.token || response?.user) {
+          redirectAfterSocialLogin(response);
+        } else {
+          setErrors((prev) => ({ ...prev, submit: response?.message || t('auth.loginFail') }));
+        }
+      } catch (err) {
+        setErrors((prev) => ({ ...prev, submit: err?.message || t('auth.loginFail') }));
+      } finally {
+        setIsSocialLoading(false);
+        pendingGoogleCallbackRef.current = null;
+      }
+    };
+    client.requestAccessToken();
+    googleFallbackTimerRef.current = setTimeout(() => {
+      googleFallbackTimerRef.current = null;
+      if (pendingGoogleCallbackRef.current) {
+        pendingGoogleCallbackRef.current = null;
+        setIsSocialLoading(false);
+      }
+    }, 90000);
+  };
+
+  const handleFacebookClick = () => {
+    if (!FACEBOOK_APP_ID) {
+      setErrors((prev) => ({ ...prev, submit: t('auth.socialNotConfigured') }));
+      return;
+    }
+    if (!window.FB) {
+      setErrors((prev) => ({ ...prev, submit: t('auth.socialNotReady') }));
+      return;
+    }
+    setErrors((prev) => ({ ...prev, submit: null }));
+    setIsSocialLoading(true);
+    window.FB.login(
+      async (response) => {
+        try {
+          if (response.authResponse?.accessToken) {
+            const res = await authAPI.socialLogin('Facebook', response.authResponse.accessToken);
+            if (res?.token || res?.user) {
+              redirectAfterSocialLogin(res);
+            } else {
+              setErrors((prev) => ({ ...prev, submit: res?.message || t('auth.loginFail') }));
+            }
+          } else if (response.status === 'unknown' || !response.authResponse) {
+            setErrors((prev) => ({ ...prev, submit: t('auth.socialCancelled') }));
+          } else {
+            setErrors((prev) => ({ ...prev, submit: t('auth.loginFail') }));
+          }
+        } catch (err) {
+          setErrors((prev) => ({ ...prev, submit: err?.message || t('auth.loginFail') }));
+        } finally {
+          setIsSocialLoading(false);
+        }
+      },
+      { scope: 'email,public_profile' }
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -138,7 +285,12 @@ const LoginPage = () => {
             </p>
           </div>
           <div className="flex flex-col gap-3">
-            <button className="btn-social group">
+            <button
+              type="button"
+              className="btn-social group disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleGoogleClick}
+              disabled={isSocialLoading}
+            >
               <svg className="size-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4"></path>
                 <path d="M12.2401 24.0008C15.4766 24.0008 18.2059 22.9382 20.1945 21.1039L16.3275 18.1055C15.2517 18.8375 13.8627 19.252 12.2445 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.2401 24.0008Z" fill="#34A853"></path>
@@ -147,7 +299,12 @@ const LoginPage = () => {
               </svg>
               <span className="text-sm">{t('auth.continueWithGoogle')}</span>
             </button>
-            <button className="btn-social group">
+            <button
+              type="button"
+              className="btn-social group disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleFacebookClick}
+              disabled={isSocialLoading}
+            >
               <svg className="size-5 text-[#1877F2] mr-3 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M24 12.073C24 5.406 18.627 0 12 0C5.373 0 0 5.406 0 12.073C0 18.101 4.437 23.088 10.125 23.982V15.556H7.078V12.073H10.125V9.428C10.125 6.422 11.916 4.764 14.656 4.764C15.968 4.764 17.344 5 17.344 5V7.952H15.83C14.34 7.952 13.875 8.877 13.875 10.024V12.074H17.203L16.67 15.557H13.875V23.983C19.563 23.088 24 18.101 24 12.073Z"></path>
               </svg>

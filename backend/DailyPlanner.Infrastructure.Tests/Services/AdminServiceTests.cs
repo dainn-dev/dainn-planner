@@ -1,5 +1,6 @@
 using Xunit;
 using DailyPlanner.Application.DTOs;
+using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using DailyPlanner.Infrastructure.Services;
@@ -32,7 +33,9 @@ public class AdminServiceTests : IDisposable
         var roleStore = new Mock<IRoleStore<IdentityRole>>();
         _roleManagerMock = new Mock<RoleManager<IdentityRole>>(roleStore.Object, null, null, null, null);
 
-        _service = new AdminService(_context, _userManagerMock.Object, _roleManagerMock.Object, _mapper);
+        var userActivityServiceMock = new Mock<IUserActivityService>();
+
+        _service = new AdminService(_context, _userManagerMock.Object, _roleManagerMock.Object, _mapper, userActivityServiceMock.Object);
     }
 
     [Fact]

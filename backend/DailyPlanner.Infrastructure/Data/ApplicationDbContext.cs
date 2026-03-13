@@ -23,6 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserDevice> UserDevices { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<UserActivity> UserActivities { get; set; }
+    public DbSet<ContactMessage> ContactMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -184,6 +185,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(u => u.UserActivities)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ContactMessage
+        builder.Entity<ContactMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.Message).IsRequired().HasColumnType("text");
+            entity.Property(e => e.Source).HasMaxLength(50);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }
