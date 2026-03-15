@@ -60,7 +60,7 @@ const Header = ({
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
               <span className="material-symbols-outlined text-xl">{icon}</span>
             </div>

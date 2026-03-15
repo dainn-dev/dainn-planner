@@ -458,6 +458,19 @@ const GoalsPage = () => {
           </div>
         </div>
         </div>
+
+        {/* Mobile: floating add goal button (bottom-right) */}
+        <button
+          type="button"
+          onClick={() => {
+            setGoalFormErrors((prev) => ({ ...prev, submit: null }));
+            setAddGoalModalOpen(true);
+          }}
+          className="md:hidden fixed bottom-6 right-6 z-40 flex size-14 min-h-[56px] min-w-[56px] items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 hover:bg-primary/90 active:scale-95 transition-all touch-manipulation"
+          aria-label={t('goals.addGoal')}
+        >
+          <span className="material-symbols-outlined text-[28px]">add</span>
+        </button>
       </main>
 
       {/* Mobile Sidebar */}
