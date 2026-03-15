@@ -59,6 +59,7 @@ const apiRequest = async (endpoint, options = {}) => {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
@@ -655,6 +656,7 @@ export const adminAPI = {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
+        'ngrok-skip-browser-warning': 'true',
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
@@ -723,6 +725,7 @@ export const adminAPI = {
           method: 'GET',
           headers: {
             Accept: 'text/event-stream',
+            'ngrok-skip-browser-warning': 'true',
             ...(token && { Authorization: `Bearer ${token}` })
           },
           credentials: 'include',
