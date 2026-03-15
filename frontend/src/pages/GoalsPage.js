@@ -88,6 +88,38 @@ const GoalsPage = () => {
   });
   const [goalFormErrors, setGoalFormErrors] = useState({});
   const [notifications, setNotifications] = useState([]);
+  const [copyingGoalId, setCopyingGoalId] = useState(null);
+
+  const handleCopyGoal = async (goal) => {
+    if (copyingGoalId) return;
+    setCopyingGoalId(goal.id);
+    try {
+      const full = await goalsAPI.getGoal(goal.id);
+      const data = full?.data ?? full;
+      const targetDate = data.targetDate ? new Date(data.targetDate).toISOString() : null;
+      const created = await goalsAPI.createGoal({
+        title: `${data.title || goal.title} (Copy)`,
+        description: data.description || '',
+        category: data.category || goal.category || '',
+        targetDate,
+        startDate: null,
+      });
+      const newGoal = created?.data ?? created;
+      const newId = newGoal?.id ?? newGoal?.Id;
+      const milestones = data.milestones || [];
+      for (const m of milestones) {
+        await goalsAPI.createMilestone(newId, {
+          title: m.title || '',
+          targetDate: m.targetDate ?? null,
+        });
+      }
+      setGoals((prev) => [...prev, mapGoalFromApi(newGoal, formatDate)]);
+    } catch (err) {
+      console.error('Failed to copy goal:', err);
+    } finally {
+      setCopyingGoalId(null);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -390,18 +422,33 @@ const GoalsPage = () => {
                             />
                           </div>
                         </div>
-                        <button 
-                          type="button"
-                          className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors touch-manipulation shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(goal);
-                          }}
-                          aria-label={t('goals.deleteGoalLabel', { title: goal.title })}
-                          title={t('goals.deleteGoal')}
-                        >
-                          <span className="material-symbols-outlined text-[20px]">delete</span>
-                        </button>
+                        <div className="flex flex-row items-center gap-0.5 shrink-0">
+                          <button 
+                            type="button"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 hover:text-primary hover:bg-primary/10 transition-colors touch-manipulation disabled:opacity-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyGoal(goal);
+                            }}
+                            disabled={copyingGoalId === goal.id}
+                            aria-label={t('goals.copyGoalAria')}
+                            title={t('goals.copyGoal')}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">{copyingGoalId === goal.id ? 'hourglass_empty' : 'content_copy'}</span>
+                          </button>
+                          <button 
+                            type="button"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors touch-manipulation"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(goal);
+                            }}
+                            aria-label={t('goals.deleteGoalLabel', { title: goal.title })}
+                            title={t('goals.deleteGoal')}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>

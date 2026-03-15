@@ -536,6 +536,8 @@
     "saveAria": "Save changes",
     "cancelEditAria": "Cancel edit",
     "editGoalAria": "Edit goal",
+    "copyGoal": "Copy goal",
+    "copyGoalAria": "Duplicate this goal",
     "markCompleteAria": "Mark complete",
     "markIncompleteAria": "Mark incomplete",
     "addTaskFromMilestoneAria": "Add task from milestone: {{title}}",

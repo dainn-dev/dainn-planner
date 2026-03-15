@@ -507,6 +507,13 @@ export const goalsAPI = {
     });
   },
 
+  createMilestone: async (goalId, milestoneData) => {
+    return await apiRequest(`/goals/${goalId}/milestones`, {
+      method: 'POST',
+      body: JSON.stringify(milestoneData),
+    });
+  },
+
   toggleMilestone: async (goalId, milestoneId) => {
     return await apiRequest(`/goals/${goalId}/milestones/${milestoneId}/toggle`, {
       method: 'PATCH',

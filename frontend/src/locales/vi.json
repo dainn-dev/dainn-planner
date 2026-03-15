@@ -536,6 +536,8 @@
     "saveAria": "Lưu thay đổi",
     "cancelEditAria": "Hủy chỉnh sửa",
     "editGoalAria": "Chỉnh sửa mục tiêu",
+    "copyGoal": "Sao chép mục tiêu",
+    "copyGoalAria": "Tạo bản sao mục tiêu này",
     "markCompleteAria": "Đánh dấu hoàn thành",
     "markIncompleteAria": "Đánh dấu chưa hoàn thành",
     "addTaskFromMilestoneAria": "Thêm nhiệm vụ từ mốc: {{title}}",
