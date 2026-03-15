@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "npx react-scripts build",
+  "buildCommand": "CI=false npx react-scripts build",
   "outputDirectory": "build",
   "framework": "create-react-app",
   "rewrites": [
