@@ -1,22 +1,11 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { authAPI } from '../services/api';
+import LogoutButton from './LogoutButton';
 
 const Sidebar = ({ className = '' }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/login');
-    }
-  };
 
   // Get user from localStorage
   const getUser = () => {
@@ -109,14 +98,7 @@ const Sidebar = ({ className = '' }) => {
           </Link>
         ))}
         <div className="mt-auto border-t border-gray-100 pt-4">
-          
-          <button 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full"
-            onClick={handleLogout}
-          >
-            <span className="material-symbols-outlined">logout</span>
-            <span>{t('sidebar.logout')}</span>
-          </button>
+          <LogoutButton labelKey="sidebar.logout" />
         </div>
       </div>
     </nav>

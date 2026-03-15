@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { adminAPI, tasksAPI } from '../services/api';
+import LogoutButton from '../components/LogoutButton';
 import { TAG_I18N_KEYS } from '../constants/tasks';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate } from '../utils/dateFormat';
@@ -409,15 +410,7 @@ const AdminDashboardPage = () => {
             <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
-            <button 
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full"
-              onClick={() => {
-                window.location.href = '/login';
-              }}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>{t('sidebar.logout')}</span>
-            </button>
+            <LogoutButton labelKey="sidebar.logout" />
           </div>
         </div>
       </nav>

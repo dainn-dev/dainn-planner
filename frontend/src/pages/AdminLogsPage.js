@@ -6,6 +6,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { isStoredAdmin } from '../utils/auth';
 import { adminAPI } from '../services/api';
+import LogoutButton from '../components/LogoutButton';
 
 const isLogInDateRange = (log, dateFilter) => {
   if (!dateFilter || dateFilter === 'all') return true;
@@ -538,15 +539,7 @@ const AdminLogsPage = () => {
             <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
-            <button 
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full"
-              onClick={() => {
-                window.location.href = '/login';
-              }}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>{t('auth.logout')}</span>
-            </button>
+            <LogoutButton labelKey="auth.logout" />
           </div>
         </div>
       </nav>

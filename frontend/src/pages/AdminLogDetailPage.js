@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { isStoredAdmin } from '../utils/auth';
 import { adminAPI } from '../services/api';
+import LogoutButton from '../components/LogoutButton';
 
 const formatSize = (bytes) => {
   if (bytes == null || bytes < 0) return '–';
@@ -575,15 +576,7 @@ const AdminLogDetailPage = () => {
             <span>Thiết lập</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
-            <button 
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full"
-              onClick={() => {
-                window.location.href = '/login';
-              }}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>Đăng xuất</span>
-            </button>
+            <LogoutButton labelKey="auth.logout" />
           </div>
         </div>
       </nav>

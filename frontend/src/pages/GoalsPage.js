@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { validateTitle, validateCategory, validateDate } from '../utils/formValidation';
-import { goalsAPI, notificationsAPI, authAPI } from '../services/api';
+import { goalsAPI, notificationsAPI } from '../services/api';
+import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 
@@ -480,7 +481,7 @@ const GoalsPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-background-light border-r border-border-light z-50 transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-background-light border-r border-border-light z-[51] transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col gap-6 p-6 h-full">
           <div className="flex gap-4 items-center mb-2">
             <div 
@@ -566,20 +567,12 @@ const GoalsPage = () => {
             </Link>
           </nav>
           <div className="mt-auto flex flex-col gap-2">
-            <button 
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors text-left w-full group"
-              onClick={async () => {
-                try {
-                  await authAPI.logout();
-                } catch (e) {
-                  console.error('Logout error:', e);
-                }
-                navigate('/login');
-              }}
-            >
-              <span className="material-symbols-outlined text-zinc-400 group-hover:text-zinc-900 transition-colors" style={{ fontSize: '20px' }}>logout</span>
-              <p className="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors">{t('auth.logout')}</p>
-            </button>
+            <LogoutButton
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 transition-colors text-left w-full group touch-manipulation min-h-[44px]"
+              iconClassName="text-zinc-400 group-hover:text-zinc-900 transition-colors"
+              textClassName="text-zinc-500 group-hover:text-zinc-900 text-sm font-medium transition-colors"
+              labelKey="auth.logout"
+            />
           </div>
         </div>
       </aside>

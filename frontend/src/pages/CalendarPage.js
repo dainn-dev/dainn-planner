@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import { eventsAPI, notificationsAPI } from '../services/api';
+import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDateWithWeekday, formatDateTime } from '../utils/dateFormat';
 import {
@@ -1301,7 +1302,7 @@ const CalendarPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center gap-3 border-b border-slate-100">
           <div className="size-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
@@ -1371,15 +1372,10 @@ const CalendarPage = () => {
             <span>{t('calendar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-slate-100 pt-4">
-            <button 
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-medium transition-colors w-full"
-              onClick={() => {
-                window.location.href = '/login';
-              }}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>{t('calendar.logout')}</span>
-            </button>
+            <LogoutButton
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-medium transition-colors w-full touch-manipulation min-h-[44px]"
+              labelKey="calendar.logout"
+            />
           </div>
         </div>
       </nav>

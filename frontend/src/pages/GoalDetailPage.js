@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
+import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate } from '../utils/dateFormat';
 
@@ -880,7 +881,7 @@ const GoalDetailPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center gap-3 border-b border-gray-100">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
@@ -957,15 +958,7 @@ const GoalDetailPage = () => {
             <span>{t('sidebar.settings')}</span>
           </Link>
           <div className="mt-auto border-t border-gray-100 pt-4">
-            <button 
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full"
-              onClick={() => {
-                window.location.href = '/login';
-              }}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>{t('auth.logout')}</span>
-            </button>
+            <LogoutButton labelKey="auth.logout" />
           </div>
         </div>
       </nav>
