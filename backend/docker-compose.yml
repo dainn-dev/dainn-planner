@@ -1,28 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: dailyplanner-postgres
-    environment:
-      POSTGRES_DB: dainn-planner
-      POSTGRES_USER: mindlex_dev_usr
-      POSTGRES_PASSWORD: SF-05a_15aJe6LOu
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d
-    networks:
-      - dailyplanner-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mindlex_dev_usr -d dainn-planner"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Daily Planner API
+  # Daily Planner API (uses Neon serverless Postgres)
   dailyplanner-api:
     build:
       context: .
@@ -31,20 +10,46 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres:5432;Database=dainn-planner;Username=mindlex_dev_usr;Password=SF-05a_15aJe6LOu
+      # ConnectionStrings (from appsettings.json)
+      - ConnectionStrings__DefaultConnection=Host=ep-gentle-firefly-ajfcsrrr-pooler.c-3.us-east-2.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_LRfDYB7rp6AU;SSL Mode=Require
+      # Jwt
+      - Jwt__Key=9675bbe42bc6ecfcaf6fba0539afc302913d159a7d9800b065bc3e11b62f4526
+      - Jwt__Issuer=DailyPlanner
+      - Jwt__Audience=DailyPlanner
+      # Authentication - Google
+      - Authentication__Google__Enable=false
+      - Authentication__Google__ClientId=
+      - Authentication__Google__ClientSecret=
+      # Authentication - Facebook
+      - Authentication__Facebook__Enable=false
+      - Authentication__Facebook__AppId=
+      - Authentication__Facebook__AppSecret=
+      # Cors
+      - Cors__AllowedOrigins__0=http://localhost:3005
+      - Cors__AllowedOrigins__1=http://plan.nport.link
+      - Cors__AllowedOrigins__2=https://plan.nport.link
+      # Recaptcha
+      - Recaptcha__SecretKey=
+      # Email
+      - Email__SmtpHost=
+      - Email__SmtpPort=587
+      - Email__From=noreply@dailyplanner.com
+      - Email__User=
+      - Email__Password=
+      - Email__EnableSsl=true
+      - Email__AdminTo=
+      # RequestLogging (excluded paths - from appsettings)
+      - RequestLogging__ExcludedPaths__0=/health
+      - RequestLogging__ExcludedPaths__1=/swagger
+      - RequestLogging__ExcludedPaths__2=/hangfire
+      - AllowedHosts=*
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
     volumes:
       - ./logs:/app/logs
     networks:
       - dailyplanner-network
     restart: unless-stopped
-
-volumes:
-  postgres_data:
 
 networks:
   dailyplanner-network:
