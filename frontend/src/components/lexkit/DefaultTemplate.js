@@ -17,6 +17,7 @@ import {
   historyExtension,
   blockFormatExtension,
   htmlExtension,
+  contextMenuExtension,
   TableExtension,
 } from '@lexkit/editor';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -52,7 +53,11 @@ const extensions = [
   historyExtension,
   blockFormatExtension,
   htmlExtension,
-  new TableExtension().configure({ enableContextMenu: true }),
+  contextMenuExtension,
+  new TableExtension().configure({
+    enableContextMenu: true,
+    contextMenuExtension,
+  }),
 ];
 
 const { Provider, useEditor } = createEditorSystem();

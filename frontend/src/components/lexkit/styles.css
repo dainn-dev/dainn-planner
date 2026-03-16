@@ -35,19 +35,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: var(--lexkit-fg-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
 }
 
 .lexkit-toolbar-button:hover {
   background: var(--lexkit-hover-bg);
   color: var(--lexkit-fg);
+}
+
+.lexkit-toolbar-button:active {
+  transform: scale(0.96);
 }
 
 .lexkit-toolbar-button.active {
@@ -98,6 +102,13 @@
   --lexkit-hover-bg: #e5e7eb;
   --lexkit-active-bg: #dbeafe;
   --lexkit-active-fg: #2563eb;
+  --lexkit-table-header-bg: #f3f4f6;
+  --lexkit-table-header-fg: #374151;
+  --lexkit-table-row-hover: #f9fafb;
+  --lexkit-menu-bg: #ffffff;
+  --lexkit-menu-border: #e5e7eb;
+  --lexkit-menu-item-hover: #f3f4f6;
+  --lexkit-menu-item-active: #e5e7eb;
 }
 
 /* Theme tokens – dark (when wrapper has data-editor-theme="dark") */
@@ -110,6 +121,13 @@
   --lexkit-hover-bg: #334155;
   --lexkit-active-bg: #1e3a5f;
   --lexkit-active-fg: #60a5fa;
+  --lexkit-table-header-bg: #334155;
+  --lexkit-table-header-fg: #e2e8f0;
+  --lexkit-table-row-hover: #1e293b;
+  --lexkit-menu-bg: #1e293b;
+  --lexkit-menu-border: #475569;
+  --lexkit-menu-item-hover: #334155;
+  --lexkit-menu-item-active: #475569;
 }
 
 /* Rich text element styles */
@@ -201,7 +219,7 @@
   overflow-x: auto;
 }
 
-/* Table popover */
+/* Table popover – friendly style */
 .lexkit-table-popover {
   position: absolute;
   top: 100%;
@@ -209,34 +227,36 @@
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  margin-top: 4px;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-top: 6px;
   background: var(--lexkit-toolbar-bg);
   border: 1px solid var(--lexkit-border);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   white-space: nowrap;
 }
 
 .lexkit-table-popover-label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 0.75rem;
+  font-weight: 500;
   color: var(--lexkit-fg-muted);
 }
 
 .lexkit-table-popover-input {
-  width: 44px;
-  padding: 2px 6px;
+  width: 48px;
+  padding: 6px 8px;
   border: 1px solid var(--lexkit-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: var(--lexkit-fg);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   text-align: center;
   outline: none;
+  transition: border-color 0.15s ease;
 }
 
 .lexkit-table-popover-input:focus {
@@ -244,37 +264,121 @@
 }
 
 .lexkit-table-popover-insert {
-  padding: 3px 10px;
+  padding: 6px 14px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--lexkit-active-bg);
   color: var(--lexkit-active-fg);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
 .lexkit-table-popover-insert:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-/* Table rendering inside editor */
+.lexkit-table-popover-insert:active {
+  transform: scale(0.98);
+}
+
+/* Table rendering inside editor – friendly style */
 .lexkit-content-editable table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
-  margin: 0.5em 0;
+  margin: 0.75em 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .lexkit-content-editable th,
 .lexkit-content-editable td {
   border: 1px solid var(--lexkit-border);
-  padding: 6px 10px;
+  padding: 10px 14px;
   font-size: 0.8125rem;
   text-align: left;
+  transition: background 0.15s ease;
 }
 
 .lexkit-content-editable th {
-  background: var(--lexkit-toolbar-bg);
+  background: var(--lexkit-table-header-bg);
   font-weight: 600;
+  color: var(--lexkit-table-header-fg);
+}
+
+.lexkit-content-editable tbody tr:hover td {
+  background: var(--lexkit-table-row-hover);
+}
+
+/* Context menu – friendly style (works when portaled outside wrapper) */
+.lexkit-context-menu {
+  min-width: 200px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: lexkit-menu-in 0.18s ease-out;
+}
+
+.dark .lexkit-context-menu {
+  background: #1e293b;
+  border-color: #475569;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+@keyframes lexkit-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.lexkit-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #111827;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dark .lexkit-context-menu-item {
+  color: #e2e8f0;
+}
+
+.lexkit-context-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.dark .lexkit-context-menu-item:hover {
+  background: #334155;
+}
+
+.lexkit-context-menu-item:active {
+  background: #e5e7eb;
+}
+
+.dark .lexkit-context-menu-item:active {
+  background: #475569;
+}
+
+.lexkit-context-menu-item-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }

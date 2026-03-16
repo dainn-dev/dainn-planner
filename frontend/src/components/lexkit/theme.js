@@ -25,4 +25,9 @@ export const defaultTheme = {
   tableCell: 'lexkit-table-cell',
   tableCellHeader: 'lexkit-table-cell-header',
   tableRow: 'lexkit-table-row',
+  contextMenu: {
+    container: 'lexkit-context-menu',
+    item: 'lexkit-context-menu-item',
+    itemDisabled: 'lexkit-context-menu-item-disabled',
+  },
 };
