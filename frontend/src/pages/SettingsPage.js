@@ -843,10 +843,11 @@ const SettingsPage = () => {
                       </label>
                       <div className="relative">
                         <select
-                          className="w-full appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all shadow-sm cursor-pointer"
+                          className="w-full appearance-none bg-zinc-100 dark:bg-slate-800 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-500 dark:text-slate-400 focus:outline-none cursor-not-allowed opacity-75"
                           id="timezone"
                           value={generalSettings.timezone}
                           onChange={(e) => handleGeneralSettingChange('timezone', e.target.value)}
+                          disabled
                         >
                           <option>(GMT+00:00) UTC</option>
                           <option>(GMT+07:00) Bangkok, Hanoi, Jakarta</option>

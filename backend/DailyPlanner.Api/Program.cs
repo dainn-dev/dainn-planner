@@ -293,6 +293,10 @@ RecurringJob.AddOrUpdate<OldUserActivityCleanupJob>(
     "cleanup-old-user-activities",
     j => j.ExecuteAsync(CancellationToken.None),
     "0 2 * * *"); // daily at 02:00 UTC (activities older than 7 days)
+RecurringJob.AddOrUpdate<TaskReminderJob>(
+    "task-reminders",
+    j => j.ExecuteAsync(CancellationToken.None),
+    "* * * * *"); // every minute: send in-app notification at exact reminder time (hours and minutes)
 
 // Ensure database is created, roles exist, and seed data
 using (var scope = app.Services.CreateScope())

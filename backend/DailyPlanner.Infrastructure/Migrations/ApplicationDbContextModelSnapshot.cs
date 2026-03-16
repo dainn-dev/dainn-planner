@@ -426,6 +426,9 @@ namespace DailyPlanner.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -438,6 +441,8 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId", "IsRead");
+
+                    b.HasIndex("Type", "ReferenceId");
 
                     b.ToTable("Notifications");
                 });

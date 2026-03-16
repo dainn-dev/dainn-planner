@@ -11,6 +11,8 @@ public class Notification
     public string? IconColor { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>Optional reference for de-duplication (e.g. DailyTask.Id for TaskReminder).</summary>
+    public Guid? ReferenceId { get; set; }
 
     // Navigation property
     public ApplicationUser User { get; set; } = null!;

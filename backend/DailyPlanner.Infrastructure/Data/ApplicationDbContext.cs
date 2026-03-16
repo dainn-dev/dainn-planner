@@ -129,7 +129,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ReferenceId);
             entity.HasIndex(e => new { e.UserId, e.IsRead });
+            entity.HasIndex(e => new { e.Type, e.ReferenceId });
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(e => e.UserId)
