@@ -210,7 +210,7 @@ const AddTaskModal = ({
       onClick={handleCancel}
     >
       <div
-        className="w-full max-w-[580px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
+        className="w-full max-w-[580px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] min-h-0 animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light dark:bg-slate-800 shrink-0">
@@ -230,8 +230,11 @@ const AddTaskModal = ({
             <span className="material-symbols-outlined text-gray-400 dark:text-slate-400 group-hover:text-gray-600 dark:group-hover:text-slate-200 text-[24px]">close</span>
           </button>
         </div>
-        <form onSubmit={handleSubmit}>
-          <div className="px-8 py-2 overflow-y-auto flex flex-col gap-6 custom-scrollbar bg-surface-light dark:bg-slate-800">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div
+            className="px-8 py-2 flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col gap-6 custom-scrollbar bg-surface-light dark:bg-slate-800 overscroll-contain touch-pan-y"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 {t('daily.taskName')}
