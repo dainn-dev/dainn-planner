@@ -36,6 +36,7 @@ const AddTaskModal = ({
 }) => {
   const { t } = useTranslation();
   const editorMethodsRef = useRef(null);
+  const taskFormRef = useRef(null);
   const [editorKey, setEditorKey] = useState(0);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [formGoalMilestoneId, setFormGoalMilestoneId] = useState(null);
@@ -51,6 +52,7 @@ const AddTaskModal = ({
   });
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
+  taskFormRef.current = taskForm;
 
   const getTagLabel = (tag) => (TAG_I18N_KEYS[tag] ? t(`daily.${TAG_I18N_KEYS[tag]}`) : tag);
 
@@ -98,10 +100,11 @@ const AddTaskModal = ({
 
   const handleEditorReady = useCallback((methods) => {
     editorMethodsRef.current = methods;
-    if (taskForm.description) {
-      methods.injectHTML(taskForm.description);
+    const desc = taskFormRef.current?.description;
+    if (desc) {
+      methods.injectHTML(desc);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Re-mount the editor when the modal opens so it picks up new initial content
   useEffect(() => {
