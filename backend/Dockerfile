@@ -25,8 +25,8 @@ RUN dotnet publish "DailyPlanner.Api.csproj" -c Release -o /app/publish /p:UseAp
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Create required directories
+RUN mkdir -p /app/wwwroot/logs /app/wwwroot/uploads/avatars
 
 # Copy the published application
 COPY --from=publish /app/publish .

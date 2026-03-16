@@ -183,9 +183,12 @@ var app = builder.Build();
 
 // Ensure wwwroot directories exist (uploads/avatars for serving, logs for file sink)
 var env = app.Services.GetRequiredService<IWebHostEnvironment>();
-var webRoot = env.WebRootPath ?? env.ContentRootPath;
-Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "avatars"));
-Directory.CreateDirectory(Path.Combine(webRoot, "logs"));
+if (string.IsNullOrEmpty(env.WebRootPath))
+{
+    env.WebRootPath = Path.Combine(env.ContentRootPath, "wwwroot");
+}
+Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "avatars"));
+Directory.CreateDirectory(Path.Combine(env.WebRootPath, "logs"));
 
 // Configure the HTTP request pipeline
 app.UseForwardedHeaders();
