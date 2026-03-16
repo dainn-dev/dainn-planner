@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
@@ -8,6 +8,7 @@ import { tasksAPI, notificationsAPI, eventsAPI } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatTime } from '../utils/dateFormat';
+import AddTaskModal from '../components/AddTaskModal';
 
 const toDateOnly = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
 const mapEventForDaily = (e) => {
@@ -79,23 +80,11 @@ const DailyPage = () => {
   const [mainGoal, setMainGoal] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [taskForm, setTaskForm] = useState({
-    name: '',
-    description: '',
-    dueDate: '',
-    reminderTime: '',
-    repeat: 'none',
-    priority: 'low', // 'low' | 'medium' | 'high' -> API: 0, 1, 2
-    tags: []
-  });
-  const [formGoalMilestoneId, setFormGoalMilestoneId] = useState(null);
-  const [formGoalId, setFormGoalId] = useState(null);
   const [addTaskReturnTo, setAddTaskReturnTo] = useState(null);
+  const [addTaskInitialTask, setAddTaskInitialTask] = useState(null);
+  const [addTaskGoalContext, setAddTaskGoalContext] = useState(null);
   const location = useLocation();
   const navigateTo = useNavigate();
-  const [showNewTagInput, setShowNewTagInput] = useState(false);
-  const [newTagValue, setNewTagValue] = useState('');
   const [taskPage, setTaskPage] = useState(1);
   const [taskPageSize] = useState(4);
   const [taskTotalCount, setTaskTotalCount] = useState(0);
@@ -108,7 +97,6 @@ const DailyPage = () => {
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [taskIdInProgress, setTaskIdInProgress] = useState(null); // task id showing 3s progress before toggle
   const [toggleProgressPercent, setToggleProgressPercent] = useState(0); // 0..100 for inline progress bar
-  const descriptionEditorRef = useRef(null);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -177,15 +165,16 @@ const DailyPage = () => {
     if (!state?.openAddTaskFromMilestone || !state?.milestone) return;
     const { id, title, date, goalId } = state.milestone;
     const dueDateLocal = date ? `${String(date).slice(0, 10)}T12:00` : '';
-    setFormGoalMilestoneId(id || null);
-    setFormGoalId(goalId || null);
+
+    setAddTaskGoalContext({
+      goalMilestoneId: id || null,
+      goalId: goalId || null
+    });
     setAddTaskReturnTo(state.returnTo || null);
-    setTaskForm(prev => ({
-      ...prev,
-      name: title || prev.name,
-      dueDate: dueDateLocal,
-    }));
-    setEditingTaskId(null);
+    setAddTaskInitialTask({
+      title: title || '',
+      date: dueDateLocal
+    });
     setAddTaskModalOpen(true);
     navigateTo(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigateTo]);
@@ -195,47 +184,16 @@ const DailyPage = () => {
     const state = location.state;
     const task = state?.editTask;
     if (!task?.id) return;
-    const recurrenceToOption = { 0: 'none', 1: 'daily', 2: 'weekly', 3: 'monthly' };
-    const priorityNumToOption = { 0: 'low', 1: 'medium', 2: 'high' };
-    setFormGoalMilestoneId(task.goalMilestoneId ?? null);
-    setFormGoalId(task.goalId ?? null);
-    setAddTaskReturnTo(state.returnTo || null);
-    setEditingTaskId(task.id);
-    setTaskForm({
-      name: task.title || '',
-      description: task.description ?? '',
-      dueDate: dateToDatetimeLocal(task.date),
-      reminderTime: task.reminderTime ?? '',
-      repeat: recurrenceToOption[task.recurrence] ?? 'none',
-      priority: priorityNumToOption[task.priority] ?? 'low',
-      tags: task.tags ? [...task.tags] : [],
+
+    setAddTaskGoalContext({
+      goalMilestoneId: task.goalMilestoneId ?? null,
+      goalId: task.goalId ?? null
     });
+    setAddTaskReturnTo(state.returnTo || null);
+    setAddTaskInitialTask(task);
     setAddTaskModalOpen(true);
     navigateTo(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigateTo]);
-
-  // Sync description into simple editor when Add Task modal opens
-  useEffect(() => {
-    if (!addTaskModalOpen || !descriptionEditorRef.current) return;
-    const html = taskForm.description || '';
-    if (descriptionEditorRef.current.innerHTML !== html) {
-      descriptionEditorRef.current.innerHTML = html;
-    }
-  }, [addTaskModalOpen, taskForm.description]);
-
-  const applyDescriptionFormat = (command, value = null) => {
-    if (command === 'createLink') {
-      const url = value != null ? value : window.prompt(t('daily.linkPrompt'), 'https://');
-      if (url == null || url.trim() === '' || url === 'https://') return;
-      document.execCommand('createLink', false, url.trim());
-    } else {
-      document.execCommand(command, false, value);
-    }
-    descriptionEditorRef.current?.focus();
-    if (descriptionEditorRef.current) {
-      setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
-    }
-  };
 
   const loadData = async () => {
     try {
@@ -317,115 +275,23 @@ const DailyPage = () => {
     }
   };
 
-  const handleTagToggle = (tag) => {
-    setTaskForm(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter(t => t !== tag)
-        : [...prev.tags, tag]
-    }));
-  };
-
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    if (!taskForm.name.trim()) return;
-    const datePayload = taskForm.dueDate
-      ? new Date(taskForm.dueDate).toISOString()
-      : new Date().toISOString();
-    const priorityMap = { low: 0, medium: 1, high: 2 };
-    const priorityInt = priorityMap[taskForm.priority] ?? 0;
-    const recurrenceMap = { none: 0, daily: 1, weekly: 2, monthly: 3 };
-    const recurrence = recurrenceMap[taskForm.repeat] ?? 0;
-    const descriptionFromEditor =
-      (descriptionEditorRef.current && descriptionEditorRef.current.innerHTML) ?? taskForm.description ?? '';
-    const payload = {
-      title: taskForm.name.trim(),
-      description: descriptionFromEditor,
-      date: datePayload,
-      priority: priorityInt,
-      recurrence,
-      reminderTime: taskForm.reminderTime || undefined,
-      tags: taskForm.tags,
-    };
-    if (editingTaskId) {
-      payload.goalMilestoneId = formGoalMilestoneId ?? null;
-      payload.goalId = formGoalId ?? null;
-    } else {
-      if (formGoalMilestoneId) payload.goalMilestoneId = formGoalMilestoneId;
-      if (formGoalId) payload.goalId = formGoalId;
-    }
-    try {
-      if (editingTaskId) {
-        await tasksAPI.updateTask(editingTaskId, payload);
-        setEditingTaskId(null);
-        await loadData();
-      } else {
-        await tasksAPI.createTask(payload);
-        await loadData();
-      }
-      setTaskForm({
-        name: '',
-        description: '',
-        dueDate: '',
-        reminderTime: '',
-        repeat: 'none',
-        priority: 'low',
-        tags: []
-      });
-      setFormGoalMilestoneId(null);
-      setFormGoalId(null);
-      setAddTaskReturnTo(null);
-      setAddTaskModalOpen(false);
-    } catch (error) {
-      console.error(editingTaskId ? 'Failed to update task:' : 'Failed to create task:', error);
-    }
-  };
-
   const handleOpenEditTask = (task) => {
-    const recurrenceToOption = { 0: 'none', 1: 'daily', 2: 'weekly', 3: 'monthly' };
-    const priorityNumToOption = { 0: 'low', 1: 'medium', 2: 'high' };
-    setEditingTaskId(task.id);
-    setFormGoalMilestoneId(task.goalMilestoneId ?? null);
-    setFormGoalId(task.goalId ?? null);
-    setTaskForm({
-      name: task.text || task.title || '',
-      description: task.description ?? '',
-      dueDate: dateToDatetimeLocal(task.date),
-      reminderTime: task.reminderTime ?? '',
-      repeat: recurrenceToOption[task.recurrence] ?? 'none',
-      priority: priorityNumToOption[task.priority] ?? 'low',
-      tags: task.tags ? [...task.tags] : [],
+    setAddTaskGoalContext({
+      goalMilestoneId: task.goalMilestoneId ?? null,
+      goalId: task.goalId ?? null
     });
+    setAddTaskReturnTo(null);
+    setAddTaskInitialTask(task);
     setAddTaskModalOpen(true);
   };
 
   const handleCloseModal = () => {
     const returnTo = addTaskReturnTo;
     setAddTaskModalOpen(false);
-    setEditingTaskId(null);
-    setFormGoalMilestoneId(null);
-    setFormGoalId(null);
     setAddTaskReturnTo(null);
-    setTaskForm({
-      name: '',
-      description: '',
-      dueDate: '',
-      reminderTime: '',
-      repeat: 'none',
-      priority: 'low',
-      tags: []
-    });
-    setShowNewTagInput(false);
-    setNewTagValue('');
+    setAddTaskInitialTask(null);
+    setAddTaskGoalContext(null);
     if (returnTo) navigateTo(returnTo);
-  };
-
-  const handleAddNewTag = () => {
-    if (newTagValue.trim()) {
-      handleTagToggle(newTagValue.trim());
-      setNewTagValue('');
-      setShowNewTagInput(false);
-    }
   };
 
   const getTagLabel = (tag) => (TAG_I18N_KEYS[tag] ? t(`daily.${TAG_I18N_KEYS[tag]}`) : tag);
@@ -472,7 +338,12 @@ const DailyPage = () => {
           actionButton={{
             text: t('daily.addTask'),
             icon: 'add',
-            onClick: () => setAddTaskModalOpen(true)
+            onClick: () => {
+              setAddTaskInitialTask(null);
+              setAddTaskGoalContext(null);
+              setAddTaskReturnTo(null);
+              setAddTaskModalOpen(true);
+            }
           }}
           notifications={notifications}
           onNotificationsChange={setNotifications}
@@ -642,7 +513,12 @@ const DailyPage = () => {
                       <h2 className="text-[#111418] dark:text-white text-xl font-bold">{t('daily.tasks')}</h2>
                       <button
                         type="button"
-                        onClick={() => { setTaskForm(prev => ({ ...prev, name: '' })); setEditingTaskId(null); setAddTaskModalOpen(true); }}
+                        onClick={() => {
+                          setAddTaskInitialTask(null);
+                          setAddTaskGoalContext(null);
+                          setAddTaskReturnTo(null);
+                          setAddTaskModalOpen(true);
+                        }}
                         className="lg:hidden inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/90 px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
                         aria-label={t('daily.addTask')}
                       >
@@ -923,326 +799,13 @@ const DailyPage = () => {
         </div>
       </div>
 
-      {/* Add Task Modal */}
-      {addTaskModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/10 dark:bg-black/60 backdrop-blur-sm transition-all duration-300"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="w-full max-w-[580px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light dark:bg-slate-800 shrink-0">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-                  {editingTaskId ? t('daily.editTaskTitle') : t('daily.addTaskTitle')}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 font-normal">
-                  {editingTaskId ? t('daily.editTaskDesc') : t('daily.addTaskDesc')}
-                </p>
-              </div>
-              <button 
-                aria-label={t('common.close')}
-                className="group p-2 -mr-2 -mt-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
-                onClick={handleCloseModal}
-              >
-                <span className="material-symbols-outlined text-gray-400 dark:text-slate-400 group-hover:text-gray-600 dark:group-hover:text-slate-200 text-[24px]">close</span>
-              </button>
-            </div>
-            <form onSubmit={handleCreateTask}>
-              <div className="px-8 py-2 overflow-y-auto flex flex-col gap-6 custom-scrollbar bg-surface-light dark:bg-slate-800">
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t('daily.taskName')}
-                  </label>
-                  <div className="relative group">
-                    <input
-                      autoFocus
-                      className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 px-4 py-3 text-base focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-gray-300 dark:hover:border-slate-500"
-                      placeholder={t('daily.taskNamePlaceholder')}
-                      type="text"
-                      value={taskForm.name}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, name: e.target.value }))}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t('daily.description')}
-                  </label>
-                    <div className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all overflow-hidden">
-                    <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('bold')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.bold')}
-                        aria-label={t('daily.bold')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_bold</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('italic')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.italic')}
-                        aria-label={t('daily.italic')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_italic</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('underline')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.underline')}
-                        aria-label={t('daily.underline')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_underlined</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('strikeThrough')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.strikethrough')}
-                        aria-label={t('daily.strikethrough')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_strikethrough</span>
-                      </button>
-                      <span className="w-px h-5 bg-gray-200 dark:bg-slate-600 mx-0.5" aria-hidden />
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('insertUnorderedList')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.bulletList')}
-                        aria-label={t('daily.bulletList')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('insertOrderedList')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.numberedList')}
-                        aria-label={t('daily.numberedList')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_list_numbered</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('createLink')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.insertLink')}
-                        aria-label={t('daily.insertLink')}
-                      >
-                        <span className="material-symbols-outlined text-lg">link</span>
-                      </button>
-                      <span className="w-px h-5 bg-gray-200 dark:bg-slate-600 mx-0.5" aria-hidden />
-                      <button
-                        type="button"
-                        onClick={() => applyDescriptionFormat('removeFormat')}
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        title={t('daily.removeFormat')}
-                        aria-label={t('daily.removeFormat')}
-                      >
-                        <span className="material-symbols-outlined text-lg">format_clear</span>
-                      </button>
-                    </div>
-                    <div
-                      ref={descriptionEditorRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 dark:text-slate-200 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-slate-500 [&:empty::before]:content-[attr(data-placeholder)] [&:empty::before]:text-gray-400 dark:[&:empty::before]:text-slate-500"
-                      data-placeholder={t('daily.descriptionPlaceholder')}
-                      onInput={() => {
-                        if (descriptionEditorRef.current) {
-                          setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex flex-col gap-2 flex-[2] min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('daily.dueDate')}</label>
-                    <div className="relative group">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">event</span>
-                      <input
-                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
-                        type="datetime-local"
-                        value={taskForm.dueDate}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                        aria-label={t('daily.dueDateAria')}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 flex-[1] min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('daily.reminderTime')}</label>
-                    <div className="relative group">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">schedule</span>
-                      <input
-                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
-                        type="time"
-                        value={taskForm.reminderTime}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, reminderTime: e.target.value }))}
-                        aria-label={t('daily.reminderTime')}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex flex-col gap-2 flex-1 min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                      {t('daily.repeat')}
-                    </label>
-                    <div className="relative group">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">repeat</span>
-                      <select
-                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none"
-                        value={taskForm.repeat}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, repeat: e.target.value }))}
-                        aria-label={t('daily.repeat')}
-                      >
-                        <option value="none">{t('daily.recurrenceNone')}</option>
-                        <option value="daily">{t('daily.recurrenceDaily')}</option>
-                        <option value="weekly">{t('daily.recurrenceWeekly')}</option>
-                        <option value="monthly">{t('daily.recurrenceMonthly')}</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 flex-1 min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                      {t('daily.priorityLabel')}
-                    </label>
-                    <div className="relative group">
-                      <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] pointer-events-none ${getPriorityFlagClass(taskForm.priority)}`}>flag</span>
-                      <select
-                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none"
-                        value={taskForm.priority}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
-                        aria-label={t('daily.priorityLabel')}
-                      >
-                        <option value="low">{t('daily.priorityLow')}</option>
-                        <option value="medium">{t('daily.priorityMedium')}</option>
-                        <option value="high">{t('daily.priorityHigh')}</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 pt-2 pb-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      {t('daily.tags')}
-                    </label>
-                  </div>
-                  {/* Selected Tags Display */}
-                  {taskForm.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                      {taskForm.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-full shadow-sm"
-                        >
-                          {getTagLabel(tag)}
-                          <button
-                            type="button"
-                            onClick={() => handleTagToggle(tag)}
-                            className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
-                            aria-label={t('daily.removeTag', { tag: getTagLabel(tag) })}
-                          >
-                            <span className="material-symbols-outlined text-[14px]">close</span>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {DEFAULT_TAGS.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        className={`group flex items-center gap-1.5 px-3.5 py-1.5 border rounded-full transition-all duration-200 shadow-sm ${
-                          taskForm.tags.includes(tag)
-                            ? 'bg-primary border-primary text-white hover:bg-primary-hover'
-                            : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-600'
-                        }`}
-                        onClick={() => handleTagToggle(tag)}
-                      >
-                        <span className="text-xs font-medium">{getTagLabel(tag)}</span>
-                        {taskForm.tags.includes(tag) && (
-                          <span className="material-symbols-outlined text-[14px] ml-0.5">close</span>
-                        )}
-                      </button>
-                    ))}
-                    {showNewTagInput ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={newTagValue}
-                          onChange={(e) => setNewTagValue(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddNewTag();
-                            }
-                          }}
-                          placeholder={t('daily.newTagPlaceholder')}
-                          autoFocus
-                          className="px-3 py-1.5 text-xs font-medium border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 rounded-full focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddNewTag}
-                          className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white hover:bg-primary-hover transition-colors"
-                          aria-label={t('daily.confirmAddTag')}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">check</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNewTagInput(false);
-                            setNewTagValue('');
-                          }}
-                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-600 transition-all"
-                          aria-label={t('common.cancel')}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">close</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="group flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
-                        onClick={() => setShowNewTagInput(true)}
-                        aria-label={t('daily.addNewTag')}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">add</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="px-8 py-6 bg-surface-light dark:bg-slate-800 flex items-center justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  className="px-5 py-2.5 rounded-lg text-gray-500 dark:text-slate-300 font-medium hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-sm"
-                  onClick={handleCloseModal}
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-all shadow-minimal active:scale-[0.98] text-sm tracking-wide"
-                >
-                  {editingTaskId ? t('daily.update') : t('daily.createTask')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddTaskModal
+        open={addTaskModalOpen}
+        onClose={handleCloseModal}
+        onSaved={loadData}
+        initialTask={addTaskInitialTask}
+        goalContext={addTaskGoalContext}
+      />
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (

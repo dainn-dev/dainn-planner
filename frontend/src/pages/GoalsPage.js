@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { validateTitle, validateCategory, validateDate } from '../utils/formValidation';
-import { goalsAPI, notificationsAPI } from '../services/api';
+import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
@@ -90,8 +90,13 @@ const GoalsPage = () => {
   const [goalFormErrors, setGoalFormErrors] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [copyingGoalId, setCopyingGoalId] = useState(null);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [goalToCopy, setGoalToCopy] = useState(null);
+  const [copyTitle, setCopyTitle] = useState('');
+  const [copyTitleError, setCopyTitleError] = useState('');
+  const [copyToastVisible, setCopyToastVisible] = useState(false);
 
-  const handleCopyGoal = async (goal) => {
+  const handleCopyGoal = async (goal, overrideTitle) => {
     if (copyingGoalId) return;
     setCopyingGoalId(goal.id);
     try {
@@ -99,7 +104,7 @@ const GoalsPage = () => {
       const data = full?.data ?? full;
       const targetDate = data.targetDate ? new Date(data.targetDate).toISOString() : null;
       const created = await goalsAPI.createGoal({
-        title: `${data.title || goal.title} (Copy)`,
+        title: overrideTitle || `${data.title || goal.title} (Copy)`,
         description: data.description || '',
         category: data.category || goal.category || '',
         targetDate,
@@ -108,18 +113,78 @@ const GoalsPage = () => {
       const newGoal = created?.data ?? created;
       const newId = newGoal?.id ?? newGoal?.Id;
       const milestones = data.milestones || [];
+      const milestoneIdMap = new Map();
       for (const m of milestones) {
-        await goalsAPI.createMilestone(newId, {
+        const createdMilestone = await goalsAPI.createMilestone(newId, {
           title: m.title || '',
           targetDate: m.targetDate ?? null,
         });
+        const newMilestone = createdMilestone?.data ?? createdMilestone;
+        const origId = m.id ?? m.Id;
+        const newMilestoneId = newMilestone?.id ?? newMilestone?.Id;
+        if (origId != null && newMilestoneId != null) {
+          milestoneIdMap.set(String(origId), String(newMilestoneId));
+        }
       }
+
+      // Copy tasks that belong to this goal and are attached to a milestone
+      try {
+        const taskResult = await tasksAPI.getTasks({ goalId: goal.id, pageSize: 200 });
+        const tasks = taskResult?.items ?? taskResult ?? [];
+        for (const task of tasks) {
+          const origMilestoneId = task.goalMilestoneId ?? task.GoalMilestoneId;
+          if (!origMilestoneId) continue;
+          const mappedMilestoneId = milestoneIdMap.get(String(origMilestoneId));
+          if (!mappedMilestoneId) continue;
+
+          await tasksAPI.createTask({
+            title: task.title,
+            description: task.description ?? '',
+            dueDate: task.dueDate ?? null,
+            priority: task.priority ?? 0,
+            goalId: newId,
+            goalMilestoneId: mappedMilestoneId,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to copy goal tasks:', err);
+      }
+
+      // Show toast on success
+      setCopyToastVisible(true);
+      setTimeout(() => setCopyToastVisible(false), 3000);
       setGoals((prev) => [...prev, mapGoalFromApi(newGoal, formatDate)]);
     } catch (err) {
       console.error('Failed to copy goal:', err);
     } finally {
       setCopyingGoalId(null);
     }
+  };
+
+  const handleOpenCopyModal = (goal) => {
+    setGoalToCopy(goal);
+    setCopyTitle(`${goal.title} (Copy)`);
+    setCopyTitleError('');
+    setCopyModalOpen(true);
+  };
+
+  const handleCloseCopyModal = () => {
+    setCopyModalOpen(false);
+    setGoalToCopy(null);
+    setCopyTitle('');
+    setCopyTitleError('');
+  };
+
+  const handleConfirmCopy = async (e) => {
+    e.preventDefault();
+    if (!goalToCopy) return;
+    const error = validateTitle(copyTitle);
+    if (error) {
+      setCopyTitleError(error);
+      return;
+    }
+    await handleCopyGoal(goalToCopy, copyTitle.trim());
+    handleCloseCopyModal();
   };
 
   const loadData = async () => {
@@ -146,7 +211,7 @@ const GoalsPage = () => {
 
   const activeGoals = goals.filter(g => g.status === 'active').length;
   const completedGoals = goals.filter(g => g.status === 'completed').length;
-  const averageProgress = goals.length > 0 
+  const averageProgress = goals.length > 0
     ? Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length)
     : 0;
 
@@ -294,173 +359,170 @@ const GoalsPage = () => {
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
           <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10 flex flex-col gap-6 md:gap-10">
-          {/* Header Section */}
-          <div className="flex flex-col gap-1.5 md:gap-2">
-            <h2 className="text-zinc-900 dark:text-white text-2xl md:text-3xl font-light tracking-tight">{t('goals.longTermGoals')}</h2>
-            <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
-              {t('goals.tagline')}
-            </p>
-          </div>
+            {/* Header Section */}
+            <div className="flex flex-col gap-1.5 md:gap-2">
+              <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('goals.longTermGoals')}</h1>
+              <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
+                {t('goals.tagline')}
+              </p>
+            </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.active')}</p>
-              <div className="flex items-end gap-2">
-                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{activeGoals}</p>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.active')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{activeGoals}</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.completed')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{completedGoals}</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.avgProgress')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{averageProgress}%</p>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.completed')}</p>
-              <div className="flex items-end gap-2">
-                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{completedGoals}</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.avgProgress')}</p>
-              <div className="flex items-end gap-2">
-                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{averageProgress}%</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Goals List */}
-          <div className="flex flex-col gap-4 md:gap-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border-light dark:border-slate-700 pb-3 md:pb-4">
-              <h3 className="text-zinc-900 dark:text-white text-base md:text-lg font-medium tracking-tight">{t('goals.goalList')}</h3>
-              {/* Filter tabs */}
-              <div className="flex rounded-lg bg-zinc-100 dark:bg-slate-800 p-1 gap-0.5" role="tablist" aria-label={t('goals.filterGoals')}>
-                {[
-                  { value: LIST_FILTER_ALL, labelKey: 'filterAll', count: goals.length },
-                  { value: LIST_FILTER_ACTIVE, labelKey: 'active', count: activeGoals },
-                  { value: LIST_FILTER_COMPLETED, labelKey: 'completed', count: completedGoals },
-                ].map(({ value, labelKey, count }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={listFilter === value}
-                    aria-label={t('goals.filterTabLabel', { label: t(`goals.${labelKey}`), count })}
-                    className={`min-h-[40px] px-3 py-2 rounded-md text-sm font-medium transition-colors touch-manipulation ${
-                      listFilter === value
-                        ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white shadow-sm'
-                        : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-slate-700'
-                    }`}
-                    onClick={() => setListFilter(value)}
-                  >
-                    {t(`goals.${labelKey}`)}
-                    <span className="ml-1.5 text-xs opacity-80">({count})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            {goalsLoading ? (
-              <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('goals.loadingGoals')}>
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm animate-pulse">
-                    <div className="size-11 md:size-12 rounded-xl bg-zinc-200 dark:bg-slate-600 shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="h-4 bg-zinc-200 dark:bg-slate-600 rounded w-3/4 max-w-[200px]" />
-                      <div className="h-3 bg-zinc-100 dark:bg-slate-700 rounded w-1/2 max-w-[140px]" />
-                    </div>
-                    <div className="w-24 h-2 rounded-full bg-zinc-200 dark:bg-slate-600 shrink-0" />
-                  </div>
-                ))}
-              </div>
-            ) : filteredGoals.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm text-center">
-                <span className="material-symbols-outlined text-5xl text-zinc-300 dark:text-slate-500 mb-3" aria-hidden>flag</span>
-                <p className="text-zinc-600 dark:text-slate-300 font-medium mb-1">
-                  {goals.length === 0 ? t('goals.noGoals') : t('goals.noGoalsMatch')}
-                </p>
-                <p className="text-zinc-500 dark:text-slate-400 text-sm mb-4 max-w-xs">
-                  {goals.length === 0 ? t('goals.createFirstGoal') : t('goals.tryChangeFilter')}
-                </p>                
-              </div>
-            ) : (
-              <ul className="flex flex-col gap-4 list-none p-0 m-0">
-                {filteredGoals.map((goal) => (
-                  <li key={goal.id}>
-                    <div 
-                      className="group flex flex-col sm:flex-row sm:items-center gap-4 md:gap-5 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer touch-manipulation active:scale-[0.995]"
-                      onClick={() => navigate(`/goals/${goal.id}`)}
+            {/* Goals List */}
+            <div className="flex flex-col gap-4 md:gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border-light dark:border-slate-700 pb-3 md:pb-4">
+                <h3 className="text-zinc-900 dark:text-white text-base md:text-lg font-medium tracking-tight">{t('goals.goalList')}</h3>
+                {/* Filter tabs */}
+                <div className="flex rounded-lg bg-zinc-100 dark:bg-slate-800 p-1 gap-0.5" role="tablist" aria-label={t('goals.filterGoals')}>
+                  {[
+                    { value: LIST_FILTER_ALL, labelKey: 'filterAll', count: goals.length },
+                    { value: LIST_FILTER_ACTIVE, labelKey: 'active', count: activeGoals },
+                    { value: LIST_FILTER_COMPLETED, labelKey: 'completed', count: completedGoals },
+                  ].map(({ value, labelKey, count }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-selected={listFilter === value}
+                      aria-label={t('goals.filterTabLabel', { label: t(`goals.${labelKey}`), count })}
+                      className={`min-h-[40px] px-3 py-2 rounded-md text-sm font-medium transition-colors touch-manipulation ${listFilter === value
+                          ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white shadow-sm'
+                          : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-slate-700'
+                        }`}
+                      onClick={() => setListFilter(value)}
                     >
-                      <div className="flex items-start sm:items-center gap-4 md:gap-5 flex-1 min-w-0">
-                        <div className="flex items-center justify-center rounded-xl bg-zinc-100 dark:bg-slate-700 text-zinc-700 dark:text-slate-200 border border-zinc-100 dark:border-slate-600 shrink-0 size-11 md:size-12 group-hover:bg-zinc-50 dark:group-hover:bg-slate-600">
-                          <span className="material-symbols-outlined text-[20px] md:text-[22px]">{goal.icon}</span>
-                        </div>
-                        <div className="flex flex-col gap-1 min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-zinc-900 dark:text-white text-sm font-semibold leading-snug truncate">{goal.title}</p>
-                            <span
-                              className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider ${
-                                goal.status === 'completed'
-                                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                                  : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                              }`}
-                            >
-                              {goal.status === 'completed' ? t('goals.completed') : t('goals.progress')}
-                            </span>
-                          </div>
-                          <p className="text-zinc-500 dark:text-slate-400 text-xs leading-normal">{getCategoryLabel(goal.category, t)}</p>
-                          <p className="text-zinc-500 dark:text-slate-400 text-xs leading-normal">{goal.dueDate && `${goal.dueDate}`}</p>
-                        </div>
+                      {t(`goals.${labelKey}`)}
+                      <span className="ml-1.5 text-xs opacity-80">({count})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {goalsLoading ? (
+                <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('goals.loadingGoals')}>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-4 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm animate-pulse">
+                      <div className="size-11 md:size-12 rounded-xl bg-zinc-200 dark:bg-slate-600 shrink-0" />
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="h-4 bg-zinc-200 dark:bg-slate-600 rounded w-3/4 max-w-[200px]" />
+                        <div className="h-3 bg-zinc-100 dark:bg-slate-700 rounded w-1/2 max-w-[140px]" />
                       </div>
-                      <div className="flex flex-row sm:flex-col sm:items-end items-center gap-3 sm:gap-2 w-full sm:w-auto sm:min-w-[180px]">
-                        <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
-                          <div className="flex justify-between w-full sm:justify-end gap-2">
-                            <span className="text-[10px] uppercase font-semibold text-zinc-400 dark:text-slate-500 tracking-wider">{t('goals.progress')}</span>
-                            <span className="text-[10px] font-bold text-zinc-900 dark:text-white">{goal.progress}%</span>
-                          </div>
-                          <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 dark:bg-slate-700 overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                goal.progress >= 100 ? 'bg-emerald-500' : goal.progress >= 50 ? 'bg-blue-500' : 'bg-amber-500'
-                              }`}
-                              style={{ width: `${Math.min(goal.progress, 100)}%` }}
-                              role="progressbar"
-                              aria-valuenow={goal.progress}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                              aria-label={t('goals.progressLabel', { percent: goal.progress })}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex flex-row items-center gap-0.5 shrink-0">
-                          <button 
-                            type="button"
-                            className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-primary/10 dark:hover:bg-blue-900/20 transition-colors touch-manipulation disabled:opacity-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopyGoal(goal);
-                            }}
-                            disabled={copyingGoalId === goal.id}
-                            aria-label={t('goals.copyGoalAria')}
-                            title={t('goals.copyGoal')}
-                          >
-                            <span className="material-symbols-outlined text-[20px]">{copyingGoalId === goal.id ? 'hourglass_empty' : 'content_copy'}</span>
-                          </button>
-                          <button 
-                            type="button"
-                            className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors touch-manipulation"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(goal);
-                            }}
-                            aria-label={t('goals.deleteGoalLabel', { title: goal.title })}
-                            title={t('goals.deleteGoal')}
-                          >
-                            <span className="material-symbols-outlined text-[20px]">delete</span>
-                          </button>
-                        </div>
-                      </div>
+                      <div className="w-24 h-2 rounded-full bg-zinc-200 dark:bg-slate-600 shrink-0" />
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  ))}
+                </div>
+              ) : filteredGoals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm text-center">
+                  <span className="material-symbols-outlined text-5xl text-zinc-300 dark:text-slate-500 mb-3" aria-hidden>flag</span>
+                  <p className="text-zinc-600 dark:text-slate-300 font-medium mb-1">
+                    {goals.length === 0 ? t('goals.noGoals') : t('goals.noGoalsMatch')}
+                  </p>
+                  <p className="text-zinc-500 dark:text-slate-400 text-sm mb-4 max-w-xs">
+                    {goals.length === 0 ? t('goals.createFirstGoal') : t('goals.tryChangeFilter')}
+                  </p>
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-4 list-none p-0 m-0">
+                  {filteredGoals.map((goal) => (
+                    <li key={goal.id}>
+                      <div
+                        className="group flex flex-col sm:flex-row sm:items-center gap-4 md:gap-5 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer touch-manipulation active:scale-[0.995]"
+                        onClick={() => navigate(`/goals/${goal.id}`)}
+                      >
+                        <div className="flex items-start sm:items-center gap-4 md:gap-5 flex-1 min-w-0">
+                          <div className="flex items-center justify-center rounded-xl bg-zinc-100 dark:bg-slate-700 text-zinc-700 dark:text-slate-200 border border-zinc-100 dark:border-slate-600 shrink-0 size-11 md:size-12 group-hover:bg-zinc-50 dark:group-hover:bg-slate-600">
+                            <span className="material-symbols-outlined text-[20px] md:text-[22px]">{goal.icon}</span>
+                          </div>
+                          <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-zinc-900 dark:text-white text-sm font-semibold leading-snug truncate">{goal.title}</p>
+                              <span
+                                className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider ${goal.status === 'completed'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                    : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                  }`}
+                              >
+                                {goal.status === 'completed' ? t('goals.completed') : t('goals.progress')}
+                              </span>
+                            </div>
+                            <p className="text-zinc-500 dark:text-slate-400 text-xs leading-normal">{getCategoryLabel(goal.category, t)}</p>
+                            <p className="text-zinc-500 dark:text-slate-400 text-xs leading-normal">{goal.dueDate && `${goal.dueDate}`}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-row sm:flex-col sm:items-end items-center gap-3 sm:gap-2 w-full sm:w-auto sm:min-w-[180px]">
+                          <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
+                            <div className="flex justify-between w-full sm:justify-end gap-2">
+                              <span className="text-[10px] uppercase font-semibold text-zinc-400 dark:text-slate-500 tracking-wider">{t('goals.progress')}</span>
+                              <span className="text-[10px] font-bold text-zinc-900 dark:text-white">{goal.progress}%</span>
+                            </div>
+                            <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 dark:bg-slate-700 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${goal.progress >= 100 ? 'bg-emerald-500' : goal.progress >= 50 ? 'bg-blue-500' : 'bg-amber-500'
+                                  }`}
+                                style={{ width: `${Math.min(goal.progress, 100)}%` }}
+                                role="progressbar"
+                                aria-valuenow={goal.progress}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-label={t('goals.progressLabel', { percent: goal.progress })}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex flex-row items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-primary/10 dark:hover:bg-blue-900/20 transition-colors touch-manipulation disabled:opacity-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenCopyModal(goal);
+                              }}
+                              disabled={copyingGoalId === goal.id}
+                              aria-label={t('goals.copyGoalAria')}
+                              title={t('goals.copyGoal')}
+                            >
+                              <span className="material-symbols-outlined text-[20px]">{copyingGoalId === goal.id ? 'hourglass_empty' : 'content_copy'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 rounded-lg text-zinc-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors touch-manipulation"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(goal);
+                              }}
+                              aria-label={t('goals.deleteGoalLabel', { title: goal.title })}
+                              title={t('goals.deleteGoal')}
+                            >
+                              <span className="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-        </div>
         </div>
 
         {/* Mobile: floating add goal button (bottom-right) */}
@@ -477,9 +539,22 @@ const GoalsPage = () => {
         </button>
       </main>
 
+      {/* Copy success toast */}
+      {copyToastVisible && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="flex items-center gap-3 rounded-lg bg-zinc-900 text-white dark:bg-slate-900/95 px-4 py-3 shadow-lg shadow-black/40 border border-zinc-800 dark:border-slate-700 max-w-xs">
+            <span className="material-symbols-outlined text-[20px] text-emerald-400">check_circle</span>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold">{t('goals.copyGoal')}</span>
+              <span className="text-xs text-zinc-300 dark:text-slate-300">{t('goals.copyGoalSuccess', 'Goal copied successfully')}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Sidebar */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -487,8 +562,8 @@ const GoalsPage = () => {
       <aside className={`fixed top-0 left-0 h-full w-64 bg-background-light dark:bg-slate-900 border-r border-border-light dark:border-slate-700 z-[51] transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col gap-6 p-6 h-full">
           <div className="flex gap-4 items-center mb-2">
-            <div 
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 shrink-0 border border-border-light" 
+            <div
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 shrink-0 border border-border-light"
               style={{
                 backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAeUugiOR9hYhFecZqd2aBpjIbdYsVoQq-XRu0C7PjvvOD29ciS31QptfxtKfHZIJDslvVk4Dff5PMdP6GEuDvf29g3r_QnSpLSB70DQQ4FlklSEYK0xk1xgMvlIYQO1IRTDB-9LcphvvK3Dw3eJgkT-b-nlCmftrboabZa7C8wgKcsxcbwXnHEcB_ZgObEhP8T5Qkcds0cSn44kJCK3t6LYfG1p-LKpu_i3OYi4Edr0dz03d1P7bUFNTK9aXNa0IbKXmDF05WYxfMB")'
               }}
@@ -498,7 +573,7 @@ const GoalsPage = () => {
               <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('goals.title')}</h1>
               <p className="text-secondary dark:text-slate-400 text-xs font-normal">{t('goals.personalPlan')}</p>
             </div>
-            <button 
+            <button
               className="ml-auto p-1 rounded-md text-zinc-600 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800"
               onClick={() => setSidebarOpen(false)}
               aria-label={t('common.close')}
@@ -536,32 +611,32 @@ const GoalsPage = () => {
                 <div className="my-2 border-t border-zinc-100 dark:border-slate-700" />
               </>
             )}
-            <Link 
-              to="/daily" 
+            <Link
+              to="/daily"
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" style={{ fontSize: '20px' }}>today</span>
               <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">{t('sidebar.dailyPlan')}</p>
             </Link>
-            <Link 
-              to="/goals" 
+            <Link
+              to="/goals"
               className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-100 dark:bg-slate-800 transition-colors"
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-900 dark:text-white" style={{ fontSize: '20px' }}>track_changes</span>
               <p className="text-zinc-900 dark:text-white text-sm font-medium">{t('sidebar.goals')}</p>
             </Link>
-            <Link 
-              to="/calendar" 
+            <Link
+              to="/calendar"
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
               onClick={() => setSidebarOpen(false)}
             >
               <span className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" style={{ fontSize: '20px' }}>calendar_month</span>
               <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">{t('sidebar.calendar')}</p>
             </Link>
-            <Link 
-              to="/settings" 
+            <Link
+              to="/settings"
               className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
               onClick={() => setSidebarOpen(false)}
             >
@@ -613,9 +688,8 @@ const GoalsPage = () => {
                     </label>
                     <input
                       autoFocus
-                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border ${
-                        goalFormErrors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 dark:border-slate-600 focus:border-zinc-400 dark:focus:border-primary'
-                      }`}
+                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border ${goalFormErrors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 dark:border-slate-600 focus:border-zinc-400 dark:focus:border-primary'
+                        }`}
                       placeholder={t('goals.goalNamePlaceholder')}
                       type="text"
                       value={goalForm.title}
@@ -636,9 +710,8 @@ const GoalsPage = () => {
                       <label className="text-xs font-semibold text-zinc-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="add-goal-category">{t('goals.category')}</label>
                       <select
                         id="add-goal-category"
-                        className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all font-medium cursor-pointer ${
-                          goalFormErrors.category ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300 dark:hover:border-slate-500'
-                        }`}
+                        className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all font-medium cursor-pointer ${goalFormErrors.category ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300 dark:hover:border-slate-500'
+                          }`}
                         value={goalForm.category || ''}
                         onChange={(e) => {
                           const option = categoryOptions.find(o => o.apiCategory === e.target.value);
@@ -665,9 +738,8 @@ const GoalsPage = () => {
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 dark:text-slate-500 text-[18px] pointer-events-none">event</span>
                         <input
                           id="add-goal-due"
-                          className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all cursor-pointer hover:bg-zinc-50 dark:hover:bg-slate-600 ${
-                            goalFormErrors.dueDate ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300'
-                          }`}
+                          className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all cursor-pointer hover:bg-zinc-50 dark:hover:bg-slate-600 ${goalFormErrors.dueDate ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300'
+                            }`}
                           type="date"
                           value={goalForm.dueDate}
                           onChange={(e) => handleGoalFormChange('dueDate', e.target.value)}
@@ -690,17 +762,98 @@ const GoalsPage = () => {
                   {goalFormErrors.submit}
                 </p>
               )}
-              <div className="bg-zinc-50/50 dark:bg-slate-800/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100 dark:border-slate-700 gap-3 sm:gap-0">
+              <div className="bg-zinc-50/50 dark:bg-slate-800/50 px-4 py-3 flex flex-row-reverse gap-3 sm:px-6 border-t border-zinc-100 dark:border-slate-700">
                 <button
                   type="submit"
-                  className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 dark:bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-blue-600 sm:ml-3 sm:w-auto transition-colors touch-manipulation"
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 dark:bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-blue-600 transition-colors touch-manipulation"
                 >
                   {t('goals.createGoal')}
                 </button>
                 <button
                   type="button"
-                  className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 sm:mt-0 sm:w-auto transition-colors touch-manipulation"
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors touch-manipulation"
                   onClick={handleCloseAddModal}
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Copy / Rename Goal Modal */}
+      {copyModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-zinc-900/20 backdrop-blur-sm transition-all duration-300"
+          onClick={handleCloseCopyModal}
+        >
+          <div
+            className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-zinc-100 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <form onSubmit={handleConfirmCopy}>
+              <div className="bg-white dark:bg-slate-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                      {t('goals.copyGoal')}
+                    </h3>
+                    <p className="text-sm text-zinc-500 dark:text-slate-400 mt-1">
+                      {t('goals.copyGoalModalDesc', { title: goalToCopy?.title })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
+                    onClick={handleCloseCopyModal}
+                    aria-label={t('common.close')}
+                  >
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-slate-400 hover:text-zinc-600 dark:hover:text-white text-[24px]">
+                      close
+                    </span>
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">
+                      {t('goals.goalName')}
+                    </label>
+                    <input
+                      autoFocus
+                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border ${
+                        copyTitleError
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
+                          : 'border-zinc-200 dark:border-slate-600 focus:border-zinc-400 dark:focus:border-primary'
+                      }`}
+                      placeholder={t('goals.goalNamePlaceholder')}
+                      type="text"
+                      value={copyTitle}
+                      onChange={(e) => {
+                        setCopyTitle(e.target.value);
+                        if (copyTitleError) setCopyTitleError('');
+                      }}
+                    />
+                    {copyTitleError && (
+                      <p className="text-xs text-red-500 mt-1" role="alert">
+                        {copyTitleError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-zinc-50/50 dark:bg-slate-800/50 px-4 py-3 flex flex-row-reverse gap-3 sm:px-6 border-t border-zinc-100 dark:border-slate-700">
+                <button
+                  type="submit"
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 dark:bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-blue-600 transition-colors touch-manipulation disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={!!copyingGoalId}
+                >
+                  {copyingGoalId ? t('common.processing') : t('goals.copyGoal')}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors touch-manipulation"
+                  onClick={handleCloseCopyModal}
                 >
                   {t('common.cancel')}
                 </button>
@@ -712,13 +865,13 @@ const GoalsPage = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && goalToDelete && (
-        <div 
-          aria-labelledby="modal-title" 
-          aria-modal="true" 
-          className="relative z-50" 
+        <div
+          aria-labelledby="modal-title"
+          aria-modal="true"
+          className="relative z-50"
           role="dialog"
         >
-          <div 
+          <div
             className="fixed inset-0 bg-zinc-900/20 backdrop-blur-sm transition-opacity"
             onClick={handleCancelDelete}
           />
@@ -748,15 +901,15 @@ const GoalsPage = () => {
                   </div>
                 </div>
                 <div className="bg-zinc-50/50 dark:bg-slate-800/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100 dark:border-slate-700 gap-3 sm:gap-0">
-                  <button 
-                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-red-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors touch-manipulation" 
+                  <button
+                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-red-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors touch-manipulation"
                     type="button"
                     onClick={handleConfirmDelete}
                   >
                     {t('goals.delete')}
                   </button>
-                  <button 
-                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-3 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 sm:w-auto transition-colors touch-manipulation" 
+                  <button
+                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-3 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 sm:w-auto transition-colors touch-manipulation"
                     type="button"
                     onClick={handleCancelDelete}
                   >

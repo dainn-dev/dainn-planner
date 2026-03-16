@@ -211,6 +211,16 @@ const CalendarPage = () => {
 
     if (!eventForm.title.trim()) return;
 
+    if (
+      !eventForm.allDay &&
+      eventForm.timeFrom &&
+      eventForm.timeTo &&
+      eventForm.timeTo <= eventForm.timeFrom
+    ) {
+      window.alert('End time must be later than start time.');
+      return;
+    }
+
     const dateStr = eventForm.date || new Date().toISOString().slice(0, 10);
     const isAllDay = eventForm.allDay;
     const startDate = isAllDay
@@ -278,6 +288,16 @@ const CalendarPage = () => {
 
   const handleSaveEvent = async () => {
     if (!editedEvent.title.trim()) return;
+
+    if (
+      !editedEvent.allDay &&
+      editedEvent.timeFrom &&
+      editedEvent.timeTo &&
+      editedEvent.timeTo <= editedEvent.timeFrom
+    ) {
+      window.alert('End time must be later than start time.');
+      return;
+    }
 
     const eventDate = editedEvent.date instanceof Date ? editedEvent.date : new Date(editedEvent.date);
     const dateStr = toDateOnly(eventDate);

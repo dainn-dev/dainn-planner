@@ -240,8 +240,6 @@ const SettingsPage = () => {
 
   const handleLanguageChange = (locale) => {
     handleGeneralSettingChange('language', locale);
-    i18n.changeLanguage(locale);
-    localStorage.setItem('app_lang', locale);
     setWarningMessage('');
   };
 
@@ -351,6 +349,15 @@ const SettingsPage = () => {
         notifications: notificationSettings,
         logs: logsSettings,
       });
+
+      const newLang = generalSettings.language;
+      if (newLang === 'vi' || newLang === 'en') {
+        i18n.changeLanguage(newLang);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('app_lang', newLang);
+        }
+      }
+
       showWarning(t('settings.savedSuccess'));
     } catch (error) {
       console.error('Failed to save settings:', error);

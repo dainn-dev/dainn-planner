@@ -538,6 +538,8 @@
     "editGoalAria": "Chỉnh sửa mục tiêu",
     "copyGoal": "Sao chép mục tiêu",
     "copyGoalAria": "Tạo bản sao mục tiêu này",
+    "copyGoalModalDesc": "Tạo một bản sao của \"{{title}}\".",
+    "copyGoalSuccess": "Đã sao chép mục tiêu và các mốc.",
     "markCompleteAria": "Đánh dấu hoàn thành",
     "markIncompleteAria": "Đánh dấu chưa hoàn thành",
     "addTaskFromMilestoneAria": "Thêm nhiệm vụ từ mốc: {{title}}",

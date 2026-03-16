@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import AddTaskModal from '../components/AddTaskModal';
 import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
@@ -120,6 +121,9 @@ const GoalDetailPage = () => {
   const [draggingTaskId, setDraggingTaskId] = useState(null);
   const [dropTargetMilestoneId, setDropTargetMilestoneId] = useState(null);
   const [movingTaskId, setMovingTaskId] = useState(null);
+  const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
+  const [addTaskInitialTask, setAddTaskInitialTask] = useState(null);
+  const [addTaskGoalContext, setAddTaskGoalContext] = useState(null);
 
   const handleMoveTaskToMilestone = async (taskId, targetMilestoneId) => {
     if (!id || !taskId || !targetMilestoneId) return;
@@ -727,18 +731,18 @@ const GoalDetailPage = () => {
                           {!isEditing && !milestone.completed && (
                             <button
                               type="button"
-                              onClick={() => navigate('/daily', {
-                                state: {
-                                  openAddTaskFromMilestone: true,
-                                  returnTo: `/goals/${id}`,
-                                  milestone: {
-                                    id: milestone.id,
-                                    title: milestone.title,
-                                    date: toDateInputValue(milestone.date) || new Date().toISOString().slice(0, 10),
-                                    goalId: goal.id,
-                                  },
-                                },
-                              })}
+                              onClick={() => {
+                                const isoDate = toDateInputValue(milestone.date) || new Date().toISOString().slice(0, 10);
+                                setAddTaskGoalContext({
+                                  goalMilestoneId: milestone.id,
+                                  goalId: goal.id,
+                                });
+                                setAddTaskInitialTask({
+                                  title: milestone.title,
+                                  date: `${isoDate}T12:00`,
+                                });
+                                setAddTaskModalOpen(true);
+                              }}
                               className="min-h-[44px] min-w-[44px] p-2 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                               aria-label={t('goals.addTaskFromMilestoneAria', { title: milestone.title })}
                               title={t('goals.addTask')}
@@ -838,7 +842,14 @@ const GoalDetailPage = () => {
                                       <div className="flex items-center gap-0.5 shrink-0">
                                         <button
                                           type="button"
-                                          onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
+                                          onClick={() => {
+                                            setAddTaskGoalContext({
+                                              goalMilestoneId: milestone.id,
+                                              goalId: goal.id,
+                                            });
+                                            setAddTaskInitialTask(task);
+                                            setAddTaskModalOpen(true);
+                                          }}
                                           className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                                           aria-label={t('goals.editTaskAria', { title: task.title })}
                                           title={t('goals.edit')}
@@ -873,6 +884,34 @@ const GoalDetailPage = () => {
         </div>
       </div>
       </div>
+
+      <AddTaskModal
+        open={addTaskModalOpen}
+        onClose={() => {
+          setAddTaskModalOpen(false);
+          setAddTaskInitialTask(null);
+          setAddTaskGoalContext(null);
+        }}
+        onSaved={async () => {
+          try {
+            const [goalData, items] = await Promise.all([
+              goalsAPI.getGoal(id),
+              loadGoalTasks(id),
+            ]);
+            const mapped = mapGoalDetailFromApi(goalData?.data ?? goalData, i18n.language || 'vi');
+            setGoal(mapped);
+            setGoalTasks(items ?? []);
+          } catch (err) {
+            console.error('Failed to refresh goal after saving task:', err);
+          } finally {
+            setAddTaskModalOpen(false);
+            setAddTaskInitialTask(null);
+            setAddTaskGoalContext(null);
+          }
+        }}
+        initialTask={addTaskInitialTask}
+        goalContext={addTaskGoalContext}
+      />
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (

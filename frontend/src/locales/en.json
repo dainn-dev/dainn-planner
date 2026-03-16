@@ -538,6 +538,8 @@
     "editGoalAria": "Edit goal",
     "copyGoal": "Copy goal",
     "copyGoalAria": "Duplicate this goal",
+    "copyGoalModalDesc": "Create a duplicate of \"{{title}}\".",
+    "copyGoalSuccess": "Goal and its milestones were copied.",
     "markCompleteAria": "Mark complete",
     "markIncompleteAria": "Mark incomplete",
     "addTaskFromMilestoneAria": "Add task from milestone: {{title}}",
