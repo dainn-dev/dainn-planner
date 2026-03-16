@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI } from '../services/api';
+import { DefaultTemplate } from './lexkit/DefaultTemplate';
 
 const dateToDatetimeLocal = (dateVal) => {
   if (!dateVal) return '';
@@ -34,7 +35,8 @@ const AddTaskModal = ({
   goalContext = null // { goalMilestoneId, goalId }
 }) => {
   const { t } = useTranslation();
-  const descriptionEditorRef = useRef(null);
+  const editorMethodsRef = useRef(null);
+  const [editorKey, setEditorKey] = useState(0);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [formGoalMilestoneId, setFormGoalMilestoneId] = useState(null);
   const [formGoalId, setFormGoalId] = useState(null);
@@ -94,28 +96,19 @@ const AddTaskModal = ({
     setNewTagValue('');
   }, [open, initialTask, goalContext]);
 
-  // Sync description into editor when modal opens
-  useEffect(() => {
-    if (!open || !descriptionEditorRef.current) return;
-    const html = taskForm.description || '';
-    if (descriptionEditorRef.current.innerHTML !== html) {
-      descriptionEditorRef.current.innerHTML = html;
+  const handleEditorReady = useCallback((methods) => {
+    editorMethodsRef.current = methods;
+    if (taskForm.description) {
+      methods.injectHTML(taskForm.description);
     }
-  }, [open, taskForm.description]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const applyDescriptionFormat = (command, value = null) => {
-    if (command === 'createLink') {
-      const url = value != null ? value : window.prompt(t('daily.linkPrompt'), 'https://');
-      if (url == null || url.trim() === '' || url === 'https://') return;
-      document.execCommand('createLink', false, url.trim());
-    } else {
-      document.execCommand(command, false, value);
+  // Re-mount the editor when the modal opens so it picks up new initial content
+  useEffect(() => {
+    if (open) {
+      setEditorKey(k => k + 1);
     }
-    descriptionEditorRef.current?.focus();
-    if (descriptionEditorRef.current) {
-      setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
-    }
-  };
+  }, [open, editingTaskId]);
 
   const handleTagToggle = (tag) => {
     setTaskForm(prev => ({
@@ -146,7 +139,7 @@ const AddTaskModal = ({
     const recurrenceMap = { none: 0, daily: 1, weekly: 2, monthly: 3 };
     const recurrence = recurrenceMap[taskForm.repeat] ?? 0;
     const descriptionFromEditor =
-      (descriptionEditorRef.current && descriptionEditorRef.current.innerHTML) ?? taskForm.description ?? '';
+      editorMethodsRef.current?.getHTML() ?? taskForm.description ?? '';
 
     const payload = {
       title: taskForm.name.trim(),
@@ -258,93 +251,10 @@ const AddTaskModal = ({
                 {t('daily.description')}
               </label>
               <div className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all overflow-hidden">
-                <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('bold')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.bold')}
-                    aria-label={t('daily.bold')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_bold</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('italic')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.italic')}
-                    aria-label={t('daily.italic')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_italic</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('underline')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.underline')}
-                    aria-label={t('daily.underline')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_underlined</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('strikeThrough')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.strikethrough')}
-                    aria-label={t('daily.strikethrough')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_strikethrough</span>
-                  </button>
-                  <span className="w-px h-5 bg-gray-200 dark:bg-slate-600 mx-0.5" aria-hidden />
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('insertUnorderedList')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.bulletList')}
-                    aria-label={t('daily.bulletList')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('insertOrderedList')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.numberedList')}
-                    aria-label={t('daily.numberedList')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_list_numbered</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('createLink')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.insertLink')}
-                    aria-label={t('daily.insertLink')}
-                  >
-                    <span className="material-symbols-outlined text-lg">link</span>
-                  </button>
-                  <span className="w-px h-5 bg-gray-200 dark:bg-slate-600 mx-0.5" aria-hidden />
-                  <button
-                    type="button"
-                    onClick={() => applyDescriptionFormat('removeFormat')}
-                    className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                    title={t('daily.removeFormat')}
-                    aria-label={t('daily.removeFormat')}
-                  >
-                    <span className="material-symbols-outlined text-lg">format_clear</span>
-                  </button>
-                </div>
-                <div
-                  ref={descriptionEditorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 dark:text-slate-200 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-slate-500 [&:empty::before]:content-[attr(data-placeholder)] [&:empty::before]:text-gray-400 dark:[&:empty::before]:text-slate-500"
-                  data-placeholder={t('daily.descriptionPlaceholder')}
-                  onInput={() => {
-                    if (descriptionEditorRef.current) {
-                      setTaskForm(prev => ({ ...prev, description: descriptionEditorRef.current.innerHTML }));
-                    }
-                  }}
+                <DefaultTemplate
+                  key={editorKey}
+                  placeholder={t('daily.descriptionPlaceholder')}
+                  onReady={handleEditorReady}
                 />
               </div>
             </div>
