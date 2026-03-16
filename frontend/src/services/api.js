@@ -89,6 +89,9 @@ const apiRequest = async (endpoint, options = {}) => {
       removeAuthToken();
       localStorage.removeItem('user');
       localStorage.removeItem('refreshToken');
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
       throw new Error('Authentication required. Please login again.');
     }
     
@@ -113,6 +116,9 @@ const apiRequest = async (endpoint, options = {}) => {
           removeAuthToken();
           localStorage.removeItem('user');
           localStorage.removeItem('refreshToken');
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+          }
           throw new Error('Authentication required. Please login again.');
         }
         // Just throw error without clearing tokens - might be backend issue
@@ -146,6 +152,9 @@ const apiRequest = async (endpoint, options = {}) => {
         removeAuthToken();
         localStorage.removeItem('user');
         localStorage.removeItem('refreshToken');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
         throw new Error('Authentication required. Please login again.');
       }
       if (response.status === 403) {

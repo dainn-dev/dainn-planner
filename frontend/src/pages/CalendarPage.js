@@ -96,6 +96,7 @@ const CalendarPage = () => {
     address: '',
   });
   const [notifications, setNotifications] = useState([]);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +146,12 @@ const CalendarPage = () => {
     load();
     return () => { cancelled = true; };
   }, [currentDate, viewMode]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const getMonthName = (date) => t(`calendar.month${date.getMonth() + 1}`);
 
@@ -217,7 +224,10 @@ const CalendarPage = () => {
       eventForm.timeTo &&
       eventForm.timeTo <= eventForm.timeFrom
     ) {
-      window.alert('End time must be later than start time.');
+      setToast({
+        type: 'warning',
+        message: 'End time must be later than start time.',
+      });
       return;
     }
 
@@ -295,7 +305,10 @@ const CalendarPage = () => {
       editedEvent.timeTo &&
       editedEvent.timeTo <= editedEvent.timeFrom
     ) {
-      window.alert('End time must be later than start time.');
+      setToast({
+        type: 'warning',
+        message: 'End time must be later than start time.',
+      });
       return;
     }
 
@@ -531,6 +544,24 @@ const CalendarPage = () => {
 
   return (
     <div className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-display h-screen flex overflow-hidden selection:bg-indigo-600 selection:text-white">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-4 py-3 shadow-lg max-w-xs">
+            <span className="material-symbols-outlined text-amber-500 dark:text-amber-300 mt-0.5">warning</span>
+            <div className="text-sm text-amber-800 dark:text-amber-100">
+              {toast.message}
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-2 text-amber-500 dark:text-amber-200 hover:text-amber-700 dark:hover:text-amber-100"
+              aria-label="Close notification"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+        </div>
+      )}
       {/* Sidebar */}
       <Sidebar />
 

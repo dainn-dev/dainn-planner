@@ -124,6 +124,7 @@ const GoalDetailPage = () => {
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
   const [addTaskInitialTask, setAddTaskInitialTask] = useState(null);
   const [addTaskGoalContext, setAddTaskGoalContext] = useState(null);
+  const [milestoneToDelete, setMilestoneToDelete] = useState(null);
 
   const handleMoveTaskToMilestone = async (taskId, targetMilestoneId) => {
     if (!id || !taskId || !targetMilestoneId) return;
@@ -756,7 +757,7 @@ const GoalDetailPage = () => {
                           {isEditing && (
                             <button
                               type="button"
-                              onClick={() => handleDeleteMilestone(milestone.id)}
+                              onClick={() => setMilestoneToDelete(milestone)}
                               className="min-h-[44px] min-w-[44px] p-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                               aria-label={t('goals.deleteMilestoneAria', { title: milestone.title })}
                             >
@@ -884,6 +885,62 @@ const GoalDetailPage = () => {
         </div>
       </div>
       </div>
+
+      {milestoneToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60"
+          onClick={() => setMilestoneToDelete(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {t('goals.confirmDeleteMilestoneTitle', { title: milestoneToDelete.title })}
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
+              {t('goals.confirmDeleteMilestoneBody')}
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400 mb-4">
+              {t('goals.confirmDeleteMilestoneTasksWarning')}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMilestoneToDelete(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const m = milestoneToDelete;
+                  setMilestoneToDelete(null);
+                  handleDeleteMilestone(m.id);
+                  try {
+                    const milestoneIdStr = String(m.id);
+                    const tasksForMilestone = goalTasks.filter(
+                      (t) => t.goalMilestoneId != null && String(t.goalMilestoneId) === milestoneIdStr
+                    );
+                    // delete all tasks for this milestone
+                    await Promise.all(
+                      tasksForMilestone.map((t) => tasksAPI.deleteTask(t.id))
+                    );
+                    const items = await loadGoalTasks(id);
+                    setGoalTasks(items ?? []);
+                  } catch (err) {
+                    console.error('Failed to delete tasks for milestone:', err);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+              >
+                {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AddTaskModal
         open={addTaskModalOpen}

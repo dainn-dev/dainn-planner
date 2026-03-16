@@ -524,6 +524,21 @@ const SettingsPage = () => {
     setImagePreview(null);
   };
 
+  const handleRemoveAvatar = () => {
+    setAvatarUrl(null);
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) {
+        const u = JSON.parse(raw);
+        delete u.avatarUrl;
+        delete u.avatar;
+        localStorage.setItem('user', JSON.stringify(u));
+      }
+    } catch {
+      // ignore parse errors
+    }
+  };
+
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-background-subtle dark:bg-[#101922] text-zinc-900 dark:text-slate-100 antialiased selection:bg-zinc-200 dark:selection:bg-slate-600">
       {/* Sidebar - Desktop */}
@@ -620,7 +635,15 @@ const SettingsPage = () => {
 
                 {/* Avatar Section */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8">
-                  <div className="relative group cursor-pointer">
+                  <button
+                    type="button"
+                    className="relative group cursor-pointer"
+                    onClick={() => {
+                      setWarningMessage('');
+                      setUploadImageModalOpen(true);
+                    }}
+                    aria-label={t('settings.largeAvatarPreview')}
+                  >
                     <div
                       className="bg-center bg-no-repeat bg-cover rounded-full size-24 ring-1 ring-border-light dark:ring-slate-600 bg-zinc-200 dark:bg-slate-700"
                       style={{
@@ -628,33 +651,28 @@ const SettingsPage = () => {
                           ? `url("${getAvatarFullUrl(avatarUrl)}")`
                           : undefined,
                       }}
-                      aria-label={t('settings.largeAvatarPreview')}
                     />
-                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                       <span className="material-symbols-outlined text-white">edit</span>
                     </div>
-                  </div>
+                    {avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveAvatar();
+                        }}
+                        className="absolute -top-1 -right-1 size-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600"
+                        aria-label={t('settings.removePhoto')}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    )}
+                  </button>
                   <div className="flex flex-col gap-4 flex-1">
                     <div>
                       <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.avatar')}</h3>
                       <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.avatarHint')}</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <button 
-                        onClick={() => {
-                          setWarningMessage('');
-                          setUploadImageModalOpen(true);
-                        }}
-                        className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
-                      >
-                        {t('settings.uploadNewPhoto')}
-                      </button>
-                      <button 
-                        onClick={() => setWarningMessage('')}
-                        className="px-4 py-2 bg-white dark:bg-slate-700 hover:bg-zinc-50 dark:hover:bg-slate-600 text-zinc-900 dark:text-slate-200 text-sm font-medium rounded-lg border border-border-light dark:border-slate-600 transition-colors"
-                      >
-                        {t('settings.removePhoto')}
-                      </button>
                     </div>
                   </div>
                 </div>
