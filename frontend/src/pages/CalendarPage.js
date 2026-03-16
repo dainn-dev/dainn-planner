@@ -579,11 +579,7 @@ const CalendarPage = () => {
               >
                 <span className="material-symbols-outlined text-xl">menu</span>
               </button>
-              <div className="lg:hidden flex items-center shrink-0">
-                <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-xl">calendar_month</span>
-                </div>
-              </div>
+              
               <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <h2 className="text-[#111418] dark:text-white text-sm sm:text-base md:text-lg font-bold leading-tight tracking-[-0.015em] truncate">
