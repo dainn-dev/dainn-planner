@@ -20,7 +20,7 @@ const PrivacyPolicyPage = () => {
             <span className="text-slate-900 font-medium">{t('privacyPolicy.breadcrumbLabel')}</span>
           </div>
           <div className="mb-12 border-b border-slate-200 pb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
+            <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em] mb-4">
               {t('privacyPolicy.title')}
             </h1>
             <p className="text-lg text-slate-600">{t('privacyPolicy.updatedAt')}</p>

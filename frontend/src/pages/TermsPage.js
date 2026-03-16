@@ -21,7 +21,7 @@ const TermsPage = () => {
           </div>
           <div className="text-center mb-12">
             <p className="text-indigo-600 font-medium text-sm uppercase tracking-wide mb-2">{t('termsPage.heroTag')}</p>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{t('termsPage.title')}</h1>
+            <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em] mb-4">{t('termsPage.title')}</h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               {t('termsPage.subtitle')}
             </p>

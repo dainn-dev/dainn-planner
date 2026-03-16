@@ -204,7 +204,7 @@ const AdminLogsPage = () => {
           <div className="max-w-[1200px] flex-1 flex flex-col gap-6 w-full">
             {/* Breadcrumb */}
             <div className="flex flex-wrap gap-2 text-sm">
-              <Link to="/admin/dashboard" className="text-gray-500 dark:text-slate-400 font-medium hover:text-primary transition-colors">
+              <Link to="/admin/dashboard" className="text-gray-500 dark:text-slate-400 font-medium hover:text-primary dark:hover:text-blue-300 transition-colors">
                 {t('admin.admin')}
               </Link>
               <span className="text-gray-500 dark:text-slate-400 font-medium">/</span>
@@ -214,7 +214,7 @@ const AdminLogsPage = () => {
             {/* Page Heading */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
               <div className="flex flex-col gap-2">
-                <h1 className="text-[#0d141b] dark:text-white text-3xl font-black leading-tight tracking-tight">{t('admin.logsPageTitle')}</h1>
+                <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('admin.logsPageTitle')}</h1>
                 <p className="text-[#4c739a] dark:text-slate-400 text-base font-normal">{t('admin.logsPageSubtitle')}</p>
               </div>
               <div className="flex gap-2">
@@ -235,50 +235,34 @@ const AdminLogsPage = () => {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {/* Total Files Card */}
-              <div className="flex flex-col gap-2 rounded-xl bg-white dark:bg-[#15202b] p-6 border border-[#cfdbe7] dark:border-slate-700 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <p className="text-[#4c739a] dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{t('admin.totalFiles')}</p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg text-primary">
-                    <span className="material-symbols-outlined text-[24px]">folder_open</span>
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <p className="text-[#0d141b] dark:text-white text-3xl font-bold leading-tight">{loading ? '–' : logFiles.length}</p>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.totalFiles')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{loading ? '–' : logFiles.length}</p>
                 </div>
               </div>
 
               {/* Storage Capacity Card */}
-              <div className="flex flex-col gap-2 rounded-xl bg-white dark:bg-[#15202b] p-6 border border-[#cfdbe7] dark:border-slate-700 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <p className="text-[#4c739a] dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{t('admin.storageCapacity')}</p>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded-lg text-purple-600 dark:text-purple-400">
-                    <span className="material-symbols-outlined text-[24px]">hard_drive</span>
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <p className="text-[#0d141b] dark:text-white text-3xl font-bold leading-tight">{loading ? '–' : formatSize(totalSizeBytes)}</p>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.storageCapacity')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{loading ? '–' : formatSize(totalSizeBytes)}</p>
                 </div>
               </div>
 
               {/* Errors Detected Card - placeholder */}
-              <div className="flex flex-col gap-2 rounded-xl bg-white dark:bg-[#15202b] p-6 border border-[#cfdbe7] dark:border-slate-700 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <p className="text-[#4c739a] dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{t('admin.errorsDetected24h')}</p>
-                  <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-lg text-red-600 dark:text-red-400">
-                    <span className="material-symbols-outlined text-[24px]">bug_report</span>
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <p className="text-[#0d141b] dark:text-white text-3xl font-bold leading-tight">–</p>
-                  <p className="text-[#4c739a] dark:text-slate-500 text-sm">{t('admin.viewInFile')}</p>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.errorsDetected24h')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">–</p>
                 </div>
               </div>
             </div>
 
             {/* Search and Filter Bar */}
-            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-white dark:bg-[#15202b] p-4 rounded-xl border border-[#cfdbe7] dark:border-slate-700 shadow-sm">
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center p-4 sm:p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
               {/* Search */}
               <div className="relative w-full lg:max-w-md">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[#4c739a] dark:text-slate-400">
@@ -373,7 +357,7 @@ const AdminLogsPage = () => {
             </div>
 
             {/* Data Table */}
-            <div className="w-full overflow-hidden rounded-xl border border-[#cfdbe7] dark:border-slate-700 shadow-sm bg-white dark:bg-[#15202b]">
+            <div className="w-full overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-[#0d141b] dark:text-slate-200">
                   <thead className="bg-slate-50 dark:bg-[#1e2a35] text-xs uppercase font-semibold text-[#4c739a] dark:text-slate-400">
@@ -404,7 +388,7 @@ const AdminLogsPage = () => {
                         return (
                           <tr key={log.name} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td className="px-6 py-4 font-medium text-[#0d141b] dark:text-white flex items-center gap-3">
-                              <span className="material-symbols-outlined text-slate-400">description</span>
+                              <span className="material-symbols-outlined text-slate-400 dark:text-slate-500">description</span>
                               {log.name}
                             </td>
                             <td className="px-6 py-4 text-[#4c739a] dark:text-slate-400">
@@ -420,7 +404,7 @@ const AdminLogsPage = () => {
                               {formatSize(log.sizeBytes || 0)}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => handleViewLog(log)}
                                   className="p-2 rounded-lg text-slate-500 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" 
@@ -462,14 +446,14 @@ const AdminLogsPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
           >
@@ -481,7 +465,7 @@ const AdminLogsPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
@@ -489,7 +473,7 @@ const AdminLogsPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
@@ -497,18 +481,18 @@ const AdminLogsPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">description</span>
                 <span>{t('admin.logs')}</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
@@ -516,7 +500,7 @@ const AdminLogsPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
@@ -524,7 +508,7 @@ const AdminLogsPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -532,13 +516,13 @@ const AdminLogsPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
             <span>{t('sidebar.settings')}</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="auth.logout" />
           </div>
         </div>

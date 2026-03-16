@@ -62,7 +62,7 @@ const ForgotPasswordPage = () => {
                   <div className="flex items-center justify-center size-10 rounded-xl bg-gray-50 text-primary-forgot border border-gray-100 shadow-sm">
                     <span className="material-symbols-outlined text-xl">lock_reset</span>
                   </div>
-                  <h1 className="text-primary-forgot text-2xl font-bold tracking-tight">{t('auth.forgotTitle')}</h1>
+                  <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('auth.forgotTitle')}</h1>
                 </div>
                 <p className="text-text-subtle text-sm leading-relaxed">
                   {t('auth.forgotSubtitle')}

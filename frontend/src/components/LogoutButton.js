@@ -8,7 +8,7 @@ import { authAPI } from '../services/api';
  * Use in Sidebar and mobile drawer to avoid duplicate logic.
  */
 const LogoutButton = ({
-  className = 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors w-full touch-manipulation min-h-[44px]',
+  className = 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors w-full touch-manipulation min-h-[44px]',
   iconClassName = '',
   textClassName = '',
   labelKey = 'sidebar.logout',

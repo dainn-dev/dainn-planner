@@ -93,7 +93,7 @@ const AdminDashboardPage = () => {
   }, []);
 
   return (
-    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
@@ -112,36 +112,36 @@ const AdminDashboardPage = () => {
           <div className="max-w-7xl flex-1 flex flex-col gap-8 w-full">
             {/* Breadcrumb */}
             <div className="flex flex-wrap gap-2 text-sm">
-              <Link to="/admin/dashboard" className="text-gray-500 font-medium hover:text-primary transition-colors">
+              <Link to="/admin/dashboard" className="text-gray-500 dark:text-slate-400 font-medium hover:text-primary dark:hover:text-blue-300 transition-colors">
                 {t('admin.admin')}
               </Link>
-              <span className="text-gray-500 font-medium">/</span>
-              <span className="text-[#111418] font-semibold">{t('admin.dashboardBreadcrumb')}</span>
+              <span className="text-gray-500 dark:text-slate-400 font-medium">/</span>
+              <span className="text-[#111418] dark:text-white font-semibold">{t('admin.dashboardBreadcrumb')}</span>
             </div>
             {/* Page Heading */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold text-[#111418] tracking-tight">{t('admin.dashboardOverview')}</h1>
-                <p className="text-gray-500">{t('admin.welcomeBack')}</p>
+                <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('admin.dashboardOverview')}</h1>
+                <p className="text-gray-500 dark:text-slate-400">{t('admin.welcomeBack')}</p>
               </div>
               <div className="relative shrink-0" ref={daysFilterRef}>
                 <button
                   type="button"
                   onClick={() => setDaysFilterOpen((o) => !o)}
-                  className="flex items-center gap-2 text-sm text-gray-500 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-md border border-gray-200 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[18px]">calendar_today</span>
                   <span>{daysFilter === 7 ? t('admin.last7Days') : daysFilter === 90 ? t('admin.last90Days') : t('admin.last30Days')}</span>
                   <span className="material-symbols-outlined text-[16px]">expand_more</span>
                 </button>
                 {daysFilterOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-20 min-w-[140px] py-1 rounded-lg bg-white border border-gray-200 shadow-lg">
+                  <div className="absolute right-0 top-full mt-1 z-20 min-w-[140px] py-1 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-lg">
                     {DAYS_OPTIONS.map((d) => (
                       <button
                         key={d}
                         type="button"
                         onClick={() => { setDaysFilter(d); setDaysFilterOpen(false); }}
-                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${daysFilter === d ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'}`}
+                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${daysFilter === d ? 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-300' : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
                       >
                         {d === 7 ? t('admin.last7Days') : d === 90 ? t('admin.last90Days') : t('admin.last30Days')}
                       </button>
@@ -152,79 +152,43 @@ const AdminDashboardPage = () => {
             </div>
 
             {/* Stats Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Card 1 - Total Users */}
-              <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">{t('admin.totalUsers')}</p>
-                  <div className="bg-blue-50 text-blue-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">group</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#111418]">
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.totalUsers')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">
                     {statsLoading ? '—' : (stats?.totalUsers ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-emerald-600 text-sm font-medium flex items-center gap-1 mt-1">
-                    <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleTotalUsers')}</span>
                   </p>
                 </div>
               </div>
 
               {/* Card 2 - Active Users Today */}
-              <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">{t('admin.activeUsers')}</p>
-                  <div className="bg-violet-50 text-violet-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">person_check</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#111418]">
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.activeUsers')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">
                     {statsLoading ? '—' : (stats?.activeUsers ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-emerald-600 text-sm font-medium flex items-center gap-1 mt-1">
-                    <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleActiveUsers')}</span>
                   </p>
                 </div>
               </div>
 
               {/* Card 3 - Goals Created */}
-              <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">{t('admin.goalsCreated')}</p>
-                  <div className="bg-amber-50 text-amber-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">flag</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#111418]">
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.goalsCreated')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">
                     {statsLoading ? '—' : (stats?.totalGoals ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-emerald-600 text-sm font-medium flex items-center gap-1 mt-1">
-                    <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleTotalGoals')}</span>
                   </p>
                 </div>
               </div>
 
               {/* Card 4 - Total Events */}
-              <div className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-500 text-sm font-medium">{t('admin.totalEvents')}</p>
-                  <div className="bg-emerald-50 text-emerald-600 p-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]">event</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#111418]">
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('admin.totalEvents')}</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">
                     {statsLoading ? '—' : (stats?.totalEvents ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-gray-400 text-sm font-medium flex items-center gap-1 mt-1">
-                    <span className="material-symbols-outlined text-[16px]">event</span>
-                    <span className="text-gray-400 font-normal">{t('admin.cardSubtitleCalendarEvents')}</span>
                   </p>
                 </div>
               </div>
@@ -233,25 +197,25 @@ const AdminDashboardPage = () => {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Line Chart - User Growth */}
-              <div className="lg:col-span-2 rounded-xl bg-white p-6 shadow-sm border border-gray-100 flex flex-col">
+              <div className="lg:col-span-2 rounded-xl bg-white dark:bg-slate-800 p-6 shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-[#111418]">{t('admin.userGrowth')}</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="text-lg font-bold text-[#111418] dark:text-white">{t('admin.userGrowth')}</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
                       {userGrowthLoading ? t('common.loading') : t('admin.newSignups')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="p-1.5 rounded-md hover:bg-gray-50 text-gray-400">
+                    <button className="p-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-400 dark:text-slate-400">
                       <span className="material-symbols-outlined text-[20px]">more_vert</span>
                     </button>
                   </div>
                 </div>
                 <div className="flex-1 min-h-[240px] w-full relative">
                   {userGrowthLoading ? (
-                    <div className="flex items-center justify-center h-[240px] text-sm text-gray-500">{t('admin.loadingChart')}</div>
+                    <div className="flex items-center justify-center h-[240px] text-sm text-gray-500 dark:text-slate-400">{t('admin.loadingChart')}</div>
                   ) : !userGrowth?.dataPoints?.length ? (
-                    <div className="flex items-center justify-center h-[240px] text-sm text-gray-500">{t('admin.noSignupData')}</div>
+                    <div className="flex items-center justify-center h-[240px] text-sm text-gray-500 dark:text-slate-400">{t('admin.noSignupData')}</div>
                   ) : (() => {
                     const points = userGrowth.dataPoints;
                     const n = points.length;
@@ -279,7 +243,7 @@ const AdminDashboardPage = () => {
                             </linearGradient>
                           </defs>
                         </svg>
-                        <div className="flex justify-between mt-4 text-xs text-gray-400 font-medium">
+                        <div className="flex justify-between mt-4 text-xs text-gray-400 dark:text-slate-500 font-medium">
                           {labelDates.map((d) => (
                             <span key={d}>{formatDate(d) || d}</span>
                           ))}
@@ -291,26 +255,26 @@ const AdminDashboardPage = () => {
               </div>
 
               {/* Side Bar Chart - Task tags usage */}
-              <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100 flex flex-col">
+              <div className="rounded-xl bg-white dark:bg-slate-800 p-6 shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold text-[#111418]">{t('admin.taskTags')}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-lg font-bold text-[#111418] dark:text-white">{t('admin.taskTags')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">
                     {tagsLoading ? t('common.loading') : tagsWithUsage ? t('admin.usageAcross', { count: tagsWithUsage.totalTasks ?? 0 }) : t('admin.distributionByTag')}
                   </p>
                 </div>
                 <div className="flex flex-col gap-5 flex-1 justify-center">
                   {tagsLoading ? (
-                    <div className="text-sm text-gray-500 py-4">{t('admin.loadingTags')}</div>
+                    <div className="text-sm text-gray-500 dark:text-slate-400 py-4">{t('admin.loadingTags')}</div>
                   ) : !tagsWithUsage?.tags?.length ? (
-                    <div className="text-sm text-gray-500 py-4">{t('admin.noTags')}</div>
+                    <div className="text-sm text-gray-500 dark:text-slate-400 py-4">{t('admin.noTags')}</div>
                   ) : (
                     tagsWithUsage.tags.map((item, index) => (
                       <div key={item.tag} className="flex flex-col gap-2">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-gray-700 capitalize">{getTagLabel(item.tag, t)}</span>
-                          <span className="font-bold text-[#111418]">{Number(item.percentUsage).toFixed(1)}%</span>
+                          <span className="font-medium text-gray-700 dark:text-slate-200 capitalize">{getTagLabel(item.tag, t)}</span>
+                          <span className="font-bold text-[#111418] dark:text-white">{Number(item.percentUsage).toFixed(1)}%</span>
                         </div>
-                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${TAG_BAR_COLORS[index % TAG_BAR_COLORS.length]}`}
                             style={{ width: `${Math.min(100, item.percentUsage)}%` }}
@@ -333,14 +297,14 @@ const AdminDashboardPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
           >
@@ -352,7 +316,7 @@ const AdminDashboardPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">dashboard</span>
@@ -360,7 +324,7 @@ const AdminDashboardPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
@@ -368,18 +332,18 @@ const AdminDashboardPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
                 <span>{t('sidebar.logs')}</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
@@ -387,7 +351,7 @@ const AdminDashboardPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
@@ -395,7 +359,7 @@ const AdminDashboardPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -403,13 +367,13 @@ const AdminDashboardPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
             <span>{t('sidebar.settings')}</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="sidebar.logout" />
           </div>
         </div>

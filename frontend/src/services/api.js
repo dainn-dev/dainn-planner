@@ -358,10 +358,16 @@ export const userAPI = {
     const settings = response?.data?.data ?? response?.data ?? response;
     if (settings && typeof settings === 'object') {
       try {
-        localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
+        const existingRaw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+        const existing = existingRaw ? JSON.parse(existingRaw) : {};
+        const merged = { ...settings };
+        displayKeys.forEach(k => { if (existing[k] !== undefined) merged[k] = existing[k]; });
+        localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
         }
+        return merged;
       } catch (e) {
         // ignore quota or serialization errors
       }
@@ -377,7 +383,12 @@ export const userAPI = {
     const settings = response?.data?.data ?? response?.data ?? response;
     if (settings && typeof settings === 'object') {
       try {
-        localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
+        const existingRaw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+        const existing = existingRaw ? JSON.parse(existingRaw) : {};
+        const merged = { ...settings };
+        displayKeys.forEach(k => { if (existing[k] !== undefined) merged[k] = existing[k]; });
+        localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
         }

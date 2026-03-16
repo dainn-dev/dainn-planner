@@ -111,7 +111,7 @@ const ResetPasswordPage = () => {
             <div className="w-16 h-16 rounded-2xl bg-surface-reset border border-border-reset flex items-center justify-center mb-4 text-text-main-reset shadow-sm">
               <span className="material-symbols-outlined text-[30px]">lock_reset</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-main-reset">{t('auth.resetTitle')}</h1>
+            <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('auth.resetTitle')}</h1>
             <p className="text-text-secondary-reset text-[15px] font-normal leading-relaxed max-w-[360px]">
               {t('auth.resetSubtitle')}
             </p>

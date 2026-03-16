@@ -134,7 +134,7 @@ const ContactPage = () => {
               <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-bold uppercase tracking-wider border border-blue-100">
                 {t('contact.support')}
               </span>
-              <h1 className="text-slate-900 text-4xl md:text-5xl font-black leading-tight tracking-tight">
+              <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">
                 {t('contact.heroTitle')}
               </h1>
               <p className="text-text-muted text-lg font-normal leading-relaxed max-w-md">

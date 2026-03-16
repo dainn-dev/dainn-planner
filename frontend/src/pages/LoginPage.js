@@ -279,7 +279,7 @@ const LoginPage = () => {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-[420px] flex flex-col gap-8 bg-surface-light md:p-10 p-6 rounded-2xl shadow-soft border border-white">
           <div className="flex flex-col gap-2 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-text-main">{t('auth.loginTitle')}</h1>
+            <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('auth.loginTitle')}</h1>
             <p className="text-text-muted text-sm font-normal">
               {t('auth.loginSubtitle')}
             </p>

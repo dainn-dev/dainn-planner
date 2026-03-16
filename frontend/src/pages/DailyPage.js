@@ -434,23 +434,23 @@ const DailyPage = () => {
     const p = typeof priority === 'number' ? priority : (priority === 'Cao' ? 2 : priority === 'Trung bình' ? 1 : 0);
     switch (p) {
       case 2:
-        return 'bg-red-50 text-red-600 ring-1 ring-inset ring-red-200';
+        return 'bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 ring-1 ring-inset ring-red-200 dark:ring-red-800';
       case 1:
-        return 'bg-yellow-50 text-yellow-600 ring-1 ring-inset ring-yellow-200';
+        return 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-300 ring-1 ring-inset ring-yellow-200 dark:ring-yellow-800';
       case 0:
       default:
-        return 'bg-gray-100 text-gray-600';
+        return 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300';
     }
   };
 
   const getPriorityFlagClass = (priority) => {
     switch (priority) {
       case 'high':
-        return 'text-red-500';
+        return 'text-red-500 dark:text-red-400';
       case 'medium':
-        return 'text-yellow-500';
+        return 'text-yellow-500 dark:text-yellow-400';
       default:
-        return 'text-gray-400';
+        return 'text-gray-400 dark:text-slate-500';
     }
   };
 
@@ -460,7 +460,7 @@ const DailyPage = () => {
   const dateStr = `${today.getDate()}/${today.getMonth() + 1}`;
 
   return (
-    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
@@ -485,23 +485,23 @@ const DailyPage = () => {
             {/* Date and Progress Card */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex flex-col gap-2">
-                <p className="text-[#111418] text-4xl font-black leading-tight tracking-[-0.033em]">
+                <p className="text-[#111418] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
                   {dayName}, {dateStr}
                 </p>
-                <p className="text-gray-500 text-base font-normal leading-normal">
+                <p className="text-gray-500 dark:text-slate-400 text-base font-normal leading-normal">
                   {t('daily.greeting')}
                 </p>
               </div>
-              <div className="flex min-w-[200px] flex-col gap-1 rounded-lg p-4 bg-white border border-gray-200 shadow-sm">
+              <div className="flex min-w-[200px] flex-col gap-1 rounded-lg p-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-sm">
                 <div className="flex justify-between items-center mb-1">
-                  <p className="text-gray-600 text-sm font-medium leading-normal">{t('daily.progressToday')}</p>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm font-medium leading-normal">{t('daily.progressToday')}</p>
                   <span className="material-symbols-outlined text-[#0bda5b]">trending_up</span>
                 </div>
                 <div className="flex items-end gap-2">
-                  <p className="text-[#111418] text-3xl font-bold leading-tight">{progressPercentage}%</p>
-                  <p className="text-gray-500 text-xs pb-1">{t('daily.completed')}</p>
+                  <p className="text-[#111418] dark:text-white text-3xl font-bold leading-tight">{progressPercentage}%</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-xs pb-1">{t('daily.completed')}</p>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
+                <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-1.5 mt-2">
                   <div 
                     className="bg-[#1380ec] h-1.5 rounded-full transition-all duration-300" 
                     style={{ width: `${progressPercentage}%` }}
@@ -518,22 +518,22 @@ const DailyPage = () => {
             {/* Main Goal Card */}
             {mainGoal && (
               <div className="w-full">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 rounded-xl border border-blue-100 bg-white p-5 shadow-lg shadow-blue-50 relative overflow-hidden group">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 rounded-xl border border-blue-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-lg shadow-blue-50 dark:shadow-none relative overflow-hidden group">
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
                   <div className="flex flex-col gap-1 z-10 pl-2">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="material-symbols-outlined text-primary text-sm">flag</span>
-                      <p className="text-primary text-xs font-bold uppercase tracking-wider">{t('daily.mainGoal')}</p>
+                      <span className="material-symbols-outlined text-primary dark:text-blue-400 text-sm">flag</span>
+                      <p className="text-primary dark:text-blue-400 text-xs font-bold uppercase tracking-wider">{t('daily.mainGoal')}</p>
                     </div>
-                    <p className={`text-[#111418] text-xl font-bold leading-tight group-hover:text-primary transition-colors ${mainGoal.completed ? 'line-through text-gray-400' : ''}`}>
+                    <p className={`text-[#111418] dark:text-white text-xl font-bold leading-tight group-hover:text-primary dark:group-hover:text-blue-400 transition-colors ${mainGoal.completed ? 'line-through text-gray-400 dark:text-slate-500' : ''}`}>
                       {mainGoal.text}
                     </p>
                   </div>
                   <label className="relative flex cursor-pointer items-center gap-3 z-10">
-                    <span className="text-gray-500 text-sm hidden sm:block">{t('daily.markComplete')}</span>
-                    <div className={`relative flex h-[31px] w-[51px] items-center rounded-full border-none p-0.5 transition-colors ${mainGoal.completed ? 'bg-[#1380ec]' : 'bg-gray-200'}`}>
+                    <span className="text-gray-500 dark:text-slate-400 text-sm hidden sm:block">{t('daily.markComplete')}</span>
+                    <div className={`relative flex h-[31px] w-[51px] items-center rounded-full border-none p-0.5 transition-colors ${mainGoal.completed ? 'bg-[#1380ec]' : 'bg-gray-200 dark:bg-slate-600'}`}>
                       <div 
-                        className={`h-[27px] w-[27px] rounded-full bg-white shadow-md transition-transform ${mainGoal.completed ? 'translate-x-[20px]' : 'translate-x-0'}`}
+                        className={`h-[27px] w-[27px] rounded-full bg-white dark:bg-slate-200 shadow-md transition-transform ${mainGoal.completed ? 'translate-x-[20px]' : 'translate-x-0'}`}
                       />
                       <input 
                         className="peer sr-only" 
@@ -561,14 +561,14 @@ const DailyPage = () => {
               {/* Schedule Section */}
               <div className="lg:col-span-5 flex flex-col gap-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-[#111418]">schedule</span>
-                  <h2 className="text-[#111418] text-xl font-bold">{t('daily.schedule')}</h2>
+                  <span className="material-symbols-outlined text-[#111418] dark:text-white">schedule</span>
+                  <h2 className="text-[#111418] dark:text-white text-xl font-bold">{t('daily.schedule')}</h2>
                 </div>
                 {events.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border border-gray-200">
-                    <span className="material-symbols-outlined text-gray-300 text-5xl mb-3">event_busy</span>
-                    <p className="text-gray-500 text-sm font-medium text-center">{t('daily.noEvents')}</p>
-                    <p className="text-gray-400 text-xs text-center mt-1">{t('daily.addEventFromCalendar')}</p>
+                  <div className="flex flex-col items-center justify-center py-12 px-4 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <span className="material-symbols-outlined text-gray-300 dark:text-slate-500 text-5xl mb-3">event_busy</span>
+                    <p className="text-gray-500 dark:text-slate-400 text-sm font-medium text-center">{t('daily.noEvents')}</p>
+                    <p className="text-gray-400 dark:text-slate-500 text-xs text-center mt-1">{t('daily.addEventFromCalendar')}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4">
@@ -581,36 +581,36 @@ const DailyPage = () => {
                       return (
                         <div key={event.id} className="flex gap-4 group">
                     <div className="flex flex-col items-center pt-1 w-12 flex-shrink-0">
-                            <span className={`text-sm font-medium ${isActive ? 'text-[#111418] font-bold' : isPast ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <span className={`text-sm font-medium ${isActive ? 'text-[#111418] dark:text-white font-bold' : isPast ? 'text-gray-400 dark:text-slate-500' : 'text-gray-500 dark:text-slate-400'}`}>
                               {event.time_from ? event.time_from.substring(0, 5) : t('daily.allDay')}
                             </span>
                             {index < events.length - 1 && (
-                      <div className="w-px h-full bg-gray-200 mt-2"></div>
+                      <div className="w-px h-full bg-gray-200 dark:bg-slate-600 mt-2"></div>
                             )}
                     </div>
                     <div className="flex-1 pb-6">
                             <div className={`p-4 rounded-lg border ${
                               isActive 
-                                ? 'bg-white border-l-4 border-l-primary shadow-md shadow-gray-100' 
+                                ? 'bg-white dark:bg-slate-800 border-l-4 border-l-primary shadow-md shadow-gray-100 dark:shadow-none' 
                                 : isPast
-                                ? 'bg-gray-50 border border-gray-200'
-                                : 'bg-white border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer'
+                                ? 'bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700'
+                                : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer'
                             }`}>
                         <div className="flex justify-between items-start">
-                                <p className={`font-medium ${isActive ? 'text-[#111418] font-bold text-lg' : isPast ? 'text-gray-400 line-through' : 'text-[#111418]'}`}>
+                                <p className={`font-medium ${isActive ? 'text-[#111418] dark:text-white font-bold text-lg' : isPast ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-slate-200'}`}>
                                   {event.title}
                                 </p>
                                 {isActive && (
-                          <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded">{t('daily.ongoing')}</span>
+                          <span className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-300 text-xs px-2 py-1 rounded">{t('daily.ongoing')}</span>
                                 )}
                               </div>
                               {event.description && (
-                                <p className={`text-sm mt-1 ${isPast ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <p className={`text-sm mt-1 ${isPast ? 'text-gray-400 dark:text-slate-500' : 'text-gray-500 dark:text-slate-400'}`}>
                                   {event.description}
                                 </p>
                               )}
                               {(event.address || event.platform) && (
-                                <div className="flex items-center gap-1 mt-2 text-gray-500 text-xs">
+                                <div className="flex items-center gap-1 mt-2 text-gray-500 dark:text-slate-400 text-xs">
                                   {event.location_type === 'online' ? (
                                     <>
                                       <span className="material-symbols-outlined text-[14px]">videocam</span>
@@ -638,8 +638,8 @@ const DailyPage = () => {
                 <div className="flex flex-col gap-2 mb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-[#111418]">check_circle</span>
-                      <h2 className="text-[#111418] text-xl font-bold">{t('daily.tasks')}</h2>
+                      <span className="material-symbols-outlined text-[#111418] dark:text-white">check_circle</span>
+                      <h2 className="text-[#111418] dark:text-white text-xl font-bold">{t('daily.tasks')}</h2>
                       <button
                         type="button"
                         onClick={() => { setTaskForm(prev => ({ ...prev, name: '' })); setEditingTaskId(null); setAddTaskModalOpen(true); }}
@@ -656,19 +656,19 @@ const DailyPage = () => {
                         type="button"
                         onClick={() => taskPage > 1 && setTaskPage(p => p - 1)}
                         disabled={taskPage <= 1}
-                        className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
+                        className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                         aria-label={t('daily.prevPage')}
                       >
                         <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_left</span>
                       </button>
-                      <span className="text-sm text-gray-600 min-w-[80px] text-center">
+                      <span className="text-sm text-gray-600 dark:text-slate-400 min-w-[80px] text-center">
                         {t('daily.pageOf', { current: taskPage, total: Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) })}
                       </span>
                       <button
                         type="button"
                         onClick={() => taskPage < Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) && setTaskPage(p => p + 1)}
                         disabled={taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
-                        className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
+                        className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                         aria-label={t('daily.nextPage')}
                       >
                         <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_right</span>
@@ -686,7 +686,7 @@ const DailyPage = () => {
                           setFilterExpanded(true);
                         }
                       }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${filterExpanded ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-primary hover:bg-primary/5 border border-gray-200'}`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${filterExpanded ? 'bg-primary text-white shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-primary/5 dark:hover:bg-blue-900/20 border border-gray-200 dark:border-slate-700'}`}
                       aria-label={filterExpanded ? t('daily.closeFilter') : t('daily.openFilter')}
                       aria-expanded={filterExpanded}
                     >
@@ -698,12 +698,12 @@ const DailyPage = () => {
                   </div>
                   {!filterExpanded && (
                     <div className="flex items-center pt-1" role="group" aria-label={t('daily.status')}>
-                      <div className="inline-flex p-0.5 rounded-full bg-gray-200">
+                      <div className="inline-flex p-0.5 rounded-full bg-gray-200 dark:bg-slate-700">
                         <button
                           type="button"
                           onClick={() => { setTaskStatusFilter('incomplete'); setTaskPage(1); }}
                           aria-pressed={taskStatusFilter === 'incomplete'}
-                          className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${taskStatusFilter === 'incomplete' ? 'text-white' : 'text-gray-600 hover:text-gray-800'}`}
+                          className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${taskStatusFilter === 'incomplete' ? 'text-white' : 'text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-white'}`}
                         >
                           {taskStatusFilter === 'incomplete' && (
                             <span className="absolute inset-0 rounded-full bg-primary shadow-sm z-0" aria-hidden="true" />
@@ -714,7 +714,7 @@ const DailyPage = () => {
                           type="button"
                           onClick={() => { setTaskStatusFilter('completed'); setTaskPage(1); }}
                           aria-pressed={taskStatusFilter === 'completed'}
-                          className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${taskStatusFilter === 'completed' ? 'text-white' : 'text-gray-600 hover:text-gray-800'}`}
+                          className={`relative rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${taskStatusFilter === 'completed' ? 'text-white' : 'text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-white'}`}
                         >
                           {taskStatusFilter === 'completed' && (
                             <span className="absolute inset-0 rounded-full bg-primary shadow-sm z-0" aria-hidden="true" />
@@ -725,10 +725,10 @@ const DailyPage = () => {
                     </div>
                   )}
                   {filterExpanded && (
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3 overflow-visible">
+                  <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-800/80 p-3 overflow-visible">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
+                        <span className="material-symbols-outlined text-[18px] text-primary dark:text-blue-400">tune</span>
                         <span>{t('daily.filterSortOptions')}</span>
                       </div>
                       <button
@@ -740,7 +740,7 @@ const DailyPage = () => {
                           setTaskSortOrder('desc');
                           setTaskPage(1);
                         }}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200/80 transition-colors shrink-0"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200/80 dark:hover:bg-slate-700 transition-colors shrink-0"
                       >
                         <span className="material-symbols-outlined text-[18px]">refresh</span>
                         <span>{t('daily.reset')}</span>
@@ -748,11 +748,11 @@ const DailyPage = () => {
                     </div>
                     <div className="flex flex-wrap items-end gap-3 mt-3">
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.status')}</label>
+                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.status')}</label>
                         <select
                           value={taskStatusFilter}
                           onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
                           <option value="">{t('daily.all')}</option>
                           <option value="completed">{t('daily.completed')}</option>
@@ -760,11 +760,11 @@ const DailyPage = () => {
                         </select>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.priority')}</label>
+                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.priority')}</label>
                         <select
                           value={taskPriorityFilter}
                           onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
                           <option value="">{t('daily.all')}</option>
                           <option value="0">{t('daily.priorityLow')}</option>
@@ -773,11 +773,11 @@ const DailyPage = () => {
                         </select>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.label')}</label>
+                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.label')}</label>
                         <select
                           value={taskTagFilter}
                           onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
                           <option value="">{t('daily.all')}</option>
                           {DEFAULT_TAGS.map((tag) => (
@@ -785,13 +785,13 @@ const DailyPage = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="h-px w-px bg-gray-300 self-stretch hidden sm:block" aria-hidden="true" />
+                      <div className="h-px w-px bg-gray-300 dark:bg-slate-600 self-stretch hidden sm:block" aria-hidden="true" />
                       <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('daily.sort')}</label>
+                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.sort')}</label>
                         <select
                           value={taskSortOrder}
                           onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                         >
                           <option value="desc">{t('daily.sortNewestFirst')}</option>
                           <option value="asc">{t('daily.sortOldestFirst')}</option>
@@ -804,24 +804,24 @@ const DailyPage = () => {
 
                 {/* Tasks List */}
                 {tasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border border-gray-200">
-                    <span className="material-symbols-outlined text-gray-300 text-5xl mb-3">task_alt</span>
-                    <p className="text-gray-500 text-sm font-medium text-center">{t('daily.noTasks')}</p>
-                    <p className="text-gray-400 text-xs text-center mt-1">{t('daily.addTaskToStart')}</p>
+                  <div className="flex flex-col items-center justify-center py-12 px-4 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <span className="material-symbols-outlined text-gray-300 dark:text-slate-500 text-5xl mb-3">task_alt</span>
+                    <p className="text-gray-500 dark:text-slate-400 text-sm font-medium text-center">{t('daily.noTasks')}</p>
+                    <p className="text-gray-400 dark:text-slate-500 text-xs text-center mt-1">{t('daily.addTaskToStart')}</p>
                   </div>
                 ) : (
                 <div className="flex flex-col gap-3">
                   {tasks.map((task) => (
                     <div 
                       key={task.id} 
-                      className="group flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden transition-all hover:bg-gray-50"
+                      className="group flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all hover:bg-gray-50 dark:hover:bg-slate-700/50"
                     >
                       <div className="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4">
                         <div className="flex items-start gap-4 flex-1">
                           <div className="relative flex items-center pt-1">
                             <input 
                               checked={task.completed ?? task.isCompleted} 
-                              className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 bg-transparent checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait" 
+                              className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-slate-600 bg-transparent dark:bg-slate-700/50 checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait" 
                               type="checkbox"
                               onChange={() => handleTaskCheckboxChange(task.id)}
                               disabled={taskIdInProgress === task.id}
@@ -832,7 +832,7 @@ const DailyPage = () => {
                           </span>
                         </div>
                         <div className="flex flex-col gap-1 flex-1 min-w-0">                          
-                          <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 line-through' : 'text-[#111418]'}`}>
+                          <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-white'}`}>
                           {task.priority && (
                               <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
                                 {getPriorityLabel(task.priority)}
@@ -853,7 +853,7 @@ const DailyPage = () => {
                           )}
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">                            
                               {task.tags && task.tags.map((tag, idx) => (
-                              <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600">
+                              <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 dark:bg-slate-700 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-slate-300">
                                 {getTagLabel(tag)}
                               </span>
                             ))}
@@ -863,7 +863,7 @@ const DailyPage = () => {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          className="invisible group-hover:visible text-gray-400 hover:text-primary transition-colors p-1 rounded"
+                          className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors p-1 rounded"
                           onClick={() => handleOpenEditTask(task)}
                           aria-label={t('daily.editTaskLabel', { title: task.text || task.title })}
                         >
@@ -871,7 +871,7 @@ const DailyPage = () => {
                         </button>
                         <button 
                           type="button"
-                          className="invisible group-hover:visible text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
+                          className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded"
                           onClick={() => handleDeleteTask(task.id)}
                           aria-label={t('daily.deleteTaskLabel', { title: task.text || task.title })}
                         >
@@ -880,7 +880,7 @@ const DailyPage = () => {
                       </div>
                       </div>
                       {taskIdInProgress === task.id && (
-                        <div className="h-1.5 w-full bg-gray-100 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t('daily.updating')}>
+                        <div className="h-1.5 w-full bg-gray-100 dark:bg-slate-700 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t('daily.updating')}>
                           <div
                             className="h-full bg-primary rounded-b-lg transition-[width] duration-[3000ms] ease-linear"
                             style={{ width: `${toggleProgressPercent}%` }}
@@ -898,19 +898,19 @@ const DailyPage = () => {
                       type="button"
                       onClick={() => taskPage > 1 && setTaskPage(p => p - 1)}
                       disabled={taskPage <= 1}
-                      className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
+                      className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                       aria-label={t('daily.prevPage')}
                     >
                       <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_left</span>
                     </button>
-                    <span className="text-sm text-gray-600 min-w-[80px] text-center">
+                    <span className="text-sm text-gray-600 dark:text-slate-400 min-w-[80px] text-center">
                       {t('daily.pageOf', { current: taskPage, total: Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) })}
                     </span>
                     <button
                       type="button"
                       onClick={() => taskPage < Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) && setTaskPage(p => p + 1)}
                       disabled={taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
-                      className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 hover:text-[#111418] hover:bg-gray-100'}`}
+                      className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                       aria-label={t('daily.nextPage')}
                     >
                       <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_right</span>
@@ -926,40 +926,40 @@ const DailyPage = () => {
       {/* Add Task Modal */}
       {addTaskModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/10 backdrop-blur-sm transition-all duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/10 dark:bg-black/60 backdrop-blur-sm transition-all duration-300"
           onClick={handleCloseModal}
         >
           <div
-            className="w-full max-w-[580px] flex flex-col bg-surface-light rounded-2xl shadow-float border border-white/50 overflow-hidden max-h-[90vh] animate-fadeInScale ring-1 ring-black/5"
+            className="w-full max-w-[580px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light shrink-0">
+            <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light dark:bg-slate-800 shrink-0">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                   {editingTaskId ? t('daily.editTaskTitle') : t('daily.addTaskTitle')}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1 font-normal">
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 font-normal">
                   {editingTaskId ? t('daily.editTaskDesc') : t('daily.addTaskDesc')}
                 </p>
               </div>
               <button 
                 aria-label={t('common.close')}
-                className="group p-2 -mr-2 -mt-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none"
+                className="group p-2 -mr-2 -mt-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
                 onClick={handleCloseModal}
               >
-                <span className="material-symbols-outlined text-gray-400 group-hover:text-gray-600 text-[24px]">close</span>
+                <span className="material-symbols-outlined text-gray-400 dark:text-slate-400 group-hover:text-gray-600 dark:group-hover:text-slate-200 text-[24px]">close</span>
               </button>
             </div>
             <form onSubmit={handleCreateTask}>
-              <div className="px-8 py-2 overflow-y-auto flex flex-col gap-6 custom-scrollbar bg-surface-light">
+              <div className="px-8 py-2 overflow-y-auto flex flex-col gap-6 custom-scrollbar bg-surface-light dark:bg-slate-800">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('daily.taskName')}
                   </label>
                   <div className="relative group">
                     <input
                       autoFocus
-                      className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 px-4 py-3 text-base focus:border-gray-400 focus:bg-white focus:ring-0 placeholder:text-gray-400 transition-all font-medium shadow-sm hover:border-gray-300"
+                      className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 px-4 py-3 text-base focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-gray-300 dark:hover:border-slate-500"
                       placeholder={t('daily.taskNamePlaceholder')}
                       type="text"
                       value={taskForm.name}
@@ -969,15 +969,15 @@ const DailyPage = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('daily.description')}
                   </label>
-                    <div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-all overflow-hidden">
-                    <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-gray-100 bg-gray-50">
+                    <div className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all overflow-hidden">
+                    <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-800">
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('bold')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.bold')}
                         aria-label={t('daily.bold')}
                       >
@@ -986,7 +986,7 @@ const DailyPage = () => {
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('italic')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.italic')}
                         aria-label={t('daily.italic')}
                       >
@@ -995,7 +995,7 @@ const DailyPage = () => {
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('underline')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.underline')}
                         aria-label={t('daily.underline')}
                       >
@@ -1004,17 +1004,17 @@ const DailyPage = () => {
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('strikeThrough')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.strikethrough')}
                         aria-label={t('daily.strikethrough')}
                       >
                         <span className="material-symbols-outlined text-lg">format_strikethrough</span>
                       </button>
-                      <span className="w-px h-5 bg-gray-200 mx-0.5" aria-hidden />
+                      <span className="w-px h-5 bg-gray-200 dark:bg-slate-600 mx-0.5" aria-hidden />
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('insertUnorderedList')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.bulletList')}
                         aria-label={t('daily.bulletList')}
                       >
@@ -1023,7 +1023,7 @@ const DailyPage = () => {
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('insertOrderedList')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.numberedList')}
                         aria-label={t('daily.numberedList')}
                       >
@@ -1032,17 +1032,17 @@ const DailyPage = () => {
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('createLink')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.insertLink')}
                         aria-label={t('daily.insertLink')}
                       >
                         <span className="material-symbols-outlined text-lg">link</span>
                       </button>
-                      <span className="w-px h-5 bg-gray-200 mx-0.5" aria-hidden />
+                      <span className="w-px h-5 bg-gray-200 dark:bg-slate-600 mx-0.5" aria-hidden />
                       <button
                         type="button"
                         onClick={() => applyDescriptionFormat('removeFormat')}
-                        className="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                         title={t('daily.removeFormat')}
                         aria-label={t('daily.removeFormat')}
                       >
@@ -1053,7 +1053,7 @@ const DailyPage = () => {
                       ref={descriptionEditorRef}
                       contentEditable
                       suppressContentEditableWarning
-                      className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 [&:empty::before]:content-[attr(data-placeholder)] [&:empty::before]:text-gray-400"
+                      className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 dark:text-slate-200 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-slate-500 [&:empty::before]:content-[attr(data-placeholder)] [&:empty::before]:text-gray-400 dark:[&:empty::before]:text-slate-500"
                       data-placeholder={t('daily.descriptionPlaceholder')}
                       onInput={() => {
                         if (descriptionEditorRef.current) {
@@ -1065,11 +1065,11 @@ const DailyPage = () => {
                 </div>
                 <div className="flex gap-3">
                   <div className="flex flex-col gap-2 flex-[2] min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('daily.dueDate')}</label>
+                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('daily.dueDate')}</label>
                     <div className="relative group">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">event</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">event</span>
                       <input
-                        className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 shadow-sm"
+                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
                         type="datetime-local"
                         value={taskForm.dueDate}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -1078,11 +1078,11 @@ const DailyPage = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 flex-[1] min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('daily.reminderTime')}</label>
+                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('daily.reminderTime')}</label>
                     <div className="relative group">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">schedule</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">schedule</span>
                       <input
-                        className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 shadow-sm"
+                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
                         type="time"
                         value={taskForm.reminderTime}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, reminderTime: e.target.value }))}
@@ -1093,13 +1093,13 @@ const DailyPage = () => {
                 </div>
                 <div className="flex gap-3">
                   <div className="flex flex-col gap-2 flex-1 min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       {t('daily.repeat')}
                     </label>
                     <div className="relative group">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">repeat</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">repeat</span>
                       <select
-                        className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 shadow-sm appearance-none"
+                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none"
                         value={taskForm.repeat}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, repeat: e.target.value }))}
                         aria-label={t('daily.repeat')}
@@ -1112,13 +1112,13 @@ const DailyPage = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 flex-1 min-w-0">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       {t('daily.priorityLabel')}
                     </label>
                     <div className="relative group">
                       <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] pointer-events-none ${getPriorityFlagClass(taskForm.priority)}`}>flag</span>
                       <select
-                        className="form-input w-full rounded-lg border-gray-200 bg-white text-gray-900 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:bg-white focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 shadow-sm appearance-none"
+                        className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none"
                         value={taskForm.priority}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
                         aria-label={t('daily.priorityLabel')}
@@ -1132,13 +1132,13 @@ const DailyPage = () => {
                 </div>
                 <div className="flex flex-col gap-3 pt-2 pb-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
                       {t('daily.tags')}
                     </label>
                   </div>
                   {/* Selected Tags Display */}
                   {taskForm.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="flex flex-wrap gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
                       {taskForm.tags.map((tag, index) => (
                         <span
                           key={index}
@@ -1165,7 +1165,7 @@ const DailyPage = () => {
                         className={`group flex items-center gap-1.5 px-3.5 py-1.5 border rounded-full transition-all duration-200 shadow-sm ${
                           taskForm.tags.includes(tag)
                             ? 'bg-primary border-primary text-white hover:bg-primary-hover'
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 hover:bg-gray-50'
+                            : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-600'
                         }`}
                         onClick={() => handleTagToggle(tag)}
                       >
@@ -1189,7 +1189,7 @@ const DailyPage = () => {
                           }}
                           placeholder={t('daily.newTagPlaceholder')}
                           autoFocus
-                          className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-full focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                          className="px-3 py-1.5 text-xs font-medium border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 rounded-full focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                         />
                         <button
                           type="button"
@@ -1205,7 +1205,7 @@ const DailyPage = () => {
                             setShowNewTagInput(false);
                             setNewTagValue('');
                           }}
-                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                          className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-600 transition-all"
                           aria-label={t('common.cancel')}
                         >
                           <span className="material-symbols-outlined text-[16px]">close</span>
@@ -1214,7 +1214,7 @@ const DailyPage = () => {
                     ) : (
                       <button
                         type="button"
-                        className="group flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-gray-300 text-gray-400 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 transition-all"
+                        className="group flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
                         onClick={() => setShowNewTagInput(true)}
                         aria-label={t('daily.addNewTag')}
                       >
@@ -1224,10 +1224,10 @@ const DailyPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="px-8 py-6 bg-surface-light flex items-center justify-end gap-3 shrink-0">
+              <div className="px-8 py-6 bg-surface-light dark:bg-slate-800 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
-                  className="px-5 py-2.5 rounded-lg text-gray-500 font-medium hover:text-gray-900 hover:bg-gray-100 transition-colors text-sm"
+                  className="px-5 py-2.5 rounded-lg text-gray-500 dark:text-slate-300 font-medium hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-sm"
                   onClick={handleCloseModal}
                 >
                   {t('common.cancel')}
@@ -1251,14 +1251,14 @@ const DailyPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
           >
@@ -1270,7 +1270,7 @@ const DailyPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
@@ -1278,7 +1278,7 @@ const DailyPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
@@ -1286,18 +1286,18 @@ const DailyPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
                 <span>{t('admin.logs')}</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">today</span>
@@ -1305,7 +1305,7 @@ const DailyPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
@@ -1313,7 +1313,7 @@ const DailyPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -1321,13 +1321,13 @@ const DailyPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
             <span>{t('sidebar.settings')}</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="auth.logout" />
           </div>
         </div>

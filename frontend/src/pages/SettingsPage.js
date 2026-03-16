@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
@@ -28,7 +28,7 @@ import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_ROUTES,
 } from '../constants/settings';
-import { userAPI, notificationsAPI, contactAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
+import { userAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 
 const SettingsPage = () => {
@@ -67,28 +67,30 @@ const SettingsPage = () => {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [securityPasswordErrors, setSecurityPasswordErrors] = useState({ currentPassword: null, newPassword: null, confirmPassword: null });
-  const [supportMessage, setSupportMessage] = useState('');
-  const [supportSubmitting, setSupportSubmitting] = useState(false);
-  const [supportError, setSupportError] = useState('');
-  const [supportSuccess, setSupportSuccess] = useState(false);
-  const [supportRecaptchaToken, setSupportRecaptchaToken] = useState('');
-  const recaptchaWidgetIdRef = useRef(null);
-  const recaptchaContainerRef = useRef(null);
 
-  // Hydrate settings state from a fetched or stored settings object (general, plans, notifications, logs)
-  const applySettingsToState = (settings) => {
-    if (!settings || typeof settings !== 'object') return;
-    if (settings.general && typeof settings.general === 'object') {
-      setGeneralSettings(prev => ({ ...prev, ...settings.general }));
+  // Hydrate settings state from a fetched or stored settings object (general, plans, notifications, logs, display options)
+  const applySettingsToState = (data) => {
+    if (!data || typeof data !== 'object') return;
+    if (data.general && typeof data.general === 'object') {
+      setGeneralSettings(prev => ({ ...prev, ...data.general }));
     }
-    if (settings.plans && typeof settings.plans === 'object') {
-      setPlansSettings(prev => ({ ...prev, ...settings.plans }));
+    if (data.plans && typeof data.plans === 'object') {
+      setPlansSettings(prev => ({ ...prev, ...data.plans }));
     }
-    if (settings.notifications && typeof settings.notifications === 'object') {
-      setNotificationSettings(prev => ({ ...prev, ...settings.notifications }));
+    if (data.notifications && typeof data.notifications === 'object') {
+      setNotificationSettings(prev => ({ ...prev, ...data.notifications }));
     }
-    if (settings.logs && typeof settings.logs === 'object') {
-      setLogsSettings(prev => ({ ...prev, ...settings.logs }));
+    if (data.logs && typeof data.logs === 'object') {
+      setLogsSettings(prev => ({ ...prev, ...data.logs }));
+    }
+    const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
+    const hasDisplay = displayKeys.some(k => data[k] !== undefined);
+    if (hasDisplay) {
+      setSettings(prev => {
+        const next = { ...prev };
+        displayKeys.forEach(k => { if (data[k] !== undefined) next[k] = data[k]; });
+        return next;
+      });
     }
   };
 
@@ -285,6 +287,22 @@ const SettingsPage = () => {
           phone: profileForm.phone || undefined,
           location: profileForm.location || undefined,
         });
+        try {
+          const raw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+          const stored = raw ? JSON.parse(raw) : {};
+          const updated = {
+            ...stored,
+            weekStartDay: settings.weekStartDay,
+            darkMode: settings.darkMode,
+            publicProfile: settings.publicProfile,
+          };
+          localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
+          }
+        } catch (e) {
+          // ignore
+        }
         showWarning(t('settings.savedSuccess'));
       } catch (error) {
         console.error('Failed to save profile:', error);
@@ -365,101 +383,6 @@ const SettingsPage = () => {
       setWarningMessage(err?.message || t('settings.revokeDeviceError', 'Failed to revoke device'));
     }
   };
-
-  const handleSupportSubmit = async (e) => {
-    e.preventDefault();
-    setSupportError('');
-    setSupportSuccess(false);
-    if (!supportMessage.trim()) {
-      setSupportError(t('settings.supportErrorMissingMessage'));
-      return;
-    }
-    if (!supportRecaptchaToken) {
-      setSupportError(t('settings.supportErrorMissingCaptcha'));
-      return;
-    }
-    setSupportSubmitting(true);
-    try {
-      const name = profileForm.fullname || profileForm.fullName || '';
-      const email = profileForm.email || '';
-      const res = await contactAPI.submitContact({
-        name,
-        email,
-        message: supportMessage.trim(),
-        source: 'settings',
-        recaptchaToken: supportRecaptchaToken,
-      });
-      const ok = res?.success ?? res?.Success ?? false;
-      if (ok) {
-        setSupportSuccess(true);
-        setSupportMessage('');
-        setSupportRecaptchaToken('');
-        if (typeof window !== 'undefined' && window.grecaptcha && recaptchaWidgetIdRef.current != null) {
-          try {
-            window.grecaptcha.reset(recaptchaWidgetIdRef.current);
-          } catch (_) {}
-        }
-      } else {
-        setSupportError(res?.message || res?.Message || t('settings.supportErrorSubmit'));
-      }
-    } catch (err) {
-      setSupportError(err?.message || t('settings.supportErrorSubmit'));
-      if (typeof window !== 'undefined' && window.grecaptcha && recaptchaWidgetIdRef.current != null) {
-        try {
-          window.grecaptcha.reset(recaptchaWidgetIdRef.current);
-          setSupportRecaptchaToken('');
-        } catch (_) {}
-      }
-    } finally {
-      setSupportSubmitting(false);
-    }
-  };
-
-  // Load reCAPTCHA script and render widget when Support tab is active
-  useEffect(() => {
-    if (activeTab !== 'support' || !recaptchaContainerRef.current) return;
-    const siteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
-    if (!siteKey) return;
-
-    const onload = () => {
-      if (!window.grecaptcha || !recaptchaContainerRef.current) return;
-      try {
-        const widgetId = window.grecaptcha.render(recaptchaContainerRef.current, {
-          sitekey: siteKey,
-          callback: (token) => setSupportRecaptchaToken(token),
-          'expired-callback': () => setSupportRecaptchaToken(''),
-        });
-        recaptchaWidgetIdRef.current = widgetId;
-      } catch (_) {}
-    };
-
-    if (window.grecaptcha && window.grecaptcha.render) {
-      onload();
-      return () => {
-        if (recaptchaWidgetIdRef.current != null && window.grecaptcha?.reset) {
-          try { window.grecaptcha.reset(recaptchaWidgetIdRef.current); } catch (_) {}
-        }
-        recaptchaWidgetIdRef.current = null;
-      };
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?onload=__recaptchaSupportOnload&render=explicit`;
-    script.async = true;
-    script.defer = true;
-    window.__recaptchaSupportOnload = onload;
-    script.onload = () => {
-      if (window.grecaptcha && window.grecaptcha.render) onload();
-    };
-    document.head.appendChild(script);
-    return () => {
-      delete window.__recaptchaSupportOnload;
-      if (recaptchaWidgetIdRef.current != null && window.grecaptcha?.reset) {
-        try { window.grecaptcha.reset(recaptchaWidgetIdRef.current); } catch (_) {}
-      }
-      recaptchaWidgetIdRef.current = null;
-    };
-  }, [activeTab]);
 
   // When Enable 2FA modal opens, fetch setup data (QR + key)
   useEffect(() => {
@@ -595,12 +518,12 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="relative flex h-screen w-full overflow-hidden bg-background-subtle text-zinc-900 antialiased selection:bg-zinc-200">
+    <div className="relative flex h-screen w-full overflow-hidden bg-background-subtle dark:bg-[#101922] text-zinc-900 dark:text-slate-100 antialiased selection:bg-zinc-200 dark:selection:bg-slate-600">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-y-auto relative bg-background-subtle">
+      <main className="flex-1 flex flex-col h-full overflow-y-auto relative bg-background-subtle dark:bg-[#101922]">
         <Header 
           title={t('settings.title')}
           icon="settings"
@@ -610,14 +533,14 @@ const SettingsPage = () => {
         />
 
         {/* Mobile Navigation - horizontal scrollable nav bar on mobile only */}
-        <div className="md:hidden flex border-t border-gray-100 bg-white overflow-x-auto overflow-y-hidden shrink-0">
+        <div className="md:hidden flex border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-x-auto overflow-y-hidden shrink-0">
           <nav className="flex flex-nowrap items-stretch gap-0 px-2 min-w-min">
             {SETTINGS_MENU_ITEMS.map((item) => {
               const route = item.id === 'general' ? '/settings/general' :
                   item.id === 'plans' ? '/settings/goals' :
                   item.id === 'notifications' ? '/settings/notification' :
                   item.id === 'security' ? '/settings/security' :
-                  item.id === 'support' ? '/settings/support' :
+                  item.id === 'logs' ? '/settings/logs' :
                 '/settings';
               const isActive = activeTab === item.id;
               return (
@@ -628,7 +551,7 @@ const SettingsPage = () => {
                   className={`flex items-center gap-1.5 py-3 font-medium text-sm whitespace-nowrap px-3 transition-colors shrink-0 ${
                     isActive
                       ? 'text-primary border-b-2 border-primary'
-                      : 'text-zinc-500 hover:text-zinc-900'
+                      : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
                   <span className="material-symbols-outlined text-lg shrink-0">{item.icon}</span>
@@ -641,14 +564,14 @@ const SettingsPage = () => {
 
         <div className="w-full max-w-[1000px] mx-auto px-6 sm:px-10 py-10 flex flex-col md:flex-row gap-12">
           {/* Desktop Sidebar Navigation */}
-          <aside className="hidden md:flex w-64 shrink-0 flex-col gap-8">
+          <aside className="hidden md:flex w-64 shrink-0 flex-col gap-8 bg-transparent">
             <nav className="flex flex-col gap-1.5">
               {SETTINGS_MENU_ITEMS.map((item) => {
                 const route = item.id === 'general' ? '/settings/general' :
                     item.id === 'plans' ? '/settings/goals' :
                     item.id === 'notifications' ? '/settings/notification' :
                     item.id === 'security' ? '/settings/security' :
-                    item.id === 'support' ? '/settings/support' :
+                    item.id === 'logs' ? '/settings/logs' :
                   '/settings';
                 return (
                   <Link
@@ -657,8 +580,8 @@ const SettingsPage = () => {
                   onClick={() => setActiveTab(item.id)}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${
                     activeTab === item.id
-                      ? 'bg-zinc-100 text-zinc-900'
-                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+                      ? 'bg-zinc-100 dark:bg-slate-800 text-zinc-900 dark:text-white'
+                      : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
@@ -681,9 +604,9 @@ const SettingsPage = () => {
             )}
             {activeTab === 'profile' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.profileTitle')}</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.profileTitle')}</h1>
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     {t('settings.profileSubtitle')}
                   </p>
                 </div>
@@ -692,7 +615,7 @@ const SettingsPage = () => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8">
                   <div className="relative group cursor-pointer">
                     <div
-                      className="bg-center bg-no-repeat bg-cover rounded-full size-24 ring-1 ring-border-light bg-zinc-200"
+                      className="bg-center bg-no-repeat bg-cover rounded-full size-24 ring-1 ring-border-light dark:ring-slate-600 bg-zinc-200 dark:bg-slate-700"
                       style={{
                         backgroundImage: avatarUrl
                           ? `url("${getAvatarFullUrl(avatarUrl)}")`
@@ -706,8 +629,8 @@ const SettingsPage = () => {
                   </div>
                   <div className="flex flex-col gap-4 flex-1">
                     <div>
-                      <h3 className="text-base font-semibold text-zinc-900">{t('settings.avatar')}</h3>
-                      <p className="text-sm text-secondary mt-1">{t('settings.avatarHint')}</p>
+                      <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.avatar')}</h3>
+                      <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.avatarHint')}</p>
                     </div>
                     <div className="flex gap-3">
                       <button 
@@ -721,7 +644,7 @@ const SettingsPage = () => {
                       </button>
                       <button 
                         onClick={() => setWarningMessage('')}
-                        className="px-4 py-2 bg-white hover:bg-zinc-50 text-zinc-900 text-sm font-medium rounded-lg border border-border-light transition-colors"
+                        className="px-4 py-2 bg-white dark:bg-slate-700 hover:bg-zinc-50 dark:hover:bg-slate-600 text-zinc-900 dark:text-slate-200 text-sm font-medium rounded-lg border border-border-light dark:border-slate-600 transition-colors"
                       >
                         {t('settings.removePhoto')}
                       </button>
@@ -790,8 +713,8 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Display Options */}
-                <div className="pt-6 border-t border-border-light">
-                  <h3 className="text-base font-semibold text-zinc-900 mb-6">{t('settings.displayOptions')}</h3>
+                <div className="pt-6 border-t border-border-light dark:border-slate-700">
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-6">{t('settings.displayOptions')}</h3>
                   <div className="flex flex-col gap-6">
                     <Toggle
                       id="darkMode"
@@ -799,20 +722,20 @@ const SettingsPage = () => {
                       description={t('settings.darkModeDesc')}
                           checked={settings.darkMode}
                           onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
-                      className="pb-4 border-b border-zinc-100"
+                      className="pb-4 border-b border-zinc-100 dark:border-slate-700"
                         />
-                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.weekStartDay')}</span>
-                        <span className="text-sm text-secondary">{t('settings.weekStartDayDesc')}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.weekStartDay')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.weekStartDayDesc')}</span>
                       </div>
-                      <div className="flex bg-zinc-100 rounded-lg p-1 border border-border-light">
+                      <div className="flex bg-zinc-100 dark:bg-slate-800 rounded-lg p-1 border border-border-light dark:border-slate-600">
                         <button
                           onClick={() => handleSettingChange('weekStartDay', 'monday')}
                           className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                             settings.weekStartDay === 'monday'
-                              ? 'bg-white text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
+                              ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
+                              : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                           }`}
                         >
                           {t('settings.monday')}
@@ -821,8 +744,8 @@ const SettingsPage = () => {
                           onClick={() => handleSettingChange('weekStartDay', 'sunday')}
                           className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                             settings.weekStartDay === 'sunday'
-                              ? 'bg-white text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
+                              ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
+                              : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                           }`}
                         >
                           {t('settings.sunday')}
@@ -840,16 +763,16 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light text-zinc-500 font-medium text-sm hover:bg-zinc-50 transition-colors w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
                   >
                     {t('settings.cancel')}
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
                   >
                     {t('settings.saveChanges')}
                   </button>
@@ -860,25 +783,25 @@ const SettingsPage = () => {
             {/* General Settings Tab */}
             {activeTab === 'general' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.generalTitle')}</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.generalTitle')}</h1>
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     {t('settings.generalSubtitle')}
                   </p>
                 </div>
 
                 {/* Region & Language Section */}
                 <div className="flex flex-col gap-8">
-                  <h3 className="text-base font-semibold text-zinc-900">{t('settings.regionAndLanguage')}</h3>
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.regionAndLanguage')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-zinc-900" htmlFor="language">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200" htmlFor="language">
                         {t('settings.language')}
                       </label>
                       <div className="relative">
                         <select
                           key={generalSettings.language || i18n.language}
-                          className="w-full appearance-none bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all shadow-sm cursor-pointer"
+                          className="w-full appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all shadow-sm cursor-pointer"
                           id="language"
                           value={generalSettings.language === 'vi' || generalSettings.language === 'en' ? generalSettings.language : i18n.language || 'vi'}
                           onChange={(e) => handleLanguageChange(e.target.value)}
@@ -887,15 +810,15 @@ const SettingsPage = () => {
                           <option value="en">English</option>
                         </select>
                       </div>
-                      <p className="text-xs text-secondary">{t('settings.languageApplyHint')}</p>
+                      <p className="text-xs text-secondary dark:text-slate-500">{t('settings.languageApplyHint')}</p>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium text-zinc-900" htmlFor="timezone">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200" htmlFor="timezone">
                         {t('settings.timezone')}
                       </label>
                       <div className="relative">
                         <select
-                          className="w-full appearance-none bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all shadow-sm cursor-pointer"
+                          className="w-full appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all shadow-sm cursor-pointer"
                           id="timezone"
                           value={generalSettings.timezone}
                           onChange={(e) => handleGeneralSettingChange('timezone', e.target.value)}
@@ -910,22 +833,22 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                <hr className="border-zinc-100" />
+                <hr className="border-zinc-100 dark:border-slate-700" />
 
                 {/* Date & Time Section */}
                 <div className="flex flex-col gap-8">
                   <div className="flex justify-between items-end">
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.dateTime')}</h3>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.dateTime')}</h3>
                   </div>
                   <div className="flex flex-col gap-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.dateFormat')}</span>
-                        <span className="text-sm text-secondary">{t('settings.dateFormatHint')}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.dateFormat')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.dateFormatHint')}</span>
                       </div>
                       <div className="relative w-full sm:w-48">
                         <select
-                          className="w-full appearance-none bg-white border border-border-light rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all shadow-sm cursor-pointer"
+                          className="w-full appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all shadow-sm cursor-pointer"
                           value={generalSettings.dateFormat}
                           onChange={(e) => handleGeneralSettingChange('dateFormat', e.target.value)}
                         >
@@ -935,18 +858,18 @@ const SettingsPage = () => {
                         </select>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.timeFormat')}</span>
-                        <span className="text-sm text-secondary">{t('settings.timeFormatHint')}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.timeFormat')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.timeFormatHint')}</span>
                       </div>
-                      <div className="flex bg-white rounded-lg p-1 border border-border-light shadow-sm">
+                      <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 border border-border-light dark:border-slate-600 shadow-sm">
                         <button
                           onClick={() => handleGeneralSettingChange('timeFormat', '12')}
                           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                             generalSettings.timeFormat === '12'
-                              ? 'bg-zinc-100 text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
+                              ? 'bg-zinc-100 dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
+                              : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                           }`}
                         >
                           {t('settings.timeFormat12')}
@@ -955,39 +878,11 @@ const SettingsPage = () => {
                           onClick={() => handleGeneralSettingChange('timeFormat', '24')}
                           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                             generalSettings.timeFormat === '24'
-                              ? 'bg-zinc-100 text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
+                              ? 'bg-zinc-100 dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
+                              : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                           }`}
                         >
                           {t('settings.timeFormat24')}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.weekStartDayGeneral')}</span>
-                        <span className="text-sm text-secondary">{t('settings.weekStartDayGeneralHint')}</span>
-                      </div>
-                      <div className="flex bg-white rounded-lg p-1 border border-border-light shadow-sm">
-                        <button
-                          onClick={() => handleGeneralSettingChange('weekStartDay', 'monday')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                            generalSettings.weekStartDay === 'monday'
-                              ? 'bg-zinc-100 text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
-                          }`}
-                        >
-                          {t('settings.monday')}
-                        </button>
-                        <button
-                          onClick={() => handleGeneralSettingChange('weekStartDay', 'sunday')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                            generalSettings.weekStartDay === 'sunday'
-                              ? 'bg-zinc-100 text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
-                          }`}
-                        >
-                          {t('settings.sunday')}
                         </button>
                       </div>
                     </div>
@@ -995,10 +890,10 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light bg-white text-zinc-500 font-medium text-sm hover:bg-zinc-50 hover:text-zinc-900 transition-colors w-full sm:w-auto shadow-sm"
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 bg-white dark:bg-slate-700 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-600 hover:text-zinc-900 dark:hover:text-white transition-colors w-full sm:w-auto shadow-sm"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -1007,7 +902,7 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving general settings:', generalSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-sm shadow-md transition-all w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-md transition-all w-full sm:w-auto"
                   >
                     {t('settings.saveChanges')}
                   </button>
@@ -1018,9 +913,9 @@ const SettingsPage = () => {
             {/* Plans & Goals Settings Tab */}
             {activeTab === 'plans' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.plansTitle')}</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.plansTitle')}</h1>
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     {t('settings.plansSubtitle')}
                   </p>
                 </div>
@@ -1028,16 +923,16 @@ const SettingsPage = () => {
                 {/* Task Configuration Section */}
                 <div className="flex flex-col gap-8">
                   <div>
-                    <h3 className="text-base font-semibold text-zinc-900 mb-4">{t('settings.taskConfig')}</h3>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">{t('settings.taskConfig')}</h3>
                     <div className="space-y-6">
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col gap-1 pr-6">
-                          <span className="text-sm font-medium text-zinc-900">{t('settings.defaultDuration')}</span>
-                          <span className="text-sm text-secondary">{t('settings.defaultDurationHint')}</span>
+                          <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.defaultDuration')}</span>
+                          <span className="text-sm text-secondary dark:text-slate-400">{t('settings.defaultDurationHint')}</span>
                         </div>
                         <div className="relative">
                           <select
-                            className="appearance-none bg-white border border-border-light rounded-lg pl-3 pr-8 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all cursor-pointer hover:border-zinc-300"
+                            className="appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg pl-3 pr-8 py-2 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all cursor-pointer hover:border-zinc-300 dark:hover:border-slate-500"
                             value={plansSettings.defaultDuration}
                             onChange={(e) => handlePlansSettingChange('defaultDuration', e.target.value)}
                           >
@@ -1050,8 +945,8 @@ const SettingsPage = () => {
                       </div>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col gap-1 pr-6">
-                          <span className="text-sm font-medium text-zinc-900">{t('settings.autoMoveIncomplete')}</span>
-                          <span className="text-sm text-secondary">{t('settings.autoMoveIncompleteHint')}</span>
+                          <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.autoMoveIncomplete')}</span>
+                          <span className="text-sm text-secondary dark:text-slate-400">{t('settings.autoMoveIncompleteHint')}</span>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
@@ -1060,7 +955,7 @@ const SettingsPage = () => {
                             checked={plansSettings.autoMoveIncomplete}
                             onChange={(e) => handlePlansSettingChange('autoMoveIncomplete', e.target.checked)}
                           />
-                          <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                          <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                         </label>
                       </div>
                     </div>
@@ -1068,21 +963,21 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Goal Display Section */}
-                <div className="pt-6 border-t border-border-light">
-                  <h3 className="text-base font-semibold text-zinc-900 mb-4">{t('settings.goalDisplay')}</h3>
+                <div className="pt-6 border-t border-border-light dark:border-slate-700">
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">{t('settings.goalDisplay')}</h3>
                   <div className="space-y-6">
                     <div className="flex items-start justify-between">
                       <div className="flex flex-col gap-1 pr-6">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.trackingMethod')}</span>
-                        <span className="text-sm text-secondary">{t('settings.trackingMethodHint')}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.trackingMethod')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.trackingMethodHint')}</span>
                       </div>
-                      <div className="flex bg-zinc-100 rounded-lg p-1 border border-border-light">
+                      <div className="flex bg-zinc-100 dark:bg-slate-800 rounded-lg p-1 border border-border-light dark:border-slate-600">
                         <button
                           onClick={() => handlePlansSettingChange('trackingMethod', 'tasks')}
                           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                             plansSettings.trackingMethod === 'tasks'
-                              ? 'bg-white text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
+                              ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
+                              : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                           }`}
                         >
                           {t('settings.byTasks')}
@@ -1091,8 +986,8 @@ const SettingsPage = () => {
                           onClick={() => handlePlansSettingChange('trackingMethod', 'time')}
                           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                             plansSettings.trackingMethod === 'time'
-                              ? 'bg-white text-zinc-900 font-semibold shadow-sm border border-border-light'
-                              : 'text-zinc-500 hover:text-zinc-900'
+                              ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
+                              : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
                           }`}
                         >
                           {t('settings.byTime')}
@@ -1101,13 +996,13 @@ const SettingsPage = () => {
                     </div>
                     <div className="flex flex-col gap-3">
                       <div className="flex justify-between items-center">
-                        <label className="text-sm font-medium text-zinc-900" htmlFor="goal-vision">
+                        <label className="text-sm font-medium text-zinc-900 dark:text-slate-200" htmlFor="goal-vision">
                           {t('settings.goalVision')}
                         </label>
-                        <span className="text-xs text-blue-600 font-medium cursor-pointer hover:underline">{t('settings.seeExample')}</span>
+                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">{t('settings.seeExample')}</span>
                       </div>
                       <textarea
-                        className="w-full bg-white border border-border-light rounded-lg px-3 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all resize-none placeholder-zinc-400"
+                        className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-3 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all resize-none placeholder-zinc-400 dark:placeholder-slate-500"
                         id="goal-vision"
                         placeholder={t('settings.goalVisionPlaceholder')}
                         rows="3"
@@ -1119,50 +1014,50 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Integration & Sync Section */}
-                <div className="pt-6 border-t border-border-light">
-                  <h3 className="text-base font-semibold text-zinc-900 mb-4">{t('settings.integrationSync')}</h3>
+                <div className="pt-6 border-t border-border-light dark:border-slate-700">
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">{t('settings.integrationSync')}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="border border-border-light rounded-lg p-4 flex items-center justify-between hover:border-zinc-300 transition-colors bg-white">
+                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex items-center justify-between hover:border-zinc-300 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-800">
                       <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                        <div className="size-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                           <span className="material-symbols-outlined">calendar_today</span>
                         </div>
                         <div>
-                          <h4 className="text-sm font-semibold text-zinc-900">{t('settings.googleCalendar')}</h4>
-                          <p className="text-xs text-secondary">{t('settings.syncCalendar')}</p>
+                          <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.googleCalendar')}</h4>
+                          <p className="text-xs text-secondary dark:text-slate-400">{t('settings.syncCalendar')}</p>
                         </div>
                       </div>
                       {plansSettings.googleCalendarConnected ? (
-                        <button className="text-xs font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-transparent">
+                        <button className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-transparent">
                           {t('settings.connected')}
                         </button>
                       ) : (
                         <button
                           onClick={() => handlePlansSettingChange('googleCalendarConnected', true)}
-                          className="text-xs font-medium text-zinc-900 border border-border-light px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors"
+                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
                         >
                           {t('settings.connect')}
                         </button>
                       )}
                     </div>
-                    <div className="border border-border-light rounded-lg p-4 flex items-center justify-between hover:border-zinc-300 transition-colors bg-white">
+                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex items-center justify-between hover:border-zinc-300 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-800">
                       <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                        <div className="size-10 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 dark:text-red-400">
                           <span className="material-symbols-outlined">check_circle</span>
                         </div>
                         <div>
-                          <h4 className="text-sm font-semibold text-zinc-900">{t('settings.todoist')}</h4>
-                          <p className="text-xs text-secondary">{t('settings.importTasks')}</p>
+                          <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.todoist')}</h4>
+                          <p className="text-xs text-secondary dark:text-slate-400">{t('settings.importTasks')}</p>
                         </div>
                       </div>
                       {plansSettings.todoistConnected ? (
-                        <button className="text-xs font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-transparent">
+                        <button className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-transparent">
                           {t('settings.connected')}
                         </button>
                       ) : (
                         <button
                           onClick={() => handlePlansSettingChange('todoistConnected', true)}
-                          className="text-xs font-medium text-zinc-900 border border-border-light px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors"
+                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
                         >
                           {t('settings.connect')}
                         </button>
@@ -1172,10 +1067,10 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light text-zinc-500 font-medium text-sm hover:bg-zinc-50 transition-colors w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -1184,7 +1079,7 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving plans settings:', plansSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
                   >
                     {t('settings.saveChanges')}
                   </button>
@@ -1195,9 +1090,9 @@ const SettingsPage = () => {
             {/* Notifications Settings Tab */}
             {activeTab === 'notifications' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">Cài đặt thông báo</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">Cài đặt thông báo</h1>
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     Quản lý cách bạn nhận thông báo và cập nhật từ MyPlanner.
                   </p>
                 </div>
@@ -1205,14 +1100,14 @@ const SettingsPage = () => {
                 {/* Email Notifications Section */}
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-zinc-900">mail</span>
-                    <h3 className="text-base font-semibold text-zinc-900">Thông báo qua Email</h3>
+                    <span className="material-symbols-outlined text-zinc-900 dark:text-white">mail</span>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Thông báo qua Email</h3>
                   </div>
-                  <div className="bg-white rounded-lg border border-border-light shadow-sm p-6 flex flex-col gap-6">
-                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                  <div className="bg-white dark:bg-slate-800 rounded-lg border border-border-light dark:border-slate-700 shadow-sm p-6 flex flex-col gap-6">
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">Tổng kết tuần</span>
-                        <span className="text-sm text-secondary">Nhận email tóm tắt hiệu suất làm việc mỗi tuần.</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Tổng kết tuần</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">Nhận email tóm tắt hiệu suất làm việc mỗi tuần.</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1221,13 +1116,13 @@ const SettingsPage = () => {
                           checked={notificationSettings.emailWeeklySummary}
                           onChange={(e) => handleNotificationSettingChange('emailWeeklySummary', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">Nhắc nhở công việc</span>
-                        <span className="text-sm text-secondary">Nhận email khi có công việc sắp đến hạn hoặc quá hạn.</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Nhắc nhở công việc</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">Nhận email khi có công việc sắp đến hạn hoặc quá hạn.</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1236,13 +1131,13 @@ const SettingsPage = () => {
                           checked={notificationSettings.emailTaskReminders}
                           onChange={(e) => handleNotificationSettingChange('emailTaskReminders', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">Khuyến mãi & Tin tức</span>
-                        <span className="text-sm text-secondary">Thông tin về các tính năng mới và mẹo sử dụng.</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Khuyến mãi & Tin tức</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">Thông tin về các tính năng mới và mẹo sử dụng.</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1251,7 +1146,7 @@ const SettingsPage = () => {
                           checked={notificationSettings.emailPromotions}
                           onChange={(e) => handleNotificationSettingChange('emailPromotions', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </div>
@@ -1260,14 +1155,14 @@ const SettingsPage = () => {
                 {/* In-App Notifications Section */}
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-zinc-900">notifications_active</span>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.inAppNotifications')}</h3>
+                    <span className="material-symbols-outlined text-zinc-900 dark:text-white">notifications_active</span>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.inAppNotifications')}</h3>
                   </div>
-                  <div className="bg-white rounded-lg border border-border-light shadow-sm p-6 flex flex-col gap-6">
-                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                  <div className="bg-white dark:bg-slate-800 rounded-lg border border-border-light dark:border-slate-700 shadow-sm p-6 flex flex-col gap-6">
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.newActivity')}</span>
-                        <span className="text-sm text-secondary">{t('settings.newActivityDesc')}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.newActivity')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.newActivityDesc')}</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1276,13 +1171,13 @@ const SettingsPage = () => {
                           checked={notificationSettings.inAppNewActivities}
                           onChange={(e) => handleNotificationSettingChange('inAppNewActivities', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900">{t('settings.goalAchieved')}</span>
-                        <span className="text-sm text-secondary">{t('settings.goalAchievedDesc')}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.goalAchieved')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.goalAchievedDesc')}</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1291,14 +1186,14 @@ const SettingsPage = () => {
                           checked={notificationSettings.inAppGoalAchievements}
                           onChange={(e) => handleNotificationSettingChange('inAppGoalAchievements', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={() => {
                       setWarningMessage('');
@@ -1312,7 +1207,7 @@ const SettingsPage = () => {
                         notificationSound: 'Mặc định (Ping)',
                       });
                     }}
-                    className="px-6 py-2.5 rounded-lg border border-border-light text-zinc-500 font-medium text-sm hover:bg-white hover:text-zinc-900 transition-colors w-full sm:w-auto bg-transparent"
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-white dark:hover:bg-slate-700 hover:text-zinc-900 dark:hover:text-white transition-colors w-full sm:w-auto bg-transparent dark:bg-transparent"
                   >
                     {t('settings.restoreDefaults')}
                   </button>
@@ -1321,7 +1216,7 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving notification settings:', notificationSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
                   >
                     {t('settings.saveChanges')}
                   </button>
@@ -1332,24 +1227,24 @@ const SettingsPage = () => {
             {/* Security Settings Tab */}
             {activeTab === 'security' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.securityTitle')}</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.securityTitle')}</h1>
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     {t('settings.securitySubtitle')}
                   </p>
                 </div>
 
                 {/* Change Password Section */}
                 <div className="flex flex-col gap-6">
-                  <h3 className="text-base font-semibold text-zinc-900">{t('settings.changePassword')}</h3>
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.changePassword')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
                     <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="current-password">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="current-password">
                         {t('settings.currentPassword')}
                       </label>
                       <div className="relative">
                         <input
-                          className={`w-full bg-white border rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 ${securityPasswordErrors.currentPassword ? 'border-red-500' : 'border-border-light'}`}
+                          className={`w-full bg-white dark:bg-slate-700 border rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500 ${securityPasswordErrors.currentPassword ? 'border-red-500' : 'border-border-light dark:border-slate-600'}`}
                           id="current-password"
                           placeholder={t('settings.currentPasswordPlaceholder')}
                           type="password"
@@ -1365,12 +1260,12 @@ const SettingsPage = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="new-password">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="new-password">
                         {t('settings.newPassword')}
                       </label>
                       <div className="relative">
                         <input
-                          className={`w-full bg-white border rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 ${securityPasswordErrors.newPassword ? 'border-red-500' : 'border-border-light'}`}
+                          className={`w-full bg-white dark:bg-slate-700 border rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500 ${securityPasswordErrors.newPassword ? 'border-red-500' : 'border-border-light dark:border-slate-600'}`}
                           id="new-password"
                           placeholder={t('settings.newPasswordPlaceholder')}
                           type="password"
@@ -1386,12 +1281,12 @@ const SettingsPage = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="confirm-password">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="confirm-password">
                         {t('settings.confirmPassword')}
                       </label>
                       <div className="relative">
                         <input
-                          className={`w-full bg-white border rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 ${securityPasswordErrors.confirmPassword ? 'border-red-500' : 'border-border-light'}`}
+                          className={`w-full bg-white dark:bg-slate-700 border rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500 ${securityPasswordErrors.confirmPassword ? 'border-red-500' : 'border-border-light dark:border-slate-600'}`}
                           id="confirm-password"
                           placeholder={t('settings.confirmPasswordPlaceholder')}
                           type="password"
@@ -1407,19 +1302,19 @@ const SettingsPage = () => {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-secondary mt-1">
+                  <p className="text-xs text-secondary dark:text-slate-500 mt-1">
                     {t('settings.passwordRequirement')}
                   </p>
                 </div>
 
-                <div className="w-full h-px bg-zinc-100"></div>
+                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
 
                 {/* Two-Factor Authentication Section */}
                 <div className="flex flex-col gap-6">
                   <div className="flex items-start md:items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-base font-semibold text-zinc-900">{t('settings.twoFactorAuth')}</h3>
-                      <p className="text-sm text-secondary mt-1">
+                      <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.twoFactorAuth')}</h3>
+                      <p className="text-sm text-secondary dark:text-slate-400 mt-1">
                         {t('settings.twoFactorDesc')}
                       </p>
                     </div>
@@ -1430,50 +1325,50 @@ const SettingsPage = () => {
                         checked={securitySettings.twoFactorAuth}
                         onChange={handle2FAToggle}
                       />
-                      <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                      <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                     </label>
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-zinc-100"></div>
+                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
 
                 {/* Active Devices Section */}
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.activeDevices')}</h3>
-                    <p className="text-sm text-secondary mt-1">{t('settings.activeDevicesDesc')}</p>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.activeDevices')}</h3>
+                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.activeDevicesDesc')}</p>
                   </div>
                   <div className="flex flex-col gap-3">
                     {devicesLoading && (
-                      <p className="text-sm text-secondary py-4">{t('common.loading', 'Loading...')}</p>
+                      <p className="text-sm text-secondary dark:text-slate-400 py-4">{t('common.loading', 'Loading...')}</p>
                     )}
                     {!devicesLoading && devicesError && (
-                      <p className="text-sm text-red-600 py-2">{devicesError}</p>
+                      <p className="text-sm text-red-600 dark:text-red-400 py-2">{devicesError}</p>
                     )}
                     {!devicesLoading && !devicesError && securitySettings.devices.length === 0 && (
-                      <p className="text-sm text-secondary py-4">{t('settings.noLoggedInDevices')}</p>
+                      <p className="text-sm text-secondary dark:text-slate-400 py-4">{t('settings.noLoggedInDevices')}</p>
                     )}
                     {!devicesLoading && !devicesError && securitySettings.devices.map((device) => (
                       <div
                         key={device.id}
-                        className={`flex items-center justify-between p-4 bg-white border border-border-light rounded-lg shadow-sm ${
-                          !device.isCurrent ? 'hover:border-zinc-300 transition-colors group' : ''
+                        className={`flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg shadow-sm ${
+                          !device.isCurrent ? 'hover:border-zinc-300 dark:hover:border-slate-600 transition-colors group' : ''
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="p-2 bg-zinc-50 rounded-full h-fit text-zinc-500">
+                          <div className="p-2 bg-zinc-50 dark:bg-slate-700 rounded-full h-fit text-zinc-500 dark:text-slate-400">
                             <span className="material-symbols-outlined text-[24px]">{device.type}</span>
                           </div>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold text-zinc-900">{device.name}</p>
+                              <p className="text-sm font-semibold text-zinc-900 dark:text-white">{device.name}</p>
                               {device.isCurrent && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-700 uppercase tracking-wide">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 uppercase tracking-wide">
                                   {t('settings.currentDevice')}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-secondary mt-0.5">
+                            <p className="text-xs text-secondary dark:text-slate-500 mt-0.5">
                               {device.platform} • {device.lastActive}
                               {device.ipAddress ? ` • ${device.ipAddress}` : ''}
                             </p>
@@ -1482,7 +1377,7 @@ const SettingsPage = () => {
                         {!device.isCurrent && (
                           <button
                             onClick={() => handleLogoutDevice(device.id)}
-                            className="p-2 text-zinc-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-2 text-zinc-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                             title={t('settings.logoutDevice')}
                             aria-label={t('settings.logoutDeviceLabel', { name: device.name })}
                           >
@@ -1495,10 +1390,10 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-4 border-t border-border-light">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-4 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light text-zinc-500 font-medium text-sm hover:bg-zinc-50 transition-colors w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -1507,7 +1402,7 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving security settings:', securitySettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
                   >
                     {t('settings.saveChanges')}
                   </button>
@@ -1515,70 +1410,12 @@ const SettingsPage = () => {
               </div>
             )}
 
-            {/* Support Tab */}
-            {activeTab === 'support' && (
-              <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.supportTitle')}</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
-                    {t('settings.supportSubtitle')}
-                  </p>
-                </div>
-
-                <form onSubmit={handleSupportSubmit} className="flex flex-col gap-6 max-w-xl">
-                  {supportSuccess && (
-                    <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm" role="status">
-                      {t('settings.supportSuccess')}
-                    </div>
-                  )}
-                  {supportError && (
-                    <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" role="alert">
-                      {supportError}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="support-message">
-                      {t('settings.supportMessageLabel')}
-                    </label>
-                    <textarea
-                      id="support-message"
-                      className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400 min-h-[120px] resize-y"
-                      placeholder={t('settings.supportMessagePlaceholder')}
-                      value={supportMessage}
-                      onChange={(e) => setSupportMessage(e.target.value)}
-                      disabled={supportSubmitting}
-                      rows={4}
-                    />
-                  </div>
-
-                  {process.env.REACT_APP_RECAPTCHA_SITE_KEY ? (
-                    <div ref={recaptchaContainerRef} className="flex items-center justify-start" />
-                  ) : (
-                    <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                      {t('settings.supportErrorMissingCaptcha')} (REACT_APP_RECAPTCHA_SITE_KEY not set)
-                    </p>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
-                    <button
-                      type="submit"
-                      disabled={supportSubmitting || !supportRecaptchaToken || !process.env.REACT_APP_RECAPTCHA_SITE_KEY}
-                      className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
-                    >
-                      {supportSubmitting ? t('settings.supportSubmitting') : t('settings.supportSubmit')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
             {/* Logs Settings Tab */}
             {activeTab === 'logs' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">{t('settings.logsTitle')}</h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.logsTitle')}</h1>
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     {t('settings.logsSubtitle')}
                   </p>
                 </div>
@@ -1586,8 +1423,8 @@ const SettingsPage = () => {
                 {/* Log Level Section */}
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.logLevel')}</h3>
-                    <p className="text-sm text-secondary mt-1">{t('settings.logLevelHint')}</p>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.logLevel')}</h3>
+                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.logLevelHint')}</p>
                   </div>
                   <div className="max-w-md">
                     <FormSelect
@@ -1604,21 +1441,21 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-zinc-100"></div>
+                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
 
                 {/* Log Retention Section */}
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.logRetention')}</h3>
-                    <p className="text-sm text-secondary mt-1">{t('settings.logRetentionHint')}</p>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.logRetention')}</h3>
+                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.logRetentionHint')}</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
                     <div>
-                      <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="log-retention">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="log-retention">
                         {t('settings.retentionDays')}
                       </label>
                       <input
-                        className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400"
+                        className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500"
                         id="log-retention"
                         type="number"
                         min="1"
@@ -1626,14 +1463,14 @@ const SettingsPage = () => {
                         value={logsSettings.logRetentionDays}
                         onChange={(e) => handleLogsSettingChange('logRetentionDays', e.target.value)}
                       />
-                      <p className="text-xs text-secondary mt-1">{t('settings.retentionHint')}</p>
+                      <p className="text-xs text-secondary dark:text-slate-500 mt-1">{t('settings.retentionHint')}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="max-log-size">
+                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="max-log-size">
                         {t('settings.maxFileSize')}
                       </label>
                       <input
-                        className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400"
+                        className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500"
                         id="max-log-size"
                         type="number"
                         min="1"
@@ -1641,24 +1478,24 @@ const SettingsPage = () => {
                         value={logsSettings.maxLogFileSize}
                         onChange={(e) => handleLogsSettingChange('maxLogFileSize', e.target.value)}
                       />
-                      <p className="text-xs text-secondary mt-1">{t('settings.fileSizeHint')}</p>
+                      <p className="text-xs text-secondary dark:text-slate-500 mt-1">{t('settings.fileSizeHint')}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-zinc-100"></div>
+                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
 
                 {/* Log Types Section */}
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.logTypes')}</h3>
-                    <p className="text-sm text-secondary mt-1">{t('settings.logTypesHint')}</p>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.logTypes')}</h3>
+                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.logTypesHint')}</p>
                   </div>
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white border border-border-light rounded-lg">
+                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-900">{t('settings.activityLogs')}</h4>
-                        <p className="text-xs text-secondary mt-1">{t('settings.activityLogsDesc')}</p>
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.activityLogs')}</h4>
+                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.activityLogsDesc')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
@@ -1667,13 +1504,13 @@ const SettingsPage = () => {
                           checked={logsSettings.enableActivityLogs}
                           onChange={(e) => handleLogsSettingChange('enableActivityLogs', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white border border-border-light rounded-lg">
+                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-900">{t('settings.errorLogs')}</h4>
-                        <p className="text-xs text-secondary mt-1">{t('settings.errorLogsDesc')}</p>
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.errorLogs')}</h4>
+                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.errorLogsDesc')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
@@ -1682,13 +1519,13 @@ const SettingsPage = () => {
                           checked={logsSettings.enableErrorLogs}
                           onChange={(e) => handleLogsSettingChange('enableErrorLogs', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white border border-border-light rounded-lg">
+                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-900">{t('settings.accessLogs')}</h4>
-                        <p className="text-xs text-secondary mt-1">{t('settings.accessLogsDesc')}</p>
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.accessLogs')}</h4>
+                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.accessLogsDesc')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
@@ -1697,25 +1534,25 @@ const SettingsPage = () => {
                           checked={logsSettings.enableAccessLogs}
                           onChange={(e) => handleLogsSettingChange('enableAccessLogs', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-zinc-100"></div>
+                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
 
                 {/* Export Settings Section */}
                 <div className="flex flex-col gap-6">
                   <div>
-                    <h3 className="text-base font-semibold text-zinc-900">{t('settings.exportLogs')}</h3>
-                    <p className="text-sm text-secondary mt-1">{t('settings.exportLogsHint')}</p>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.exportLogs')}</h3>
+                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.exportLogsHint')}</p>
                   </div>
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white border border-border-light rounded-lg">
+                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-900">{t('settings.autoExport')}</h4>
-                        <p className="text-xs text-secondary mt-1">{t('settings.autoExportDesc')}</p>
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.autoExport')}</h4>
+                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.autoExportDesc')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
@@ -1724,7 +1561,7 @@ const SettingsPage = () => {
                           checked={logsSettings.autoExportLogs}
                           onChange={(e) => handleLogsSettingChange('autoExportLogs', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                     {logsSettings.autoExportLogs && (
@@ -1759,10 +1596,10 @@ const SettingsPage = () => {
                         </div>
                       </div>
                     )}
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white border border-border-light rounded-lg">
+                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-900">{t('settings.sendLogsEmail')}</h4>
-                        <p className="text-xs text-secondary mt-1">{t('settings.sendLogsEmailDesc')}</p>
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.sendLogsEmail')}</h4>
+                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.sendLogsEmailDesc')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
@@ -1771,16 +1608,16 @@ const SettingsPage = () => {
                           checked={logsSettings.sendLogsToEmail}
                           onChange={(e) => handleLogsSettingChange('sendLogsToEmail', e.target.checked)}
                         />
-                        <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
                     {logsSettings.sendLogsToEmail && (
                       <div className="max-w-md pl-4">
-                        <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="email-logs">
+                        <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="email-logs">
                           {t('settings.emailAddress')}
                         </label>
                         <input
-                          className="w-full bg-white border border-border-light rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all placeholder-zinc-400"
+                          className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500"
                           id="email-logs"
                           type="email"
                           placeholder="email@example.com"
@@ -1792,14 +1629,14 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-zinc-100"></div>
+                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
 
                 {/* Compression Section */}
                 <div className="flex flex-col gap-6">
-                  <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white border border-border-light rounded-lg">
+                  <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
                     <div>
-                      <h4 className="text-sm font-semibold text-zinc-900">{t('settings.compressOldLogs')}</h4>
-                      <p className="text-xs text-secondary mt-1">{t('settings.compressOldLogsDesc')}</p>
+                      <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.compressOldLogs')}</h4>
+                      <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.compressOldLogsDesc')}</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer shrink-0">
                       <input
@@ -1808,16 +1645,16 @@ const SettingsPage = () => {
                         checked={logsSettings.compressOldLogs}
                         onChange={(e) => handleLogsSettingChange('compressOldLogs', e.target.checked)}
                       />
-                      <div className="w-10 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                      <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                     </label>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-4 border-t border-border-light">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-4 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light text-zinc-500 font-medium text-sm hover:bg-zinc-50 transition-colors w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -1826,7 +1663,7 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving logs settings:', logsSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
                   >
                     {t('settings.saveChanges')}
                   </button>
@@ -1837,16 +1674,16 @@ const SettingsPage = () => {
             {/* Other tabs content */}
             {activeTab !== 'profile' && activeTab !== 'general' && activeTab !== 'plans' && activeTab !== 'notifications' && activeTab !== 'security' && activeTab !== 'logs' && (
               <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light">
-                  <h1 className="text-2xl font-light tracking-tight text-zinc-900">
+                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">
                     {SETTINGS_MENU_ITEMS.find(item => item.id === activeTab) ? t(`settings.${activeTab}`) : t('sidebar.settings')}
                   </h1>
-                  <p className="text-secondary text-sm font-normal leading-relaxed max-w-lg">
+                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
                     {t('settings.pageSubtitle')}
                   </p>
                 </div>
                 <div className="text-center py-12">
-                  <p className="text-secondary">{t('settings.contentComingSoon')}</p>
+                  <p className="text-secondary dark:text-slate-400">{t('settings.contentComingSoon')}</p>
                 </div>
               </div>
             )}
@@ -1857,30 +1694,30 @@ const SettingsPage = () => {
       {/* Enable 2FA Modal */}
       {modal2FA === 'enable' && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
           onClick={close2FAModal}
         >
           <div
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-zinc-900">{t('settings.twoFactorEnableTitle')}</h3>
-              <button onClick={close2FAModal} className="p-2 rounded-full hover:bg-gray-100" aria-label={t('common.close')}>
-                <span className="material-symbols-outlined text-gray-400">close</span>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t('settings.twoFactorEnableTitle')}</h3>
+              <button onClick={close2FAModal} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700" aria-label={t('common.close')}>
+                <span className="material-symbols-outlined text-gray-400 dark:text-slate-400">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4">
               {twoFactorError && (
-                <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{twoFactorError}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">{twoFactorError}</p>
               )}
               {!setup2FAData && !twoFactorError && (
-                <p className="text-sm text-secondary">{t('common.loading', 'Loading...')}</p>
+                <p className="text-sm text-secondary dark:text-slate-400">{t('common.loading', 'Loading...')}</p>
               )}
               {setup2FAData && setup2FAData.qrCodeUri && (
                 <>
-                  <p className="text-sm text-secondary">{t('settings.twoFactorScanQR')}</p>
-                  <div className="flex justify-center p-4 bg-white border border-border-light rounded-lg">
+                  <p className="text-sm text-secondary dark:text-slate-400">{t('settings.twoFactorScanQR')}</p>
+                  <div className="flex justify-center p-4 bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(setup2FAData.qrCodeUri)}`}
                       alt="QR code"
@@ -1890,19 +1727,19 @@ const SettingsPage = () => {
                   </div>
                   {setup2FAData.sharedKey && (
                     <div>
-                      <p className="text-sm text-secondary mb-1">{t('settings.twoFactorManualKey')}</p>
-                      <p className="text-xs font-mono bg-zinc-100 p-2 rounded break-all">{setup2FAData.sharedKey}</p>
+                      <p className="text-sm text-secondary dark:text-slate-400 mb-1">{t('settings.twoFactorManualKey')}</p>
+                      <p className="text-xs font-mono bg-zinc-100 dark:bg-slate-700 p-2 rounded break-all text-zinc-900 dark:text-slate-200">{setup2FAData.sharedKey}</p>
                     </div>
                   )}
                   <div>
-                    <label className="text-sm font-medium text-zinc-900 block mb-1">{t('settings.twoFactorEnterCode')}</label>
+                    <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 block mb-1">{t('settings.twoFactorEnterCode')}</label>
                     <input
                       type="text"
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       maxLength={8}
                       placeholder="000000"
-                      className="w-full border border-border-light rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                      className="w-full border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary"
                       value={twoFactorCode}
                       onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
                     />
@@ -1910,14 +1747,14 @@ const SettingsPage = () => {
                 </>
               )}
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
-              <button onClick={close2FAModal} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg">
+            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
+              <button onClick={close2FAModal} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg">
                 {t('settings.cancel')}
               </button>
               <button
                 onClick={handleEnable2FASubmit}
                 disabled={!setup2FAData || !twoFactorCode.trim() || twoFactorLoading}
-                className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {twoFactorLoading ? t('common.processing', 'Processing...') : t('settings.twoFactorVerifyEnable')}
               </button>
@@ -1929,40 +1766,40 @@ const SettingsPage = () => {
       {/* Disable 2FA Modal */}
       {modal2FA === 'disable' && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 backdrop-blur-sm"
           onClick={close2FAModal}
         >
           <div
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-zinc-900">{t('settings.twoFactorDisableTitle')}</h3>
-              <button onClick={close2FAModal} className="p-2 rounded-full hover:bg-gray-100" aria-label={t('common.close')}>
-                <span className="material-symbols-outlined text-gray-400">close</span>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t('settings.twoFactorDisableTitle')}</h3>
+              <button onClick={close2FAModal} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700" aria-label={t('common.close')}>
+                <span className="material-symbols-outlined text-gray-400 dark:text-slate-400">close</span>
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-sm text-secondary">{t('settings.twoFactorDisableDesc')}</p>
+              <p className="text-sm text-secondary dark:text-slate-400">{t('settings.twoFactorDisableDesc')}</p>
               {twoFactorError && (
-                <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{twoFactorError}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">{twoFactorError}</p>
               )}
               <div>
-                <label className="text-sm font-medium text-zinc-900 block mb-1">{t('settings.twoFactorEnterCode')}</label>
+                <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 block mb-1">{t('settings.twoFactorEnterCode')}</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={8}
                   placeholder="000000"
-                  className="w-full border border-border-light rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary"
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
-              <button onClick={close2FAModal} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg">
+            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
+              <button onClick={close2FAModal} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg">
                 {t('settings.cancel')}
               </button>
               <button
@@ -1980,25 +1817,25 @@ const SettingsPage = () => {
       {/* Upload Image Modal */}
       {uploadImageModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-all duration-300"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 backdrop-blur-sm transition-all duration-300"
           onClick={handleCloseUploadModal}
         >
           <div
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
               <div>
-                <h3 className="text-lg font-semibold text-zinc-900">{t('settings.uploadAvatarTitle')}</h3>
-                <p className="text-sm text-secondary mt-0.5">{t('settings.uploadAvatarHint')}</p>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t('settings.uploadAvatarTitle')}</h3>
+                <p className="text-sm text-secondary dark:text-slate-400 mt-0.5">{t('settings.uploadAvatarHint')}</p>
               </div>
               <button
                 onClick={handleCloseUploadModal}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                 aria-label={t('common.close')}
               >
-                <span className="material-symbols-outlined text-gray-400 hover:text-gray-600">close</span>
+                <span className="material-symbols-outlined text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200">close</span>
               </button>
             </div>
 
@@ -2011,7 +1848,7 @@ const SettingsPage = () => {
                     <img
                       src={imagePreview}
                       alt={t('settings.preview')}
-                      className="w-48 h-48 rounded-full object-cover ring-4 ring-gray-100"
+                      className="w-48 h-48 rounded-full object-cover ring-4 ring-gray-100 dark:ring-slate-600"
                     />
                     <button
                       onClick={() => {
@@ -2024,19 +1861,19 @@ const SettingsPage = () => {
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                   </div>
-                  <p className="text-sm text-secondary">{selectedImage?.name}</p>
+                  <p className="text-sm text-secondary dark:text-slate-400">{selectedImage?.name}</p>
                 </div>
               ) : (
                 /* Upload Area */
-                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group">
+                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl cursor-pointer hover:border-gray-400 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all group">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <div className="mb-4 p-4 bg-gray-100 rounded-full group-hover:bg-gray-200 transition-colors">
-                      <span className="material-symbols-outlined text-4xl text-gray-400">cloud_upload</span>
+                    <div className="mb-4 p-4 bg-gray-100 dark:bg-slate-700 rounded-full group-hover:bg-gray-200 dark:group-hover:bg-slate-600 transition-colors">
+                      <span className="material-symbols-outlined text-4xl text-gray-400 dark:text-slate-500">cloud_upload</span>
                     </div>
-                    <p className="mb-2 text-sm font-medium text-gray-700">
+                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">
                       {t('settings.clickOrDrag')}
                     </p>
-                    <p className="text-xs text-secondary">{t('settings.fileTypesHint')}</p>
+                    <p className="text-xs text-secondary dark:text-slate-400">{t('settings.fileTypesHint')}</p>
                   </div>
                   <input
                     type="file"
@@ -2049,9 +1886,9 @@ const SettingsPage = () => {
 
               {/* File Size Info */}
               {selectedImage && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                  <span className="material-symbols-outlined text-blue-600 text-[20px]">info</span>
-                  <p className="text-xs text-blue-900">
+                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
+                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[20px]">info</span>
+                  <p className="text-xs text-blue-900 dark:text-blue-200">
                     {t('settings.fileSizeLabel', { size: (selectedImage.size / 1024).toFixed(2) })}
                   </p>
                 </div>
@@ -2059,17 +1896,17 @@ const SettingsPage = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
               <button
                 onClick={handleCloseUploadModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 {t('settings.cancel')}
               </button>
               <button
                 onClick={handleUploadImage}
                 disabled={!selectedImage || uploadingAvatar}
-                className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-900"
+                className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-900 dark:disabled:hover:bg-primary"
               >
                 {uploadingAvatar ? t('settings.uploading') : t('settings.uploadImage')}
               </button>
@@ -2081,18 +1918,18 @@ const SettingsPage = () => {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 md:hidden"
+          className="fixed inset-0 bg-black/50 dark:bg-black/60 z-50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-[51] transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-[51] transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label={t('common.close')}
           >
@@ -2104,7 +1941,7 @@ const SettingsPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
@@ -2112,7 +1949,7 @@ const SettingsPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
@@ -2120,18 +1957,18 @@ const SettingsPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
                 <span>Logs</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
@@ -2139,7 +1976,7 @@ const SettingsPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
@@ -2147,7 +1984,7 @@ const SettingsPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -2155,13 +1992,13 @@ const SettingsPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">settings</span>
             <span>Thiết lập</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="auth.logout" />
           </div>
         </div>

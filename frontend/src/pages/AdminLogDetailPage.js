@@ -275,9 +275,9 @@ const AdminLogDetailPage = () => {
           <div className="max-w-[1600px] mx-auto px-6 py-4">
             {/* Breadcrumbs */}
             <div className="flex items-center gap-2 mb-3 text-sm text-slate-500 dark:text-slate-400">
-              <Link to="/admin/dashboard" className="hover:text-primary transition-colors">Home</Link>
-              <span className="material-symbols-outlined text-[16px] text-slate-300">chevron_right</span>
-              <Link to="/admin/logs" className="hover:text-primary transition-colors">Log Management</Link>
+              <Link to="/admin/dashboard" className="hover:text-primary dark:hover:text-blue-400 transition-colors">Home</Link>
+              <span className="material-symbols-outlined text-[16px] text-slate-300 dark:text-slate-500">chevron_right</span>
+              <Link to="/admin/logs" className="hover:text-primary dark:hover:text-blue-400 transition-colors">Log Management</Link>
               <span className="material-symbols-outlined text-[16px] text-slate-300">chevron_right</span>
               <span className="text-slate-900 dark:text-white font-medium">{logFile?.displayName ?? fileName}</span>
             </div>
@@ -338,7 +338,7 @@ const AdminLogDetailPage = () => {
                   className={`flex items-center justify-center gap-2 h-10 px-4 rounded-lg border text-sm font-medium transition-colors ${
                     liveTailOn
                       ? 'bg-primary/10 border-primary text-primary dark:bg-primary/20 dark:border-primary dark:text-primary'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[20px]">podcasts</span>
@@ -347,7 +347,7 @@ const AdminLogDetailPage = () => {
                 </button>
                 <button 
                   onClick={handleDownload}
-                  className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors text-sm font-medium"
+                  className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
                 >
                   <span className="material-symbols-outlined text-[20px]">download</span>
                   <span className="hidden md:inline">Download</span>
@@ -499,14 +499,14 @@ const AdminLogDetailPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
           >
@@ -518,7 +518,7 @@ const AdminLogDetailPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
@@ -526,7 +526,7 @@ const AdminLogDetailPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
@@ -534,18 +534,18 @@ const AdminLogDetailPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">description</span>
                 <span>Logs</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
@@ -553,7 +553,7 @@ const AdminLogDetailPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
@@ -561,7 +561,7 @@ const AdminLogDetailPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -569,13 +569,13 @@ const AdminLogDetailPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
             <span>Thiết lập</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="auth.logout" />
           </div>
         </div>

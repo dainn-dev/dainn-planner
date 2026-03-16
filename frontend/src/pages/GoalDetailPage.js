@@ -353,8 +353,8 @@ const GoalDetailPage = () => {
 
   if (loading || !goal) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#f6f7f8]">
-        <p className="text-gray-500">{t('common.loading')}</p>
+      <div className="flex items-center justify-center h-screen bg-[#f6f7f8] dark:bg-[#101922]">
+        <p className="text-gray-500 dark:text-slate-400">{t('common.loading')}</p>
       </div>
     );
   }
@@ -366,7 +366,7 @@ const GoalDetailPage = () => {
   const overallProgress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
   return (
-    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-hidden h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-hidden h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
@@ -387,7 +387,7 @@ const GoalDetailPage = () => {
           <button
             type="button"
             onClick={() => navigate('/goals')}
-            className="flex items-center gap-2 min-h-[44px] py-2 -ml-1 pl-1 pr-3 text-gray-500 hover:text-[#111418] active:bg-gray-100 rounded-lg transition-colors text-sm font-medium self-start touch-manipulation"
+            className="flex items-center gap-2 min-h-[44px] py-2 -ml-1 pl-1 pr-3 text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white active:bg-gray-100 dark:active:bg-slate-800 rounded-lg transition-colors text-sm font-medium self-start touch-manipulation"
             aria-label={t('goals.backToGoals')}
           >
             <span className="material-symbols-outlined text-xl sm:text-lg">arrow_back</span>
@@ -396,10 +396,10 @@ const GoalDetailPage = () => {
           </button>
 
           {/* Goal Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 bg-white p-4 sm:p-6 rounded-xl sm:rounded-lg border border-gray-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
             {/* Mobile: icon inline with title + actions */}
             <div className="flex sm:hidden items-center gap-3 w-full min-w-0">
-              <div className="flex items-center justify-center rounded-xl bg-gray-50 text-gray-900 border border-gray-200 size-12 shrink-0">
+              <div className="flex items-center justify-center rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-600 size-12 shrink-0">
                 <span className="material-symbols-outlined text-2xl">{isEditing ? editedGoal.icon : goal.icon}</span>
               </div>
               <div className="flex-1 min-w-0">
@@ -408,17 +408,17 @@ const GoalDetailPage = () => {
                     type="text"
                     value={editedGoal.title}
                     onChange={(e) => handleFieldChange('title', e.target.value)}
-                    className="w-full text-xl font-semibold text-gray-900 bg-white border border-gray-200 rounded-lg px-3 py-2 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm touch-manipulation"
+                    className="w-full text-xl font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm touch-manipulation"
                   />
                 ) : (
-                  <h2 className="text-xl font-semibold text-[#111418] break-words line-clamp-2">{goal.title}</h2>
+                  <h2 className="text-xl font-semibold text-[#111418] dark:text-white break-words line-clamp-2">{goal.title}</h2>
                 )}
               </div>
               <div className="shrink-0 flex items-center gap-1">
                 {isEditing ? (
                   <>
                     <button onClick={handleSave} type="button" className="min-h-[40px] px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg touch-manipulation" aria-label={t('common.save')}>{t('common.save')}</button>
-                    <button onClick={handleCancel} type="button" className="min-h-[40px] px-3 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 touch-manipulation" aria-label={t('common.cancel')}>{t('common.cancel')}</button>
+                    <button onClick={handleCancel} type="button" className="min-h-[40px] px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm font-medium rounded-lg border border-gray-200 dark:border-slate-600 touch-manipulation" aria-label={t('common.cancel')}>{t('common.cancel')}</button>
                   </>
                 ) : (
                   <button onClick={handleEdit} type="button" className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
@@ -429,7 +429,7 @@ const GoalDetailPage = () => {
             </div>
             {/* Desktop: icon column */}
             <div className="hidden sm:flex flex-col items-center gap-3 shrink-0">
-              <div className="flex items-center justify-center rounded-lg bg-gray-50 text-gray-900 border border-gray-200 size-16">
+              <div className="flex items-center justify-center rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-600 size-16">
                 <span className="material-symbols-outlined text-4xl">{isEditing ? editedGoal.icon : goal.icon}</span>
               </div>
               {isEditing && (
@@ -442,7 +442,7 @@ const GoalDetailPage = () => {
                       className={`flex items-center justify-center min-w-[44px] min-h-[44px] size-10 rounded-lg border transition-all touch-manipulation shrink-0 ${
                         (isEditing ? editedGoal.icon : goal.icon) === icon.value
                           ? 'bg-primary border-primary text-white'
-                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 active:bg-gray-100'
+                          : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500'
                       }`}
                       title={icon.label}
                       aria-label={icon.label}
@@ -463,14 +463,14 @@ const GoalDetailPage = () => {
                         type="text"
                         value={editedGoal.title}
                         onChange={(e) => handleFieldChange('title', e.target.value)}
-                        className="w-full text-2xl font-semibold text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[48px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
+                        className="w-full text-2xl font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[48px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <input
                           type="text"
                           value={editedGoal.category}
                           onChange={(e) => handleFieldChange('category', e.target.value)}
-                          className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
+                          className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
                           placeholder={t('goals.category')}
                         />
                         <input
@@ -481,31 +481,31 @@ const GoalDetailPage = () => {
                             const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                             handleFieldChange('dueDate', formattedDate);
                           }}
-                          className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
+                          className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
                         />
                       </div>
                     </div>
                   ) : (
                     <div className="min-w-0">
-                      <h2 className="text-2xl font-semibold text-[#111418] mb-1 break-words">{goal.title}</h2>
-                      <p className="text-gray-500 text-sm break-words">{goal.category} </p> 
-                      <p className="text-gray-500 text-sm break-words">{t('goals.dueLabel')} {goal.dueDate}</p>
+                      <h2 className="text-2xl font-semibold text-[#111418] dark:text-white mb-1 break-words">{goal.title}</h2>
+                      <p className="text-gray-500 dark:text-slate-400 text-sm break-words">{goal.category} </p> 
+                      <p className="text-gray-500 dark:text-slate-400 text-sm break-words">{t('goals.dueLabel')} {goal.dueDate}</p>
                     </div>
                   )}
                 </div>
                 <div className="flex flex-row items-center gap-2 shrink-0">
                   {saveError && (
-                    <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100" role="alert">
+                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg border border-red-100 dark:border-red-800" role="alert">
                       {saveError}
                     </p>
                   )}
                   {isEditing ? (
                     <div className="flex gap-2">
                       <button onClick={handleSave} type="button" className="min-h-[44px] px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors touch-manipulation" aria-label={t('goals.saveAria')}>{t('common.save')}</button>
-                      <button onClick={handleCancel} type="button" className="min-h-[44px] px-4 py-2.5 bg-white text-gray-900 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors touch-manipulation" aria-label={t('goals.cancelEditAria')}>{t('common.cancel')}</button>
+                      <button onClick={handleCancel} type="button" className="min-h-[44px] px-4 py-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm font-medium rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors touch-manipulation" aria-label={t('goals.cancelEditAria')}>{t('common.cancel')}</button>
                     </div>
                   ) : (
-                    <button onClick={handleEdit} type="button" className="min-h-[44px] min-w-[44px] p-2.5 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
+                    <button onClick={handleEdit} type="button" className="min-h-[44px] min-w-[44px] p-2.5 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 rounded-lg hover:bg-primary/10 dark:hover:bg-blue-500/20 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
                       <span className="material-symbols-outlined text-[22px]">edit</span>
                     </button>
                   )}
@@ -514,7 +514,7 @@ const GoalDetailPage = () => {
               {/* Mobile: category, date (and when editing: title row already above, so show category/date + icon picker) */}
               <div className="sm:hidden space-y-3 mt-1">
                 {saveError && (
-                  <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-100" role="alert">
+                  <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg border border-red-100 dark:border-red-800" role="alert">
                     {saveError}
                   </p>
                 )}
@@ -528,7 +528,7 @@ const GoalDetailPage = () => {
                         className={`flex items-center justify-center min-w-[32px] min-h-[32px] size-8 rounded-md border transition-all touch-manipulation shrink-0 ${
                           (isEditing ? editedGoal.icon : goal.icon) === icon.value
                             ? 'bg-primary border-primary text-white'
-                            : 'bg-white border-gray-200 text-gray-600'
+                            : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300'
                         }`}
                         title={icon.label}
                         aria-label={icon.label}
@@ -544,7 +544,7 @@ const GoalDetailPage = () => {
                       type="text"
                       value={editedGoal.category}
                       onChange={(e) => handleFieldChange('category', e.target.value)}
-                      className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 touch-manipulation"
+                      className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 touch-manipulation"
                       placeholder={t('goals.category')}
                     />
                     <input
@@ -555,13 +555,13 @@ const GoalDetailPage = () => {
                         const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                         handleFieldChange('dueDate', formattedDate);
                       }}
-                      className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 touch-manipulation"
+                      className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 touch-manipulation"
                     />
                   </div>
                 ) : (
                   <>
-                    <p className="text-gray-500 text-sm break-words">{goal.category}</p>
-                    <p className="text-gray-500 text-sm break-words">{t('goals.dueLabel')} {goal.dueDate}</p>
+                    <p className="text-gray-500 dark:text-slate-400 text-sm break-words">{goal.category}</p>
+                    <p className="text-gray-500 dark:text-slate-400 text-sm break-words">{t('goals.dueLabel')} {goal.dueDate}</p>
                   </>
                 )}
               </div>
@@ -569,16 +569,16 @@ const GoalDetailPage = () => {
                 <textarea
                   value={editedGoal.description}
                   onChange={(e) => handleFieldChange('description', e.target.value)}
-                  className="w-full mt-3 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[90px] focus:outline-none focus:border-gray-400 focus:ring-0 resize-none leading-relaxed shadow-sm hover:border-gray-300 transition-all placeholder:text-gray-400 touch-manipulation"
+                  className="w-full mt-3 text-sm text-gray-900 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[90px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 resize-none leading-relaxed shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 touch-manipulation"
                   placeholder={t('goals.descriptionPlaceholder')}
                 />
               ) : (
-                <p className="text-gray-600 text-sm leading-relaxed mt-3 break-words">{goal.description}</p>
+                <p className="text-gray-600 dark:text-slate-300 text-sm leading-relaxed mt-3 break-words">{goal.description}</p>
               )}
               <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('goals.overallProgress')}</span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('goals.overallProgress')}</span>
                 <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
-                  <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 overflow-hidden max-w-[200px] sm:max-w-[192px]">
+                  <div className="flex-1 min-w-0 h-2.5 sm:h-2 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden max-w-[200px] sm:max-w-[192px]">
                     <div 
                       className="h-full rounded-full bg-primary transition-all duration-300" 
                       style={{ width: `${overallProgress}%` }}
@@ -589,12 +589,12 @@ const GoalDetailPage = () => {
                       aria-label={t('goals.progressLabelAria', { percent: overallProgress })}
                     />
                   </div>
-                  <span className="text-sm font-bold text-[#111418] shrink-0">{overallProgress}%</span>
+                  <span className="text-sm font-bold text-[#111418] dark:text-white shrink-0">{overallProgress}%</span>
                   {isEditing && (
-                    <span className="hidden sm:inline text-xs text-gray-400">{t('goals.auto')}</span>
+                    <span className="hidden sm:inline text-xs text-gray-400 dark:text-slate-500">{t('goals.auto')}</span>
                   )}
                   {totalMilestones > 0 && (
-                    <span className="text-xs text-gray-400 shrink-0">{t('goals.milestonesCount', { completed: completedMilestones, total: totalMilestones })}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500 shrink-0">{t('goals.milestonesCount', { completed: completedMilestones, total: totalMilestones })}</span>
                   )}
                 </div>
               </div>
@@ -604,12 +604,12 @@ const GoalDetailPage = () => {
           {/* Milestones Section */}
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-base sm:text-lg font-medium text-[#111418]">{t('goals.milestones')}</h3>
+              <h3 className="text-base sm:text-lg font-medium text-[#111418] dark:text-white">{t('goals.milestones')}</h3>
               {isEditing && (
                 <button
                   type="button"
                   onClick={handleAddMilestone}
-                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-xl sm:rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors shadow-sm touch-manipulation w-full sm:w-auto"
+                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl sm:rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors shadow-sm touch-manipulation w-full sm:w-auto"
                 >
                   <span className="material-symbols-outlined text-xl">add</span>
                   <span>{t('goals.addMilestone')}</span>
@@ -618,17 +618,17 @@ const GoalDetailPage = () => {
             </div>
             <div className="flex flex-col gap-2 sm:gap-3">
               {(isEditing ? editedGoal.milestones : goal.milestones).length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 px-4 bg-white border border-gray-200 border-dashed rounded-lg text-center">
-                  <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">flag</span>
-                  <p className="text-sm text-gray-500 font-medium">{t('goals.noMilestones')}</p>
-                  <p className="text-xs text-gray-400 mt-1">{t('goals.addMilestonesHint')}</p>
+                <div className="flex flex-col items-center justify-center py-8 px-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 border-dashed rounded-lg text-center">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-slate-500 mb-2">flag</span>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">{t('goals.noMilestones')}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{t('goals.addMilestonesHint')}</p>
                 </div>
               ) : (isEditing ? editedGoal.milestones : goal.milestones).map((milestone, index) => {
                 const currentMilestone = milestone;
                 return (
                   <div
                     key={milestone.id}
-                    className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-gray-200 rounded-xl sm:rounded-lg hover:border-gray-300 transition-colors shadow-sm"
+                    className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl sm:rounded-lg hover:border-gray-300 dark:hover:border-slate-600 transition-colors shadow-sm"
                   >
                     <div className="flex flex-col items-center shrink-0">
                       {isEditing ? (
@@ -638,7 +638,7 @@ const GoalDetailPage = () => {
                           className={`min-w-[44px] min-h-[44px] size-8 sm:size-8 rounded-full flex items-center justify-center border-2 transition-colors touch-manipulation ${
                             currentMilestone.completed 
                               ? 'bg-primary border-primary text-white hover:bg-primary/90 active:bg-primary/80' 
-                              : 'bg-white border-gray-300 text-gray-400 hover:border-gray-400 active:bg-gray-50'
+                              : 'bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-400 hover:border-gray-400 dark:hover:border-slate-500 active:bg-gray-50 dark:active:bg-slate-600'
                           }`}
                           aria-label={currentMilestone.completed ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
                         >
@@ -656,7 +656,7 @@ const GoalDetailPage = () => {
                           className={`min-w-[44px] min-h-[44px] size-8 rounded-full flex items-center justify-center border-2 shrink-0 transition-colors touch-manipulation disabled:opacity-50 ${
                             milestone.completed
                               ? 'bg-primary border-primary text-white hover:bg-primary/90 active:bg-primary/80'
-                              : 'bg-white border-gray-300 text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 active:bg-primary/10'
+                              : 'bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-400 hover:border-primary hover:text-primary dark:hover:text-blue-300 hover:bg-primary/5 dark:hover:bg-blue-500/20 active:bg-primary/10 dark:active:bg-blue-500/30'
                           }`}
                           aria-label={milestone.completed ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
                           title={milestone.completed ? t('goals.markIncomplete') : t('goals.markComplete')}
@@ -670,7 +670,7 @@ const GoalDetailPage = () => {
                       )}
                        {index < (isEditing ? editedGoal.milestones : goal.milestones).length - 1 && (
                          <div className={`w-0.5 h-6 sm:h-8 mt-2 ${
-                           currentMilestone.completed ? 'bg-primary' : 'bg-gray-200'
+                           currentMilestone.completed ? 'bg-primary' : 'bg-gray-200 dark:bg-slate-600'
                          }`} />
                        )}
                     </div>
@@ -690,7 +690,7 @@ const GoalDetailPage = () => {
                                     )
                                   }));
                                 }}
-                                className="w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all placeholder:text-gray-400 touch-manipulation"
+                                className="w-full text-sm font-medium text-gray-900 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 touch-manipulation"
                                 placeholder={t('goals.milestones')}
                               />
                               <input
@@ -706,19 +706,19 @@ const GoalDetailPage = () => {
                                     )
                                   }));
                                 }}
-                                className="w-full text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 focus:ring-0 shadow-sm hover:border-gray-300 transition-all touch-manipulation"
+                                className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
                               />
                             </div>
                           ) : (
                             <div className="min-w-0">
-                              <p className={`text-sm font-medium break-words ${milestone.completed ? 'text-gray-500 line-through' : 'text-[#111418]'}`}>
+                              <p className={`text-sm font-medium break-words ${milestone.completed ? 'text-gray-500 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-white'}`}>
                                 {milestone.title}
                               </p>
                               <p className={`text-xs mt-1 ${(() => {
-                                if (!milestone.completed || !milestone.completedDateObj || !milestone.targetDateObj) return 'text-gray-500';
+                                if (!milestone.completed || !milestone.completedDateObj || !milestone.targetDateObj) return 'text-gray-500 dark:text-slate-500';
                                 const cDay = new Date(milestone.completedDateObj); cDay.setHours(0, 0, 0, 0);
                                 const tDay = new Date(milestone.targetDateObj); tDay.setHours(0, 0, 0, 0);
-                                return cDay > tDay ? 'text-red-600' : 'text-green-600';
+                                return cDay > tDay ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
                               })()}`}>{milestone.date}</p>
                             </div>
                           )}
@@ -739,7 +739,7 @@ const GoalDetailPage = () => {
                                   },
                                 },
                               })}
-                              className="min-h-[44px] min-w-[44px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                              className="min-h-[44px] min-w-[44px] p-2 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                               aria-label={t('goals.addTaskFromMilestoneAria', { title: milestone.title })}
                               title={t('goals.addTask')}
                             >
@@ -747,13 +747,13 @@ const GoalDetailPage = () => {
                             </button>
                           )}
                           {!isEditing && milestone.completed && (
-                            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded border border-green-100 whitespace-nowrap">{t('goals.completed')}</span>
+                            <span className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded border border-green-100 dark:border-green-800 whitespace-nowrap">{t('goals.completed')}</span>
                           )}
                           {isEditing && (
                             <button
                               type="button"
                               onClick={() => handleDeleteMilestone(milestone.id)}
-                              className="min-h-[44px] min-w-[44px] p-2 text-red-500 hover:text-red-700 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                              className="min-h-[44px] min-w-[44px] p-2 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                               aria-label={t('goals.deleteMilestoneAria', { title: milestone.title })}
                             >
                               <span className="material-symbols-outlined text-xl">delete</span>
@@ -771,7 +771,7 @@ const GoalDetailPage = () => {
                         const isDropTarget = dropTargetMilestoneId != null && String(dropTargetMilestoneId) === milestoneIdStr;
                         return (
                           <div
-                            className={`mt-3 pt-3 border-t border-gray-100 rounded-lg transition-colors min-h-[44px] ${isDropTarget ? 'bg-primary/5 border-2 border-dashed border-primary' : ''}`}
+                            className={`mt-3 pt-3 border-t border-gray-100 dark:border-slate-700 rounded-lg transition-colors min-h-[44px] ${isDropTarget ? 'bg-primary/5 dark:bg-blue-500/10 border-2 border-dashed border-primary' : ''}`}
                             onDragOver={(e) => {
                               e.preventDefault();
                               e.dataTransfer.dropEffect = 'move';
@@ -792,9 +792,9 @@ const GoalDetailPage = () => {
                               } catch (_) {}
                             }}
                           >
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t('goals.taskList')}</p>
+                            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('goals.taskList')}</p>
                             {tasksForMilestone.length === 0 ? (
-                              <p className="text-xs text-gray-400 py-2">{isDropTarget ? t('goals.dropTaskHere') : t('goals.noTasksInMilestone')}</p>
+                              <p className="text-xs text-gray-400 dark:text-slate-500 py-2">{isDropTarget ? t('goals.dropTaskHere') : t('goals.noTasksInMilestone')}</p>
                             ) : (
                               <ul className="space-y-2">
                                 {tasksForMilestone.map((task) => (
@@ -809,29 +809,29 @@ const GoalDetailPage = () => {
                                     onDragEnd={() => setDraggingTaskId(null)}
                                     className={`flex items-center gap-2 text-sm min-w-0 rounded-lg transition-opacity ${draggingTaskId === task.id ? 'opacity-50' : ''} ${movingTaskId === task.id ? 'opacity-70' : ''}`}
                                   >
-                                    <span className="shrink-0 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 touch-none" title={t('goals.dragToMove')} aria-hidden>
+                                    <span className="shrink-0 cursor-grab active:cursor-grabbing text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 touch-none" title={t('goals.dragToMove')} aria-hidden>
                                       <span className="material-symbols-outlined text-lg">drag_indicator</span>
                                     </span>
                                     <button
                                       type="button"
                                       onClick={() => handleToggleGoalTask(task.id)}
                                       disabled={!!togglingTaskId}
-                                      className={`shrink-0 min-h-[40px] min-w-[40px] p-1.5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 touch-manipulation ${task.isCompleted ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' : 'text-gray-600 hover:text-primary hover:bg-primary/10'}`}
+                                      className={`shrink-0 min-h-[40px] min-w-[40px] p-1.5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 touch-manipulation ${task.isCompleted ? 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700' : 'text-gray-600 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 hover:bg-primary/10 dark:hover:bg-blue-500/20'}`}
                                       aria-label={task.isCompleted ? t('goals.markIncompleteAria') : t('goals.markCompleteAria')}
                                     >
                                       <span className="material-symbols-outlined text-lg">
                                         {task.isCompleted ? 'check_circle' : 'radio_button_unchecked'}
                                       </span>
                                     </button>
-                                    <span className={`flex-1 min-w-0 truncate ${task.isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                                    <span className={`flex-1 min-w-0 truncate ${task.isCompleted ? 'text-gray-500 dark:text-slate-500 line-through' : 'text-gray-900 dark:text-slate-200'}`}>
                                       {task.title}
                                     </span>
                                     {task.date && (
                                       <span className={`text-xs shrink-0 hidden sm:inline ${(() => {
-                                        if (!task.isCompleted || !task.completedDate || !task.date) return 'text-gray-400';
+                                        if (!task.isCompleted || !task.completedDate || !task.date) return 'text-gray-400 dark:text-slate-500';
                                         const cDay = new Date(task.completedDate); cDay.setHours(0, 0, 0, 0);
                                         const dDay = new Date(task.date); dDay.setHours(0, 0, 0, 0);
-                                        return cDay > dDay ? 'text-red-600' : 'text-green-600';
+                                        return cDay > dDay ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
                                       })()}`}>{formatTaskDate(task.date)}</span>
                                     )}
                                     {!task.isCompleted && (
@@ -839,7 +839,7 @@ const GoalDetailPage = () => {
                                         <button
                                           type="button"
                                           onClick={() => navigate('/daily', { state: { editTask: task, returnTo: `/goals/${id}` } })}
-                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                                           aria-label={t('goals.editTaskAria', { title: task.title })}
                                           title={t('goals.edit')}
                                         >
@@ -848,7 +848,7 @@ const GoalDetailPage = () => {
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteGoalTask(task.id)}
-                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
                                           aria-label={t('goals.deleteTaskAria', { title: task.title })}
                                           title={t('common.delete')}
                                         >
@@ -877,18 +877,18 @@ const GoalDetailPage = () => {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+          className="fixed inset-0 bg-black/50 dark:bg-black/60 z-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button 
-            className="ml-auto p-1 rounded-md text-gray-600 hover:bg-gray-100"
+            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label={t('common.close')}
           >
@@ -900,7 +900,7 @@ const GoalDetailPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
@@ -908,7 +908,7 @@ const GoalDetailPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">people</span>
@@ -916,18 +916,18 @@ const GoalDetailPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
                 <span>{t('admin.logs')}</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
@@ -935,7 +935,7 @@ const GoalDetailPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">target</span>
@@ -943,7 +943,7 @@ const GoalDetailPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -951,13 +951,13 @@ const GoalDetailPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
             <span>{t('sidebar.settings')}</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="auth.logout" />
           </div>
         </div>

@@ -52,12 +52,12 @@ const Sidebar = ({ className = '' }) => {
   };
 
   return (
-    <nav className={`hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 h-screen sticky top-0 left-0 shrink-0 ${className}`}>
-      <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+    <nav className={`hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 h-screen sticky top-0 left-0 shrink-0 ${className}`}>
+      <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
         <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
           <span className="material-symbols-outlined text-xl">calendar_today</span>
         </div>
-        <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+        <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
       </div>
       <div className="flex flex-col gap-2 p-4 flex-1">
         {isAdmin && (
@@ -68,8 +68,8 @@ const Sidebar = ({ className = '' }) => {
                 to={item.path} 
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'bg-blue-50 text-primary'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-[#111418]'
+                    ? 'bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300'
+                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white'
                 }`}
               >
                 <span className={`material-symbols-outlined ${isActive(item.path) && item.fillWhenActive ? 'fill-1' : ''}`}>
@@ -78,7 +78,7 @@ const Sidebar = ({ className = '' }) => {
                 <span>{t(item.labelKey)}</span>
               </Link>
             ))}
-            <div className="my-2 border-t border-gray-100"></div>
+            <div className="my-2 border-t border-gray-100 dark:border-slate-700"></div>
           </>
         )}
         {baseMenuItems.map((item) => (
@@ -87,8 +87,8 @@ const Sidebar = ({ className = '' }) => {
             to={item.path} 
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${
               isActive(item.path)
-                ? 'bg-blue-50 text-primary'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-[#111418]'
+                ? 'bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300'
+                : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white'
             }`}
           >
             <span className={`material-symbols-outlined ${isActive(item.path) && item.fillWhenActive ? 'fill-1' : ''}`}>
@@ -97,7 +97,7 @@ const Sidebar = ({ className = '' }) => {
             <span>{t(item.labelKey)}</span>
           </Link>
         ))}
-        <div className="mt-auto border-t border-gray-100 pt-4">
+        <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
           <LogoutButton labelKey="sidebar.logout" />
         </div>
       </div>

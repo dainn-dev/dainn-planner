@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -22,7 +22,28 @@ import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 
+function applyDarkModeFromStorage() {
+  try {
+    const raw = localStorage.getItem('user_settings');
+    const stored = raw ? JSON.parse(raw) : {};
+    if (stored.darkMode === true) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  } catch (e) {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
 function App() {
+  useEffect(() => {
+    applyDarkModeFromStorage();
+    const handler = () => applyDarkModeFromStorage();
+    window.addEventListener('userSettingsUpdated', handler);
+    return () => window.removeEventListener('userSettingsUpdated', handler);
+  }, []);
+
   return (
     <Router>
       <Routes>

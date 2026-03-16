@@ -47,37 +47,37 @@ const emptyDisplay = (value) => (value && String(value).trim() ? value : '—');
 
 const LoadingSkeleton = () => (
   <div className="max-w-[1200px] w-full flex flex-col gap-8 animate-pulse">
-    <div className="h-5 w-32 bg-gray-200 rounded" />
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row gap-6">
-      <div className="h-24 w-24 rounded-full bg-gray-200 shrink-0" />
+    <div className="h-5 w-32 bg-gray-200 dark:bg-slate-600 rounded" />
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 flex flex-col sm:flex-row gap-6">
+      <div className="h-24 w-24 rounded-full bg-gray-200 dark:bg-slate-600 shrink-0" />
       <div className="flex-1 space-y-3">
-        <div className="h-8 w-48 bg-gray-200 rounded" />
-        <div className="h-4 w-64 bg-gray-100 rounded" />
-        <div className="h-5 w-32 bg-gray-100 rounded mt-4" />
+        <div className="h-8 w-48 bg-gray-200 dark:bg-slate-600 rounded" />
+        <div className="h-4 w-64 bg-gray-100 dark:bg-slate-700 rounded" />
+        <div className="h-5 w-32 bg-gray-100 dark:bg-slate-700 rounded mt-4" />
       </div>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="h-4 w-20 bg-gray-100 rounded mb-3" />
-          <div className="h-8 w-12 bg-gray-200 rounded" />
+        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+          <div className="h-4 w-20 bg-gray-100 dark:bg-slate-700 rounded mb-3" />
+          <div className="h-8 w-12 bg-gray-200 dark:bg-slate-600 rounded" />
         </div>
       ))}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="h-5 w-28 bg-gray-200 rounded mb-4" />
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+        <div className="h-5 w-28 bg-gray-200 dark:bg-slate-600 rounded mb-4" />
         <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded" />
+            <div key={i} className="h-10 bg-gray-100 dark:bg-slate-700 rounded" />
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="h-5 w-32 bg-gray-200 rounded mb-4" />
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+        <div className="h-5 w-32 bg-gray-200 dark:bg-slate-600 rounded mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 bg-gray-100 rounded-lg" />
+            <div key={i} className="h-14 bg-gray-100 dark:bg-slate-700 rounded-lg" />
           ))}
         </div>
       </div>
@@ -240,15 +240,15 @@ const AdminUserDetailPage = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Active':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        return 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800';
       case 'Pending':
-        return 'bg-orange-50 text-orange-700 border-orange-100';
+        return 'bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border-orange-100 dark:border-orange-800';
       case 'Inactive':
-        return 'bg-slate-100 text-slate-600 border-slate-200';
+        return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600';
       case 'Banned':
-        return 'bg-red-50 text-red-700 border-red-100';
+        return 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800';
       default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
+        return 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-600';
     }
   };
 
@@ -288,7 +288,7 @@ const AdminUserDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="bg-[#f6f7f8] text-[#111418] font-display min-h-screen flex flex-row">
+      <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display min-h-screen flex flex-row">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header title={t('admin.userDetails')} icon="person" notifications={[]} onNotificationsChange={() => {}} onToggleSidebar={() => {}} />
@@ -310,7 +310,7 @@ const AdminUserDetailPage = () => {
   const lastActiveDisplay = user.lastActive && user.lastActive.trim() ? user.lastActive : null;
 
   return (
-    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
@@ -331,7 +331,7 @@ const AdminUserDetailPage = () => {
             <div className="flex flex-col gap-3 self-start w-full">
               <button
                 onClick={() => navigate('/admin/users')}
-                className="flex items-center gap-2 text-gray-500 hover:text-[#111418] transition-colors text-sm font-medium min-h-[44px] touch-manipulation"
+                className="flex items-center gap-2 text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white transition-colors text-sm font-medium min-h-[44px] touch-manipulation"
                 aria-label="Back to user list"
               >
                 <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -342,8 +342,8 @@ const AdminUserDetailPage = () => {
                   role="alert"
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium ${
                     saveMessage.type === 'success'
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                      : 'bg-red-50 text-red-800 border border-red-200'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-red-50 dark:bg-red-900/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
                   }`}
                 >
                   <span className="material-symbols-outlined text-lg">
@@ -355,11 +355,11 @@ const AdminUserDetailPage = () => {
             </div>
 
             {/* User Header */}
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6 bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-6 bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
               <div className="flex flex-col items-center gap-3 shrink-0">
-                <div className="h-24 w-24 rounded-full ring-2 ring-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
+                <div className="h-24 w-24 rounded-full ring-2 ring-gray-200 dark:ring-slate-600 overflow-hidden bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
                   {showAvatarFallback ? (
-                    <span className="text-2xl font-semibold text-gray-500" aria-hidden="true">
+                    <span className="text-2xl font-semibold text-gray-500 dark:text-slate-400" aria-hidden="true">
                       {getInitials(displayUser.name)}
                     </span>
                   ) : (
@@ -390,21 +390,21 @@ const AdminUserDetailPage = () => {
                           type="text"
                           value={editedUser.name}
                           onChange={(e) => handleFieldChange('name', e.target.value)}
-                          className="w-full text-xl sm:text-2xl font-semibold text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full text-xl sm:text-2xl font-semibold text-[#111418] dark:text-white bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           placeholder={t('admin.fullName')}
                         />
                         <input
                           type="email"
                           value={editedUser.email}
                           readOnly
-                          className="w-full text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 cursor-not-allowed"
+                          className="w-full text-sm text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 cursor-not-allowed"
                           aria-readonly="true"
                         />
                       </div>
                     ) : (
                       <div>
-                        <h2 className="text-xl sm:text-2xl font-semibold text-[#111418] mb-1 truncate">{user.name}</h2>
-                        <p className="text-gray-500 text-sm truncate">{user.email}</p>
+                        <h2 className="text-xl sm:text-2xl font-semibold text-[#111418] dark:text-white mb-1 truncate">{user.name}</h2>
+                        <p className="text-gray-500 dark:text-slate-400 text-sm truncate">{user.email}</p>
                       </div>
                     )}
                   </div>
@@ -421,7 +421,7 @@ const AdminUserDetailPage = () => {
                         <button
                           onClick={handleCancel}
                           disabled={saving}
-                          className="px-4 py-2 bg-white text-[#111418] text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors min-h-[40px]"
+                          className="px-4 py-2 bg-white dark:bg-slate-700 text-[#111418] dark:text-slate-200 text-sm font-medium rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors min-h-[40px]"
                         >
                           {t('common.cancel')}
                         </button>
@@ -431,7 +431,7 @@ const AdminUserDetailPage = () => {
                         <button
                           type="button"
                           onClick={openResetPasswordModal}
-                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors touch-manipulation"
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors touch-manipulation"
                           aria-label="Reset password for this user"
                         >
                           <span className="material-symbols-outlined text-[18px]">lock_reset</span>
@@ -439,7 +439,7 @@ const AdminUserDetailPage = () => {
                         </button>
                         <button
                           onClick={handleEdit}
-                          className="p-2.5 text-gray-400 hover:text-[#111418] hover:bg-gray-100 transition-colors rounded-lg touch-manipulation"
+                          className="p-2.5 text-gray-400 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-lg touch-manipulation"
                           aria-label="Edit user"
                         >
                           <span className="material-symbols-outlined text-[22px]">edit</span>
@@ -450,67 +450,67 @@ const AdminUserDetailPage = () => {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                   <div className="flex items-center gap-1.5">
-                    <span className={`material-symbols-outlined text-[18px] ${displayUser.role === 'Admin' ? 'text-primary' : 'text-gray-500'}`} aria-hidden="true">
+                    <span className={`material-symbols-outlined text-[18px] ${displayUser.role === 'Admin' ? 'text-primary dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'}`} aria-hidden="true">
                       {displayUser.role === 'Admin' ? 'security' : 'person'}
                     </span>
-                    <span className="text-[#111418] font-medium">{displayUser.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</span>
+                    <span className="text-[#111418] dark:text-slate-200 font-medium">{displayUser.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</span>
                   </div>
-                  <span className="text-gray-300" aria-hidden="true">·</span>
+                  <span className="text-gray-300 dark:text-slate-500" aria-hidden="true">·</span>
                   <span className={`inline-flex items-center gap-1.5 rounded-full pl-2 pr-2.5 py-0.5 text-xs font-medium border ${getStatusBadge(displayUser.status)}`}>
                     <span className={`size-1.5 rounded-full ${getStatusDot(displayUser.status)}`} aria-hidden="true" />
                     {displayUser.status === 'Active' ? t('admin.statusActive') : displayUser.status === 'Pending' ? t('admin.statusPending') : displayUser.status === 'Inactive' ? t('admin.statusInactive') : displayUser.status === 'Banned' ? t('admin.statusBanned') : displayUser.status}
                   </span>
-                  <span className="text-gray-300" aria-hidden="true">·</span>
-                  <span className="text-gray-500 text-sm">{t('admin.joined')} {displayUser.joinedDate}</span>
+                  <span className="text-gray-300 dark:text-slate-500" aria-hidden="true">·</span>
+                  <span className="text-gray-500 dark:text-slate-400 text-sm">{t('admin.joined')} {displayUser.joinedDate}</span>
                 </div>
               </div>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">{t('admin.totalGoals')}</span>
-                  <div className="bg-blue-50 text-blue-600 p-2 rounded-lg">
+                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.totalGoals')}</span>
+                  <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">flag</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">{user.totalGoals ?? '—'}</p>
-                <p className="text-xs text-gray-400">{t('admin.completedCount', { count: user.completedGoals })}</p>
+                <p className="text-2xl font-bold text-[#111418] dark:text-white">{user.totalGoals ?? '—'}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t('admin.completedCount', { count: user.completedGoals })}</p>
               </div>
-              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">{t('admin.totalTasks')}</span>
-                  <div className="bg-violet-50 text-violet-600 p-2 rounded-lg">
+                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.totalTasks')}</span>
+                  <div className="bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">check_circle</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">{user.totalTasks ?? '—'}</p>
-                <p className="text-xs text-gray-400">{t('admin.completedCount', { count: user.completedTasks })}</p>
+                <p className="text-2xl font-bold text-[#111418] dark:text-white">{user.totalTasks ?? '—'}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t('admin.completedCount', { count: user.completedTasks })}</p>
               </div>
-              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">{t('admin.completionRate')}</span>
-                  <div className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
+                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.completionRate')}</span>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">trending_up</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">
+                <p className="text-2xl font-bold text-[#111418] dark:text-white">
                   {user.totalTasks > 0 ? Math.round((user.completedTasks / user.totalTasks) * 100) : 0}%
                 </p>
-                <p className="text-xs text-gray-400">{t('admin.taskCompletion')}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t('admin.taskCompletion')}</p>
               </div>
-              <div className="flex flex-col gap-2 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm font-medium">{t('admin.lastActive')}</span>
-                  <div className="bg-amber-50 text-amber-600 p-2 rounded-lg">
+                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.lastActive')}</span>
+                  <div className="bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 p-2 rounded-lg">
                     <span className="material-symbols-outlined text-[20px]" aria-hidden="true">schedule</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418]">
+                <p className="text-2xl font-bold text-[#111418] dark:text-white">
                   {lastActiveDisplay ? lastActiveDisplay.split(' ')[0] : '—'}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-slate-500">
                   {lastActiveDisplay ? lastActiveDisplay.split(' ').slice(1).join(' ') : t('common.noData')}
                 </p>
               </div>
@@ -520,90 +520,90 @@ const AdminUserDetailPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Details */}
               <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-semibold text-[#111418] flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[22px] text-gray-500">person</span>
+                <h3 className="text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-gray-500 dark:text-slate-400">person</span>
                   {t('admin.userDetailsTitle')}
                 </h3>
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.phone')}</label>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.phone')}</label>
                       {isEditing ? (
                         <input
                           type="tel"
                           value={editedUser.phone ?? ''}
                           onChange={(e) => handleFieldChange('phone', e.target.value)}
-                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           placeholder={t('admin.optional')}
                         />
                       ) : (
-                        <p className="text-sm text-[#111418]">{emptyDisplay(user.phone)}</p>
+                        <p className="text-sm text-[#111418] dark:text-slate-200">{emptyDisplay(user.phone)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.location')}</label>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.location')}</label>
                       {isEditing ? (
                         <input
                           type="text"
                           value={editedUser.location ?? ''}
                           onChange={(e) => handleFieldChange('location', e.target.value)}
-                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           placeholder={t('admin.optional')}
                         />
                       ) : (
-                        <p className="text-sm text-[#111418]">{emptyDisplay(user.location)}</p>
+                        <p className="text-sm text-[#111418] dark:text-slate-200">{emptyDisplay(user.location)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.timezone')}</label>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.timezone')}</label>
                       {isEditing ? (
                         <input
                           type="text"
                           value={editedUser.timezone ?? ''}
                           onChange={(e) => handleFieldChange('timezone', e.target.value)}
-                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           placeholder={t('admin.timezonePlaceholder')}
                         />
                       ) : (
-                        <p className="text-sm text-[#111418]">{emptyDisplay(user.timezone)}</p>
+                        <p className="text-sm text-[#111418] dark:text-slate-200">{emptyDisplay(user.timezone)}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.language')}</label>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.language')}</label>
                       {isEditing ? (
                         <input
                           type="text"
                           value={editedUser.language ?? ''}
                           onChange={(e) => handleFieldChange('language', e.target.value)}
-                          className="w-full text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           placeholder={t('admin.languagePlaceholder')}
                         />
                       ) : (
-                        <p className="text-sm text-[#111418]">{emptyDisplay(user.language)}</p>
+                        <p className="text-sm text-[#111418] dark:text-slate-200">{emptyDisplay(user.language)}</p>
                       )}
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.role')}</label>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.role')}</label>
                       {isEditing ? (
                         <select
                           value={editedUser.role}
                           onChange={(e) => handleFieldChange('role', e.target.value)}
-                          className="w-full max-w-xs text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full max-w-xs text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                           <option value="User">{t('admin.roleUser')}</option>
                           <option value="Admin">{t('admin.roleAdmin')}</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-[#111418]">{user.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</p>
+                        <p className="text-sm text-[#111418] dark:text-slate-200">{user.role === 'Admin' ? t('admin.roleAdmin') : t('admin.roleUser')}</p>
                       )}
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('admin.status')}</label>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.status')}</label>
                       {isEditing ? (
                         <select
                           value={editedUser.status}
                           onChange={(e) => handleFieldChange('status', e.target.value)}
-                          className="w-full max-w-xs text-sm text-[#111418] bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full max-w-xs text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                           <option value="Active">{t('admin.statusActive')}</option>
                           <option value="Pending">{t('admin.statusPending')}</option>
@@ -611,7 +611,7 @@ const AdminUserDetailPage = () => {
                           <option value="Banned">{t('admin.statusBanned')}</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-[#111418]">{user.status === 'Active' ? t('admin.statusActive') : user.status === 'Pending' ? t('admin.statusPending') : user.status === 'Inactive' ? t('admin.statusInactive') : user.status === 'Banned' ? t('admin.statusBanned') : user.status}</p>
+                        <p className="text-sm text-[#111418] dark:text-slate-200">{user.status === 'Active' ? t('admin.statusActive') : user.status === 'Pending' ? t('admin.statusPending') : user.status === 'Inactive' ? t('admin.statusInactive') : user.status === 'Banned' ? t('admin.statusBanned') : user.status}</p>
                       )}
                     </div>
                   </div>
@@ -620,25 +620,25 @@ const AdminUserDetailPage = () => {
 
               {/* Recent Activity */}
               <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-semibold text-[#111418] flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[22px] text-gray-500">history</span>
+                <h3 className="text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-gray-500 dark:text-slate-400">history</span>
                   {t('admin.recentActivity')}
                 </h3>
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm min-h-[200px]">
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm min-h-[200px]">
                   {user.recentActivity && user.recentActivity.length > 0 ? (
                     <div className="flex flex-col gap-2">
                       {user.recentActivity.map((activity) => (
-                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                          <div className="bg-blue-50 text-blue-600 p-2 rounded-lg shrink-0">
+                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                          <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-2 rounded-lg shrink-0">
                             <span className="material-symbols-outlined text-lg" aria-hidden="true">{getActivityIcon(activity.type)}</span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-[#111418] min-w-0">{activity.action?.startsWith('admin.activity.') ? t(activity.action) : activity.action}</p>
-                              <span className="text-xs text-gray-500 shrink-0">{activity.date}</span>
+                              <p className="text-sm font-medium text-[#111418] dark:text-white min-w-0">{activity.action?.startsWith('admin.activity.') ? t(activity.action) : activity.action}</p>
+                              <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">{activity.date}</span>
                             </div>
                             {activity.entityTitle && (
-                              <p className="text-xs text-gray-600 mt-0.5 truncate" title={activity.entityTitle}>
+                              <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5 truncate" title={activity.entityTitle}>
                                 {activity.entityTitle}
                               </p>
                             )}
@@ -648,8 +648,8 @@ const AdminUserDetailPage = () => {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <span className="material-symbols-outlined text-4xl text-gray-300 mb-2" aria-hidden="true">history</span>
-                      <p className="text-sm text-gray-500">{t('admin.noActivityYet')}</p>
+                      <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-slate-500 mb-2" aria-hidden="true">history</span>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">{t('admin.noActivityYet')}</p>
                     </div>
                   )}
                 </div>
@@ -662,51 +662,51 @@ const AdminUserDetailPage = () => {
       {/* Reset Password Modal */}
       {resetPasswordModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 dark:bg-black/60 backdrop-blur-sm"
           onClick={closeResetPasswordModal}
           role="dialog"
           aria-modal="true"
           aria-labelledby="reset-password-title"
         >
           <div
-            className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden"
+            className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 w-full max-w-md overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 pt-6 pb-4">
-              <h3 id="reset-password-title" className="text-lg font-semibold text-[#111418] flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-600">lock_reset</span>
+              <h3 id="reset-password-title" className="text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">lock_reset</span>
                 {t('admin.resetPasswordTitle')}
               </h3>
-              <p className="text-sm text-gray-500 mt-1">{t('admin.resetPasswordDesc', { name: user?.name ?? user?.email })}</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{t('admin.resetPasswordDesc', { name: user?.name ?? user?.email })}</p>
             </div>
             <form onSubmit={handleResetPasswordSubmit} className="px-6 pb-6 space-y-4">
               {resetPasswordError && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200" role="alert">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-sm border border-red-200 dark:border-red-800" role="alert">
                   <span className="material-symbols-outlined text-lg shrink-0">error</span>
                   {resetPasswordError}
                 </div>
               )}
               <div>
-                <label htmlFor="reset-new-password" className="block text-sm font-medium text-gray-700 mb-1">{t('admin.newPassword')}</label>
+                <label htmlFor="reset-new-password" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('admin.newPassword')}</label>
                 <input
                   id="reset-new-password"
                   type="password"
                   value={resetPasswordNew}
                   onChange={(e) => setResetPasswordNew(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder={t('admin.newPasswordPlaceholder')}
                   autoComplete="new-password"
                   disabled={resetPasswordSubmitting}
                 />
               </div>
               <div>
-                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">{t('admin.confirmPassword')}</label>
+                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('admin.confirmPassword')}</label>
                 <input
                   id="reset-confirm-password"
                   type="password"
                   value={resetPasswordConfirm}
                   onChange={(e) => setResetPasswordConfirm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-[#111418] dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder={t('admin.confirmPasswordPlaceholder')}
                   autoComplete="new-password"
                   disabled={resetPasswordSubmitting}
@@ -724,7 +724,7 @@ const AdminUserDetailPage = () => {
                   type="button"
                   onClick={closeResetPasswordModal}
                   disabled={resetPasswordSubmitting}
-                  className="px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  className="px-4 py-2.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-sm font-medium rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
@@ -741,15 +741,15 @@ const AdminUserDetailPage = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100">
+      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
-          <h1 className="text-[#111418] text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
+          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
           <button
             type="button"
-            className="ml-auto p-2 rounded-lg text-gray-600 hover:bg-gray-100 touch-manipulation"
+            className="ml-auto p-2 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 touch-manipulation"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
           >
@@ -761,7 +761,7 @@ const AdminUserDetailPage = () => {
             <>
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">dashboard</span>
@@ -769,7 +769,7 @@ const AdminUserDetailPage = () => {
               </Link>
               <Link
                 to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-primary font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined fill-1">people</span>
@@ -777,18 +777,18 @@ const AdminUserDetailPage = () => {
               </Link>
               <Link
                 to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
                 <span className="material-symbols-outlined">description</span>
                 <span>{t('sidebar.logs')}</span>
               </Link>
-              <div className="my-2 border-t border-gray-100" />
+              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
           <Link 
             to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
@@ -796,7 +796,7 @@ const AdminUserDetailPage = () => {
           </Link>
           <Link 
             to="/goals" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
@@ -804,7 +804,7 @@ const AdminUserDetailPage = () => {
           </Link>
           <Link 
             to="/calendar" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
@@ -812,13 +812,13 @@ const AdminUserDetailPage = () => {
           </Link>
           <Link 
             to="/settings" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#111418] font-medium transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">settings</span>
             <span>{t('sidebar.settings')}</span>
           </Link>
-          <div className="mt-auto border-t border-gray-100 pt-4">
+          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
             <LogoutButton labelKey="sidebar.logout" />
           </div>
         </div>

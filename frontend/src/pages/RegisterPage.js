@@ -91,7 +91,7 @@ const RegisterPage = () => {
         <div className="w-full max-w-[480px]">          
           <div className="bg-card-bg shadow-soft-register rounded-2xl p-8 border border-accent-border">
             <div className="mb-6">
-              <h1 className="text-xl font-semibold text-primary-register">{t('auth.createAccount')}</h1>
+              <h1 className="text-[#111418] text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('auth.createAccount')}</h1>
               <p className="text-secondary-text text-sm mt-1">{t('auth.enterInfo')}</p>
             </div>
             <form className="space-y-5" onSubmit={handleSubmit}>
