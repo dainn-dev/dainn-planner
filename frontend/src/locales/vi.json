@@ -90,7 +90,16 @@
     "resetFail": "Không thể đặt lại mật khẩu. Vui lòng thử lại.",
     "invalidToken": "Token không hợp lệ. Vui lòng kiểm tra lại liên kết.",
     "invalidEmail": "Email không hợp lệ. Vui lòng kiểm tra lại liên kết.",
-    "backToLogin": "Quay lại đăng nhập"
+    "backToLogin": "Quay lại đăng nhập",
+    "goToLogin": "Đi đến đăng nhập",
+    "verifyEmailLoading": "Đang xác minh email...",
+    "verifyEmailSuccessTitle": "Xác minh email thành công!",
+    "verifyEmailSuccess": "Tài khoản của bạn đã được kích hoạt. Bạn có thể đăng nhập ngay.",
+    "verifyEmailFailTitle": "Xác minh thất bại",
+    "verifyEmailFail": "Không thể xác minh email. Liên kết có thể đã hết hạn.",
+    "verifyEmailInvalidLink": "Liên kết xác minh không hợp lệ. Vui lòng kiểm tra lại URL.",
+    "registerSuccessVerify": "Đăng ký thành công! Vui lòng kiểm tra email để xác minh tài khoản.",
+    "accountNotVerified": "Vui lòng xác minh tài khoản qua email trước"
   },
   "header": {
     "home": "Trang chủ",
@@ -518,6 +527,7 @@
     "categoryWork": "Công việc",
     "categoryFamily": "Gia đình",
     "categoryTravel": "Du lịch",
+    "categoryEntertainment": "Giải trí",
     "personalPlan": "Kế hoạch cá nhân",
     "backToGoals": "Quay lại danh sách mục tiêu",
     "backShort": "Quay lại",

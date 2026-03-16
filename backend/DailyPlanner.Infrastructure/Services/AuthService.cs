@@ -26,6 +26,7 @@ public class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly IUserActivityService _userActivityService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IEmailSender _emailSender;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -35,7 +36,8 @@ public class AuthService : IAuthService
         ApplicationDbContext context,
         IConfiguration configuration,
         IUserActivityService userActivityService,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IEmailSender emailSender)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -45,6 +47,7 @@ public class AuthService : IAuthService
         _configuration = configuration;
         _userActivityService = userActivityService;
         _httpContextAccessor = httpContextAccessor;
+        _emailSender = emailSender;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -79,21 +82,12 @@ public class AuthService : IAuthService
             };
         }
 
-        var token = await _jwtService.GenerateTokenAsync(user);
-        var refreshToken = _jwtService.GenerateRefreshToken();
-        await _jwtService.SaveRefreshTokenAsync(user.Id, refreshToken);
+        await SendConfirmationEmailAsync(user);
 
-        var userDto = await MapUserWithRoleAsync(user);
         return new ApiResponse<AuthResponse>
         {
             Success = true,
-            Message = "Registration successful",
-            Data = new AuthResponse
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                User = userDto
-            }
+            Message = "Registration successful. Please check your email to verify your account."
         };
     }
 
@@ -116,6 +110,15 @@ public class AuthService : IAuthService
             {
                 Success = false,
                 Message = "Invalid email or password"
+            };
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            return new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = "Please verify your account via email first"
             };
         }
 
@@ -294,8 +297,36 @@ public class AuthService : IAuthService
         }
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        // TODO: Send email with token
-        // For now, just return success
+
+        var frontendUrl = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()?.FirstOrDefault()
+                          ?? "http://localhost:3005";
+        var encodedToken = Uri.EscapeDataString(token);
+        var encodedEmail = Uri.EscapeDataString(request.Email);
+        var resetLink = $"{frontendUrl}/reset-password?token={encodedToken}&email={encodedEmail}";
+
+        var subject = "Reset your password - DailyPlanner";
+        var body = $@"
+<html>
+<body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333;"">
+  <div style=""max-width: 480px; margin: 0 auto; padding: 32px 24px;"">
+    <h2 style=""margin: 0 0 16px;"">Password Reset</h2>
+    <p>We received a request to reset the password for your account.</p>
+    <p>Click the button below to set a new password:</p>
+    <p style=""text-align: center; margin: 28px 0;"">
+      <a href=""{resetLink}""
+         style=""display: inline-block; padding: 12px 28px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;"">
+        Reset Password
+      </a>
+    </p>
+    <p style=""font-size: 13px; color: #666;"">If you didn't request this, you can safely ignore this email. The link expires according to your server's token policy.</p>
+    <p style=""font-size: 13px; color: #666;"">Or copy and paste this URL into your browser:<br/>
+      <a href=""{resetLink}"" style=""color: #2563eb; word-break: break-all;"">{resetLink}</a>
+    </p>
+  </div>
+</body>
+</html>";
+
+        await _emailSender.SendAsync(user.Email!, subject, body);
 
         return new ApiResponse<object>
         {
@@ -333,6 +364,80 @@ public class AuthService : IAuthService
             Success = true,
             Message = "Password reset successful"
         };
+    }
+
+    public async Task<ApiResponse<object>> ConfirmEmailAsync(string email, string token)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            return new ApiResponse<object> { Success = false, Message = "Invalid verification link" };
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return new ApiResponse<object> { Success = true, Message = "Email already verified" };
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded)
+        {
+            return new ApiResponse<object> { Success = false, Message = "Invalid or expired verification link" };
+        }
+
+        return new ApiResponse<object> { Success = true, Message = "Email verified successfully. You can now log in." };
+    }
+
+    public async Task<ApiResponse<object>> ResendConfirmationEmailAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            return new ApiResponse<object> { Success = true, Message = "If the email exists, a verification link has been sent" };
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return new ApiResponse<object> { Success = true, Message = "Email is already verified" };
+        }
+
+        await SendConfirmationEmailAsync(user);
+
+        return new ApiResponse<object> { Success = true, Message = "Verification email sent. Please check your inbox." };
+    }
+
+    private async Task SendConfirmationEmailAsync(ApplicationUser user)
+    {
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        var frontendUrl = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()?.FirstOrDefault()
+                          ?? "http://localhost:3005";
+        var encodedToken = Uri.EscapeDataString(token);
+        var encodedEmail = Uri.EscapeDataString(user.Email!);
+        var verifyLink = $"{frontendUrl}/verify-email?token={encodedToken}&email={encodedEmail}";
+
+        var subject = "Verify your email - DailyPlanner";
+        var body = $@"
+<html>
+<body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333;"">
+  <div style=""max-width: 480px; margin: 0 auto; padding: 32px 24px;"">
+    <h2 style=""margin: 0 0 16px;"">Welcome to DailyPlanner!</h2>
+    <p>Thank you for registering. Please verify your email address to activate your account.</p>
+    <p style=""text-align: center; margin: 28px 0;"">
+      <a href=""{verifyLink}""
+         style=""display: inline-block; padding: 12px 28px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;"">
+        Verify Email
+      </a>
+    </p>
+    <p style=""font-size: 13px; color: #666;"">If you didn't create this account, you can safely ignore this email.</p>
+    <p style=""font-size: 13px; color: #666;"">Or copy and paste this URL into your browser:<br/>
+      <a href=""{verifyLink}"" style=""color: #2563eb; word-break: break-all;"">{verifyLink}</a>
+    </p>
+  </div>
+</body>
+</html>";
+
+        await _emailSender.SendAsync(user.Email!, subject, body);
     }
 
     public async Task<ApiResponse<object>> LogoutAsync(string userId)

@@ -44,7 +44,8 @@ public class SmtpEmailSender : IEmailSender
                 client.Credentials = new NetworkCredential(user, password);
             }
 
-            var message = new MailMessage(from, to, subject, body) { IsBodyHtml = false };
+            var isHtml = body.TrimStart().StartsWith("<", StringComparison.Ordinal);
+            var message = new MailMessage(from, to, subject, body) { IsBodyHtml = isHtml };
             await client.SendMailAsync(message, cancellationToken);
             _logger.LogInformation("Email sent to {To} subject {Subject}", to, subject);
         }

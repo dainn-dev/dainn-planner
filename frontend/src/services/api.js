@@ -1,6 +1,7 @@
 /**
  * API Service - Handles all backend API calls
  */
+import { toast } from '../utils/toast';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -169,7 +170,24 @@ const apiRequest = async (endpoint, options = {}) => {
     }
 
     // Automatically unwrap response.data if present, otherwise return the full response
-    return data.data !== undefined ? data.data : data;
+    return { _raw: data, result: data.data != null ? data.data : data };
+  };
+
+  const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
+  const executeAndToast = async (requestFn) => {
+    try {
+      const { _raw, result } = await requestFn();
+      if (isMutating && _raw?.message) {
+        toast.success(_raw.message);
+      }
+      return result;
+    } catch (error) {
+      if (isMutating) {
+        toast.error(error.message || 'An error occurred');
+      }
+      throw error;
+    }
   };
 
   if (inflightKey) {
@@ -178,7 +196,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
     const p = (async () => {
       try {
-        return await doRequest();
+        return await executeAndToast(doRequest);
       } finally {
         inflightGetRequests.delete(inflightKey);
       }
@@ -188,11 +206,7 @@ const apiRequest = async (endpoint, options = {}) => {
     return await p;
   }
 
-  try {
-    return await doRequest();
-  } catch (error) {
-    throw error;
-  }
+  return await executeAndToast(doRequest);
 };
 
 // ============================================
@@ -305,6 +319,17 @@ export const authAPI = {
     return await apiRequest('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ email, token, newPassword, confirmPassword }),
+    });
+  },
+
+  confirmEmail: async (email, token) => {
+    return await apiRequest(`/auth/confirm-email?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+  },
+
+  resendConfirmation: async (email) => {
+    return await apiRequest('/auth/resend-confirmation', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     });
   },
 

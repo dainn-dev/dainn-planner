@@ -13,6 +13,7 @@ const categoryToIcon = {
   'Kỹ năng': 'code',
   'Tài chính': 'savings',
   'Sức khỏe': 'fitness_center',
+  'Giải trí': 'theater_comedy',
   'Học tập': 'school',
   'Công việc': 'work',
   'Gia đình': 'home',
@@ -30,6 +31,7 @@ const CATEGORY_I18N_KEYS = {
   'Công việc': 'categoryWork',
   'Gia đình': 'categoryFamily',
   'Du lịch': 'categoryTravel',
+  'Giải trí': 'categoryEntertainment',
 };
 
 const getCategoryLabel = (category, t) => {
@@ -332,6 +334,7 @@ const GoalsPage = () => {
     { value: 'work', apiCategory: 'Công việc', labelKey: 'categoryWork' },
     { value: 'home', apiCategory: 'Gia đình', labelKey: 'categoryFamily' },
     { value: 'flight', apiCategory: 'Du lịch', labelKey: 'categoryTravel' },
+    { value: 'theater_comedy', apiCategory: 'Giải trí', labelKey: 'categoryEntertainment' },
   ];
 
   return (

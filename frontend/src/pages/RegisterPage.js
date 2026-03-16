@@ -67,10 +67,10 @@ const RegisterPage = () => {
     try {
       const response = await authAPI.register(formData);
       if (response.success) {
-        setSuccessMessage(t('auth.registerSuccess'));
+        setSuccessMessage(response.message || t('auth.registerSuccessVerify'));
         setTimeout(() => {
           navigate('/login');
-        }, 1500);
+        }, 3000);
       }
     } catch (error) {
       // Handle validation errors from API

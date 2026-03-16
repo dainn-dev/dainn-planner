@@ -59,6 +59,23 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    [HttpGet("confirm-email")]
+    public async Task<ActionResult<ApiResponse<object>>> ConfirmEmail([FromQuery] string email, [FromQuery] string token)
+    {
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Email and token are required" });
+
+        var result = await _authService.ConfirmEmailAsync(email, token);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("resend-confirmation")]
+    public async Task<ActionResult<ApiResponse<object>>> ResendConfirmation([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _authService.ResendConfirmationEmailAsync(request.Email);
+        return Ok(result);
+    }
+
     [HttpPost("social-login")]
     public async Task<ActionResult<ApiResponse<AuthResponse>>> SocialLogin([FromBody] SocialLoginRequest request)
     {

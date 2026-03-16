@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IUserActivityService, UserActivityService>();
         services.AddScoped<IRecurringTaskRenewalService, RecurringTaskRenewalService>();
         services.AddScoped<IOldDailyTaskCleanupService, OldDailyTaskCleanupService>();
+        services.AddScoped<IOldUserActivityCleanupService, OldUserActivityCleanupService>();
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddHttpClient();

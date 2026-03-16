@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Hangfire.Dashboard;
 using Serilog;
 using Serilog.Events;
 using System.Security.Claims;
@@ -274,7 +275,12 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 // Hangfire dashboard and recurring job
-app.UseHangfireDashboard("/hangfire");
+var hangfireUser = builder.Configuration["Hangfire:Username"] ?? "admin";
+var hangfirePass = builder.Configuration["Hangfire:Password"] ?? "Admin@123";
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireBasicAuthFilter(hangfireUser, hangfirePass) }
+});
 RecurringJob.AddOrUpdate<RecurringTaskRenewalJob>(
     "renew-recurring-tasks",
     j => j.ExecuteAsync(CancellationToken.None),
@@ -283,6 +289,10 @@ RecurringJob.AddOrUpdate<OldDailyTaskCleanupJob>(
     "cleanup-old-daily-tasks",
     j => j.ExecuteAsync(CancellationToken.None),
     "0 1 * * *"); // daily at 01:00 UTC (tasks older than 7 days)
+RecurringJob.AddOrUpdate<OldUserActivityCleanupJob>(
+    "cleanup-old-user-activities",
+    j => j.ExecuteAsync(CancellationToken.None),
+    "0 2 * * *"); // daily at 02:00 UTC (activities older than 7 days)
 
 // Ensure database is created, roles exist, and seed data
 using (var scope = app.Services.CreateScope())
@@ -307,3 +317,34 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+public class HangfireBasicAuthFilter : IDashboardAuthorizationFilter
+{
+    private readonly string _username;
+    private readonly string _password;
+
+    public HangfireBasicAuthFilter(string username, string password)
+    {
+        _username = username;
+        _password = password;
+    }
+
+    public bool Authorize(DashboardContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        var header = httpContext.Request.Headers["Authorization"].FirstOrDefault();
+
+        if (header != null && header.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        {
+            var encoded = header["Basic ".Length..].Trim();
+            var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+            var parts = decoded.Split(':', 2);
+            if (parts.Length == 2 && parts[0] == _username && parts[1] == _password)
+                return true;
+        }
+
+        httpContext.Response.StatusCode = 401;
+        httpContext.Response.Headers["WWW-Authenticate"] = "Basic realm=\"Hangfire Dashboard\"";
+        return false;
+    }
+}

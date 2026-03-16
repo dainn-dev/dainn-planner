@@ -11,6 +11,8 @@ public interface IAuthService
     Task<ApiResponse<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request);
     Task<ApiResponse<object>> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ApiResponse<object>> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<ApiResponse<object>> ConfirmEmailAsync(string email, string token);
+    Task<ApiResponse<object>> ResendConfirmationEmailAsync(string email);
     Task<ApiResponse<object>> LogoutAsync(string userId);
     Task<ApiResponse<AuthResponse>> SocialLoginAsync(SocialLoginRequest request);
     Task<ApiResponse<AuthResponse>> HandleExternalLoginAsync(Microsoft.AspNetCore.Authentication.AuthenticateResult externalAuth);

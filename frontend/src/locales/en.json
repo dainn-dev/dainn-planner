@@ -90,7 +90,16 @@
     "resetFail": "Could not reset password. Please try again.",
     "invalidToken": "Invalid token. Please check the link.",
     "invalidEmail": "Invalid email. Please check the link.",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "goToLogin": "Go to login",
+    "verifyEmailLoading": "Verifying your email...",
+    "verifyEmailSuccessTitle": "Email verified!",
+    "verifyEmailSuccess": "Your account has been activated. You can now log in.",
+    "verifyEmailFailTitle": "Verification failed",
+    "verifyEmailFail": "We could not verify your email. The link may have expired.",
+    "verifyEmailInvalidLink": "Invalid verification link. Please check the URL.",
+    "registerSuccessVerify": "Registration successful! Please check your email to verify your account.",
+    "accountNotVerified": "Please verify your account via email first"
   },
   "header": {
     "home": "Home",
@@ -518,6 +527,7 @@
     "categoryWork": "Work",
     "categoryFamily": "Family",
     "categoryTravel": "Travel",
+    "categoryEntertainment": "Entertainment",
     "personalPlan": "Personal plan",
     "backToGoals": "Back to goals list",
     "backShort": "Back",
