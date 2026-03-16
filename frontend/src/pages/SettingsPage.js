@@ -557,7 +557,7 @@ const SettingsPage = () => {
         {/* Mobile Navigation - horizontal scrollable nav bar on mobile only */}
         <div className="md:hidden flex border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-x-auto overflow-y-hidden shrink-0">
           <nav className="flex flex-nowrap items-stretch gap-0 px-2 min-w-min">
-            {SETTINGS_MENU_ITEMS.map((item) => {
+            {SETTINGS_MENU_ITEMS.filter(item => item.id !== 'logs' || isAdmin).map((item) => {
               const route = item.id === 'general' ? '/settings/general' :
                   item.id === 'plans' ? '/settings/goals' :
                   item.id === 'notifications' ? '/settings/notification' :
@@ -588,7 +588,7 @@ const SettingsPage = () => {
           {/* Desktop Sidebar Navigation */}
           <aside className="hidden md:flex w-64 shrink-0 flex-col gap-8 bg-transparent">
             <nav className="flex flex-col gap-1.5">
-              {SETTINGS_MENU_ITEMS.map((item) => {
+              {SETTINGS_MENU_ITEMS.filter(item => item.id !== 'logs' || isAdmin).map((item) => {
                 const route = item.id === 'general' ? '/settings/general' :
                     item.id === 'plans' ? '/settings/goals' :
                     item.id === 'notifications' ? '/settings/notification' :
