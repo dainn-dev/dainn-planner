@@ -709,7 +709,7 @@ const DailyPage = () => {
                         </div>
                         <div className="flex flex-col gap-1 flex-1 min-w-0">                          
                           <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-white'}`}>
-                          {task.priority && (
+                          {task.priority !== undefined && task.priority !== null && (
                               <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
                                 {getPriorityLabel(task.priority)}
                               </span>
