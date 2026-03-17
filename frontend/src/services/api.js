@@ -633,6 +633,18 @@ export const notificationsAPI = {
       method: 'PATCH',
     });
   },
+
+  markAllAsRead: async () => {
+    return await apiRequest('/notifications/read-all', {
+      method: 'PATCH',
+    });
+  },
+
+  deleteAll: async () => {
+    return await apiRequest('/notifications', {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ============================================

@@ -20,11 +20,11 @@ const mapUserDetailFromApi = (u) => ({
   location: u.location ?? '',
   timezone: u.timezone ?? '',
   language: u.language ?? '',
-  lastActive: '',
-  totalGoals: 0,
-  completedGoals: 0,
-  totalTasks: 0,
-  completedTasks: 0,
+  lastActive: u.lastActiveAt ? formatDate(u.lastActiveAt) : '',
+  totalGoals: u.totalGoals ?? 0,
+  completedGoals: u.completedGoals ?? 0,
+  totalTasks: u.totalTasks ?? 0,
+  completedTasks: u.completedTasks ?? 0,
   recentActivity: (u.recentActivity || []).map((a) => ({
     id: a.id,
     type: a.type,
@@ -114,8 +114,9 @@ const AdminUserDetailPage = () => {
       }
       try {
         setLoading(true);
-        const data = await adminAPI.getUser(id);
+        const res = await adminAPI.getUser(id);
         if (cancelled) return;
+        const data = res?.result ?? res?.data ?? res;
         const mapped = mapUserDetailFromApi(data);
         setUser(mapped);
         setEditedUser({ ...mapped });
@@ -310,7 +311,7 @@ const AdminUserDetailPage = () => {
   const lastActiveDisplay = user.lastActive && user.lastActive.trim() ? user.lastActive : null;
 
   return (
-    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden h-screen overflow-hidden flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
@@ -626,7 +627,7 @@ const AdminUserDetailPage = () => {
                 </h3>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm min-h-[200px]">
                   {user.recentActivity && user.recentActivity.length > 0 ? (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
                       {user.recentActivity.map((activity) => (
                         <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
                           <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-2 rounded-lg shrink-0">

@@ -260,6 +260,7 @@ const GoalDetailPage = () => {
         setGoal(editedGoal);
       }
       setIsEditing(false);
+      await refetchNotifications();
     } catch (error) {
       console.error('Failed to update goal:', error);
       setSaveError(error?.message || t('goals.saveError'));
@@ -291,6 +292,16 @@ const GoalDetailPage = () => {
     });
   };
 
+  const refetchNotifications = async () => {
+    try {
+      const notificationsData = await notificationsAPI.getNotifications({ limit: 20 });
+      const notifList = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []);
+      setNotifications(notifList.map((n) => mapNotificationFromApi(n, i18n.language || 'vi')));
+    } catch (_) {
+      // ignore
+    }
+  };
+
   const handleMilestoneToggleView = async (milestoneId) => {
     if (togglingMilestoneId || !id) return;
     setTogglingMilestoneId(milestoneId);
@@ -299,6 +310,7 @@ const GoalDetailPage = () => {
       const goalData = await goalsAPI.getGoal(id);
       const mapped = mapGoalDetailFromApi(goalData?.data ?? goalData, i18n.language || 'vi');
       setGoal(mapped);
+      await refetchNotifications();
     } catch (err) {
       console.error('Failed to toggle milestone:', err);
     } finally {

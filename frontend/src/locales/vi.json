@@ -23,6 +23,12 @@
     "viewAllNotifications": "Xem tất cả thông báo",
     "userProfile": "Hồ sơ người dùng"
   },
+  "notifications": {
+    "milestoneCompletedTitle": "Chúc mừng",
+    "milestoneCompleted": "Chúc mừng bạn đã hoàn thành giai đoạn {{milestone}} của mục tiêu {{goal}}.",
+    "goalCompletedTitle": "Chúc mừng",
+    "goalCompleted": "Chúc mừng bạn đã hoàn thành mục tiêu {{goal}}."
+  },
   "auth": {
     "login": "Đăng nhập",
     "loginTitle": "Đăng nhập",
@@ -266,6 +272,8 @@
     "weeklySummaryDesc": "Nhận email tóm tắt hiệu suất làm việc mỗi tuần.",
     "taskReminders": "Nhắc nhở công việc",
     "taskRemindersDesc": "Nhận email khi có công việc sắp đến hạn hoặc quá hạn.",
+    "goalAchievementEmails": "Email khi đạt mục tiêu",
+    "goalAchievementEmailsDesc": "Nhận email khi bạn hoàn thành mục tiêu (100%).",
     "promotionsNews": "Khuyến mãi & Tin tức",
     "promotionsDesc": "Thông tin về các tính năng mới và mẹo sử dụng.",
     "inAppNotifications": "Thông báo trong ứng dụng",

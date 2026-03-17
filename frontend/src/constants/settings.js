@@ -33,6 +33,7 @@ export const INITIAL_PLANS_SETTINGS = {
 export const INITIAL_NOTIFICATION_SETTINGS = {
   emailWeeklySummary: true,
   emailTaskReminders: true,
+  emailGoalAchievements: true,
   emailPromotions: false,
   inAppNewActivities: true,
   inAppGoalAchievements: true,

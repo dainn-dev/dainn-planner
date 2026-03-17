@@ -23,6 +23,12 @@
     "viewAllNotifications": "View all notifications",
     "userProfile": "User profile"
   },
+  "notifications": {
+    "milestoneCompletedTitle": "Congratulations",
+    "milestoneCompleted": "Congratulations! You completed milestone {{milestone}} of goal {{goal}}.",
+    "goalCompletedTitle": "Congratulations",
+    "goalCompleted": "Congratulations! You completed goal {{goal}}."
+  },
   "auth": {
     "login": "Log in",
     "loginTitle": "Log in",
@@ -266,6 +272,8 @@
     "weeklySummaryDesc": "Receive a weekly email summary of your work performance.",
     "taskReminders": "Task reminders",
     "taskRemindersDesc": "Receive emails when tasks are due or overdue.",
+    "goalAchievementEmails": "Goal achievement emails",
+    "goalAchievementEmailsDesc": "Receive an email when you complete a goal (100%).",
     "promotionsNews": "Promotions & News",
     "promotionsDesc": "Information about new features and usage tips.",
     "inAppNotifications": "In-app notifications",

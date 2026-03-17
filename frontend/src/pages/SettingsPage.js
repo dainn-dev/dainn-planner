@@ -1173,6 +1173,21 @@ const SettingsPage = () => {
                         <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.goalAchievementEmails')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.goalAchievementEmailsDesc')}</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          className="sr-only peer"
+                          type="checkbox"
+                          checked={!!notificationSettings.emailGoalAchievements}
+                          onChange={(e) => handleNotificationSettingChange('emailGoalAchievements', e.target.checked)}
+                        />
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
                     <div className="flex items-center justify-between opacity-60 pointer-events-none">
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.promotionsNews')}</span>
@@ -1240,6 +1255,7 @@ const SettingsPage = () => {
                       setNotificationSettings({
                         emailWeeklySummary: true,
                         emailTaskReminders: true,
+                        emailGoalAchievements: true,
                         emailPromotions: false,
                         inAppNewActivities: true,
                         inAppGoalAchievements: true,

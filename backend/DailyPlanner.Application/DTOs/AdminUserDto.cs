@@ -15,5 +15,10 @@ public class AdminUserDto
     public DateTime? UpdatedAt { get; set; }
     public List<string> Roles { get; set; } = new();
     public List<UserActivityItemDto> RecentActivity { get; set; } = new();
+    public int TotalGoals { get; set; }
+    public int CompletedGoals { get; set; }
+    public int TotalTasks { get; set; }
+    public int CompletedTasks { get; set; }
+    public DateTime? LastActiveAt { get; set; }
 }
 

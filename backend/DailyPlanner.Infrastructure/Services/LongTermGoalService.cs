@@ -4,6 +4,9 @@ using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace DailyPlanner.Infrastructure.Services;
 
@@ -12,14 +15,23 @@ public class LongTermGoalService : ILongTermGoalService
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly IUserActivityService _userActivityService;
+    private readonly IEmailSender _emailSender;
+    private readonly ILogger<LongTermGoalService> _logger;
 
     private static DateTime ToUtc(DateTime d) => d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
 
-    public LongTermGoalService(ApplicationDbContext context, IMapper mapper, IUserActivityService userActivityService)
+    public LongTermGoalService(
+        ApplicationDbContext context,
+        IMapper mapper,
+        IUserActivityService userActivityService,
+        IEmailSender emailSender,
+        ILogger<LongTermGoalService> logger)
     {
         _context = context;
         _mapper = mapper;
         _userActivityService = userActivityService;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<List<LongTermGoalDto>>> GetGoalsAsync(string userId, string? status, string? category, int page = 1, int pageSize = 10)
@@ -177,6 +189,11 @@ public class LongTermGoalService : ILongTermGoalService
         await RecalculateProgressAsync(goalId);
         await _context.SaveChangesAsync();
 
+        if (goal.Progress >= 100)
+        {
+            await MaybeCreateGoalCompletedNotificationAndEmailAsync(userId, goalId);
+        }
+
         var updatedGoal = await _context.LongTermGoals
             .Include(g => g.Milestones.OrderBy(m => m.CreatedAt))
             .Include(g => g.Tasks)
@@ -267,12 +284,22 @@ public class LongTermGoalService : ILongTermGoalService
             milestone.Description = request.Description;
         if (request.TargetDate.HasValue)
             milestone.TargetDate = ToUtc(request.TargetDate.Value);
+        var wasCompleted = milestone.IsCompleted;
         if (request.IsCompleted.HasValue)
+        {
             milestone.IsCompleted = request.IsCompleted.Value;
+            milestone.CompletedDate = request.IsCompleted.Value ? DateTime.UtcNow : null;
+        }
 
         milestone.UpdatedAt = DateTime.UtcNow;
         await RecalculateProgressAsync(goalId);
         await _context.SaveChangesAsync();
+
+        if (!wasCompleted && milestone.IsCompleted)
+        {
+            await CreateMilestoneCompletedNotificationAsync(userId, milestone);
+            await MaybeCreateGoalCompletedNotificationAndEmailAsync(userId, goalId);
+        }
 
         return new ApiResponse<GoalMilestoneDto>
         {
@@ -321,11 +348,18 @@ public class LongTermGoalService : ILongTermGoalService
             };
         }
 
+        var wasCompleted = milestone.IsCompleted;
         milestone.IsCompleted = !milestone.IsCompleted;
         milestone.CompletedDate = milestone.IsCompleted ? DateTime.UtcNow : null;
         milestone.UpdatedAt = DateTime.UtcNow;
         await RecalculateProgressAsync(goalId);
         await _context.SaveChangesAsync();
+
+        if (!wasCompleted && milestone.IsCompleted)
+        {
+            await CreateMilestoneCompletedNotificationAsync(userId, milestone);
+            await MaybeCreateGoalCompletedNotificationAndEmailAsync(userId, goalId);
+        }
 
         return new ApiResponse<GoalMilestoneDto>
         {
@@ -333,6 +367,136 @@ public class LongTermGoalService : ILongTermGoalService
             Message = "Milestone toggled successfully",
             Data = _mapper.Map<GoalMilestoneDto>(milestone)
         };
+    }
+
+    private async Task CreateMilestoneCompletedNotificationAsync(string userId, GoalMilestone milestone, CancellationToken ct = default)
+    {
+        // De-dupe: one notification per milestone completion
+        var already = await _context.Notifications
+            .AsNoTracking()
+            .AnyAsync(n => n.UserId == userId
+                           && n.Type == "GoalMilestoneCompleted"
+                           && n.ReferenceId == milestone.Id, ct);
+        if (already) return;
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            milestone = milestone.Title,
+            goal = milestone.Goal?.Title
+        });
+
+        _context.Notifications.Add(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Type = "GoalMilestoneCompleted",
+            Title = "Congratulations",
+            Message = payload,
+            Icon = "emoji_events",
+            IconColor = "text-emerald-600",
+            IsRead = false,
+            ReferenceId = milestone.Id
+        });
+
+        await _context.SaveChangesAsync(ct);
+    }
+
+    private sealed class NotificationSettingsPayload
+    {
+        [JsonPropertyName("emailGoalAchievements")]
+        public bool? EmailGoalAchievements { get; set; }
+    }
+
+    private sealed class SettingsRootPayload
+    {
+        [JsonPropertyName("notifications")]
+        public NotificationSettingsPayload? Notifications { get; set; }
+    }
+
+    private async Task MaybeCreateGoalCompletedNotificationAndEmailAsync(string userId, Guid goalId, CancellationToken ct = default)
+    {
+        var goal = await _context.LongTermGoals
+            .Include(g => g.Milestones)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Id == goalId && g.UserId == userId, ct);
+        if (goal == null) return;
+
+        // 100% means all milestones completed; avoid treating "no milestones" as complete.
+        if (goal.Milestones.Count == 0) return;
+        if (goal.Milestones.Any(m => !m.IsCompleted)) return;
+
+        var already = await _context.Notifications
+            .AsNoTracking()
+            .AnyAsync(n => n.UserId == userId
+                           && n.Type == "GoalCompleted"
+                           && n.ReferenceId == goalId, ct);
+        if (already) return;
+
+        var payload = JsonSerializer.Serialize(new { goal = goal.Title });
+
+        _context.Notifications.Add(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Type = "GoalCompleted",
+            Title = "Congratulations",
+            Message = payload,
+            Icon = "workspace_premium",
+            IconColor = "text-amber-600",
+            IsRead = false,
+            ReferenceId = goalId
+        });
+
+        await _context.SaveChangesAsync(ct);
+
+        try
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user?.EmailConfirmed != true || string.IsNullOrWhiteSpace(user.Email))
+                return;
+
+            var settings = await _context.UserSettings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+            var allowEmail = true;
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.Data))
+            {
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<SettingsRootPayload>(settings.Data);
+                    if (parsed?.Notifications?.EmailGoalAchievements.HasValue == true)
+                        allowEmail = parsed.Notifications.EmailGoalAchievements.Value;
+                }
+                catch
+                {
+                    // ignore bad settings payload; default to sending
+                }
+            }
+
+            if (!allowEmail) return;
+
+            var displayName = user.FullName ?? "User";
+            var subject = "Goal completed – MyPlanner";
+            var body = BuildGoalCompletedEmailBody(displayName, goal.Title);
+            await _emailSender.SendAsync(user.Email!, subject, body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send goal completed email for user {UserId} goal {GoalId}", userId, goalId);
+        }
+    }
+
+    private static string BuildGoalCompletedEmailBody(string displayName, string goalTitle)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"<p>Hi " + System.Net.WebUtility.HtmlEncode(displayName) + ",</p>");
+        sb.AppendLine("<p>Congratulations! You completed your goal:</p>");
+        sb.AppendLine("<p><strong>" + System.Net.WebUtility.HtmlEncode(goalTitle) + "</strong></p>");
+        sb.AppendLine("<p>— MyPlanner</p>");
+        return sb.ToString();
     }
 
     public async Task<ApiResponse<GoalTaskDto>> CreateGoalTaskAsync(string userId, Guid goalId, CreateGoalTaskRequest request)

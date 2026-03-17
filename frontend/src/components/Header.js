@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getAvatarFullUrl } from '../services/api';
+import { getAvatarFullUrl, notificationsAPI } from '../services/api';
 
 const Header = ({ 
   title, 
@@ -16,6 +16,41 @@ const Header = ({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
 
+  const getNotificationDisplay = (notification) => {
+    if (notification?.type === 'GoalMilestoneCompleted') {
+      try {
+        const payload = notification?.message ? JSON.parse(notification.message) : null;
+        const milestone = payload?.milestone ?? '';
+        const goal = payload?.goal ?? '';
+        return {
+          title: t('notifications.milestoneCompletedTitle'),
+          message: t('notifications.milestoneCompleted', { milestone, goal }),
+        };
+      } catch {
+        return {
+          title: t('notifications.milestoneCompletedTitle'),
+          message: notification.message,
+        };
+      }
+    }
+    if (notification?.type === 'GoalCompleted') {
+      try {
+        const payload = notification?.message ? JSON.parse(notification.message) : null;
+        const goal = payload?.goal ?? '';
+        return {
+          title: t('notifications.goalCompletedTitle'),
+          message: t('notifications.goalCompleted', { goal }),
+        };
+      } catch {
+        return {
+          title: t('notifications.goalCompletedTitle'),
+          message: notification.message,
+        };
+      }
+    }
+    return { title: notification.title, message: notification.message };
+  };
+
   const storedUser = (() => {
     try {
       return JSON.parse(localStorage.getItem('user') || '{}');
@@ -29,23 +64,38 @@ const Header = ({
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const handleMarkAllAsRead = () => {
-    if (onNotificationsChange) {
-      onNotificationsChange(notifications.map(notif => ({ ...notif, unread: false })));
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationsAPI.markAllAsRead();
+      if (onNotificationsChange) {
+        onNotificationsChange(notifications.map(notif => ({ ...notif, unread: false })));
+      }
+    } catch (_) {
+      // keep state on error
     }
   };
 
-  const handleDeleteAllNotifications = () => {
-    if (onNotificationsChange) {
-      onNotificationsChange([]);
+  const handleDeleteAllNotifications = async () => {
+    try {
+      await notificationsAPI.deleteAll();
+      if (onNotificationsChange) {
+        onNotificationsChange([]);
+      }
+    } catch (_) {
+      // keep state on error
     }
   };
 
-  const handleNotificationClick = (notificationId) => {
-    if (onNotificationsChange) {
-      onNotificationsChange(notifications.map(n => 
-        n.id === notificationId ? { ...n, unread: false } : n
-      ));
+  const handleNotificationClick = async (notificationId) => {
+    try {
+      await notificationsAPI.markAsRead(notificationId);
+      if (onNotificationsChange) {
+        onNotificationsChange(notifications.map(n =>
+          n.id === notificationId ? { ...n, unread: false } : n
+        ));
+      }
+    } catch (_) {
+      // keep state on error
     }
   };
 
@@ -118,6 +168,9 @@ const Header = ({
                       </div>
                     ) : (
                       notifications.map((notification) => (
+                        (() => {
+                          const display = getNotificationDisplay(notification);
+                          return (
                         <div
                           key={notification.id}
                           className={`relative flex gap-3 p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer border-b border-gray-50 dark:border-slate-700/50 ${notification.unread ? 'bg-blue-50/40 dark:bg-blue-900/20' : ''}`}
@@ -129,18 +182,20 @@ const Header = ({
                           <div className="flex-1 space-y-1">
                             <div className="flex justify-between items-start">
                               <p className={`text-sm leading-tight ${notification.unread ? 'font-semibold' : 'font-medium'} text-[#111418] dark:text-slate-200`}>
-                                {notification.title}
+                                {display.title}
                               </p>
                               {notification.unread && (
                                 <span className="size-2 bg-primary rounded-full mt-1"></span>
                               )}
                             </div>
                             <p className={`text-xs leading-relaxed ${notification.unread ? 'text-gray-600 dark:text-slate-400' : 'text-gray-500 dark:text-slate-500'} line-clamp-2`}>
-                              {notification.message}
+                              {display.message}
                             </p>
                             <p className="text-[11px] text-gray-400 dark:text-slate-500 font-medium pt-0.5">{notification.time}</p>
                           </div>
                         </div>
+                          );
+                        })()
                       ))
                     )}
                   </div>

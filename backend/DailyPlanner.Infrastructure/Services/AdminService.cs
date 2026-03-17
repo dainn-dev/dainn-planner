@@ -254,6 +254,17 @@ public class AdminService : IAdminService
             .ToListAsync();
         await ResolveActivityEntityTitlesAsync(recentActivities);
 
+        var totalGoals = await _context.LongTermGoals.CountAsync(g => g.UserId == userId);
+        var completedGoals = await _context.LongTermGoals.CountAsync(g => g.UserId == userId && g.Status == "Completed");
+        var totalTasks = await _context.DailyTasks.CountAsync(t => t.UserId == userId);
+        var completedTasks = await _context.DailyTasks.CountAsync(t => t.UserId == userId && t.IsCompleted);
+        var lastActivityAt = await _context.UserActivities
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => (DateTime?)a.CreatedAt)
+            .FirstOrDefaultAsync();
+        var lastActiveAt = lastActivityAt ?? user.UpdatedAt ?? user.CreatedAt;
+
         var userDto = new AdminUserDto
         {
             Id = user.Id,
@@ -268,7 +279,12 @@ public class AdminService : IAdminService
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt,
             Roles = roles.ToList(),
-            RecentActivity = recentActivities
+            RecentActivity = recentActivities,
+            TotalGoals = totalGoals,
+            CompletedGoals = completedGoals,
+            TotalTasks = totalTasks,
+            CompletedTasks = completedTasks,
+            LastActiveAt = lastActiveAt
         };
 
         return new ApiResponse<AdminUserDto>
