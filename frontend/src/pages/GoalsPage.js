@@ -8,6 +8,8 @@ import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
+import { getGoalTimeCompletionPercent } from '../utils/goalProgress';
+import { USER_SETTINGS_STORAGE_KEY } from '../services/api';
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -50,6 +52,8 @@ const mapGoalFromApi = (g, formatDateFn) => {
     title: g.title,
     category: g.category || '',
     dueDate,
+    targetDate: g.targetDate ?? null,
+    startDate: g.startDate ?? null,
     progress: typeof g.progress === 'number' ? Math.round(g.progress) : (g.progress ?? 0),
     icon: categoryToIcon[g.category] || 'flag',
     status: isCompleted ? 'completed' : 'active',
@@ -71,6 +75,19 @@ const mapNotificationFromApi = (n) => ({
 const LIST_FILTER_ALL = 'all';
 const LIST_FILTER_ACTIVE = 'active';
 const LIST_FILTER_COMPLETED = 'completed';
+
+/** Read plans.trackingMethod from user_settings: 'time' | 'tasks'. */
+const getPlansTrackingMethod = () => {
+  try {
+    const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+    if (!raw) return 'tasks';
+    const settings = JSON.parse(raw);
+    const value = settings?.plans?.trackingMethod ?? settings?.Plans?.trackingMethod ?? 'tasks';
+    return value === 'time' ? 'time' : 'tasks';
+  } catch {
+    return 'tasks';
+  }
+};
 
 const GoalsPage = () => {
   const { t } = useTranslation();
@@ -213,8 +230,13 @@ const GoalsPage = () => {
 
   const activeGoals = goals.filter(g => g.status === 'active').length;
   const completedGoals = goals.filter(g => g.status === 'completed').length;
+  const trackingMethod = getPlansTrackingMethod();
+  const getGoalDisplayProgress = (g) =>
+    trackingMethod === 'time'
+      ? getGoalTimeCompletionPercent(g.targetDate, g.startDate)
+      : g.progress;
   const averageProgress = goals.length > 0
-    ? Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length)
+    ? Math.round(goals.reduce((sum, g) => sum + getGoalDisplayProgress(g), 0) / goals.length)
     : 0;
 
   const filteredGoals =
@@ -388,6 +410,9 @@ const GoalsPage = () => {
                 <p className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium">{t('goals.avgProgress')}</p>
                 <div className="flex items-end gap-2">
                   <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{averageProgress}%</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-xs pb-0.5">
+                    {trackingMethod === 'time' ? t('daily.progressByTime') : t('daily.progressByTasks')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -476,18 +501,18 @@ const GoalsPage = () => {
                           <div className="flex flex-col sm:items-end gap-2 flex-1 w-full sm:w-auto min-w-0">
                             <div className="flex justify-between w-full sm:justify-end gap-2">
                               <span className="text-[10px] uppercase font-semibold text-zinc-400 dark:text-slate-500 tracking-wider">{t('goals.progress')}</span>
-                              <span className="text-[10px] font-bold text-zinc-900 dark:text-white">{goal.progress}%</span>
+                              <span className="text-[10px] font-bold text-zinc-900 dark:text-white">{Math.round(getGoalDisplayProgress(goal))}%</span>
                             </div>
                             <div className="w-full h-2 md:h-1.5 rounded-full bg-zinc-100 dark:bg-slate-700 overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-300 ${goal.progress >= 100 ? 'bg-emerald-500' : goal.progress >= 50 ? 'bg-blue-500' : 'bg-amber-500'
+                                className={`h-full rounded-full transition-all duration-300 ${getGoalDisplayProgress(goal) >= 100 ? 'bg-emerald-500' : getGoalDisplayProgress(goal) >= 50 ? 'bg-blue-500' : 'bg-amber-500'
                                   }`}
-                                style={{ width: `${Math.min(goal.progress, 100)}%` }}
+                                style={{ width: `${Math.min(getGoalDisplayProgress(goal), 100)}%` }}
                                 role="progressbar"
-                                aria-valuenow={goal.progress}
+                                aria-valuenow={Math.round(getGoalDisplayProgress(goal))}
                                 aria-valuemin={0}
                                 aria-valuemax={100}
-                                aria-label={t('goals.progressLabel', { percent: goal.progress })}
+                                aria-label={t('goals.progressLabel', { percent: Math.round(getGoalDisplayProgress(goal)) })}
                               />
                             </div>
                           </div>

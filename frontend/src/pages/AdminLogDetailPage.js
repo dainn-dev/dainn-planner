@@ -128,7 +128,7 @@ const AdminLogDetailPage = () => {
 
     load();
     return () => { cancelled = true; };
-  }, [fileName, navigate]);
+  }, [fileName, navigate, fileMeta?.lastWriteUtc, fileMeta?.sizeBytes]);
 
   useEffect(() => {
     if (!liveTailOn || !fileName || !logFile?.name) return;

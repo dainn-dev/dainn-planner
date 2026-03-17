@@ -22,6 +22,7 @@ public class ApplicationUser : IdentityUser
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<UserDevice> UserDevices { get; set; } = new List<UserDevice>();
     public UserSettings? UserSettings { get; set; }
+    public UserGoogleIntegration? GoogleIntegration { get; set; }
     public ICollection<UserActivity> UserActivities { get; set; } = new List<UserActivity>();
 }
 

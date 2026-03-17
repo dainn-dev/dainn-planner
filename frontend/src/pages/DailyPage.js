@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
-import { tasksAPI, notificationsAPI, eventsAPI } from '../services/api';
+import { tasksAPI, notificationsAPI, eventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatTime } from '../utils/dateFormat';
@@ -29,24 +29,31 @@ const mapEventForDaily = (e) => {
   };
 };
 
-// Recurrence keys for i18n
-const RECURRENCE_KEYS = { 0: 'daily.recurrenceNone', 1: 'daily.recurrenceDaily', 2: 'daily.recurrenceWeekly', 3: 'daily.recurrenceMonthly' };
 const formatDeadline = (dateVal) => {
   if (!dateVal) return null;
   const d = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
   if (Number.isNaN(d.getTime())) return null;
   return `${formatTime(d)} ${formatDate(d)}`;
 };
-const dateToDatetimeLocal = (dateVal) => {
-  if (!dateVal) return '';
-  const d = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
-  if (Number.isNaN(d.getTime())) return '';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${day}T${h}:${min}`;
+
+/** Read plans.trackingMethod from user_settings: 'time' | 'tasks'. */
+const getPlansTrackingMethod = () => {
+  try {
+    const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+    if (!raw) return 'tasks';
+    const settings = JSON.parse(raw);
+    const value = settings?.plans?.trackingMethod ?? settings?.Plans?.trackingMethod ?? 'tasks';
+    return value === 'time' ? 'time' : 'tasks';
+  } catch {
+    return 'tasks';
+  }
+};
+
+/** Today's progress by time: % of the day elapsed (0–100). */
+const getTodayTimeProgressPercent = (asOf = new Date()) => {
+  const minutesSinceMidnight = asOf.getHours() * 60 + asOf.getMinutes() + asOf.getSeconds() / 60;
+  const percent = (minutesSinceMidnight / (24 * 60)) * 100;
+  return Math.min(100, Math.max(0, Math.round(percent * 10) / 10));
 };
 const mapTaskFromApi = (t) => {
   const dateObj = t.date ? new Date(t.date) : null;
@@ -74,7 +81,6 @@ const DailyPage = () => {
   const { t } = useTranslation();
   const isAdmin = isStoredAdmin();
   const getPriorityLabel = (p) => (p === 2 ? t('daily.priorityHigh') : p === 1 ? t('daily.priorityMedium') : t('daily.priorityLow'));
-  const getRecurrenceLabel = (r) => t(RECURRENCE_KEYS[r] ?? 'daily.recurrenceNone');
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
   const [mainGoal, setMainGoal] = useState(null);
@@ -97,6 +103,7 @@ const DailyPage = () => {
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [taskIdInProgress, setTaskIdInProgress] = useState(null); // task id showing 3s progress before toggle
   const [toggleProgressPercent, setToggleProgressPercent] = useState(0); // 0..100 for inline progress bar
+  const [, setTimeProgressTick] = useState(0); // tick every minute to refresh time-based progress
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -133,69 +140,7 @@ const DailyPage = () => {
     }
   ]);
 
-  // Load tasks and main goal on mount and when pagination or filter changes
-  useEffect(() => {
-    loadData();
-  }, [taskPage, taskPageSize, taskStatusFilter, taskPriorityFilter, taskTagFilter, taskSortOrder]);
-
-  // When a task is in "progress" (user checked checkbox): animate bar for 3s then call toggle API and refresh
-  useEffect(() => {
-    if (taskIdInProgress == null) return;
-    const startProgress = requestAnimationFrame(() => setToggleProgressPercent(100));
-    const finishTimer = setTimeout(async () => {
-      try {
-        await tasksAPI.completeTask(taskIdInProgress);
-        await loadData();
-      } catch (err) {
-        console.error('Failed to toggle task:', err);
-      } finally {
-        setTaskIdInProgress(null);
-        setToggleProgressPercent(0);
-      }
-    }, 3000);
-    return () => {
-      cancelAnimationFrame(startProgress);
-      clearTimeout(finishTimer);
-    };
-  }, [taskIdInProgress]);
-
-  // Open Add Task modal with pre-fill when navigated from GoalDetailPage (from milestone)
-  useEffect(() => {
-    const state = location.state;
-    if (!state?.openAddTaskFromMilestone || !state?.milestone) return;
-    const { id, title, date, goalId } = state.milestone;
-    const dueDateLocal = date ? `${String(date).slice(0, 10)}T12:00` : '';
-
-    setAddTaskGoalContext({
-      goalMilestoneId: id || null,
-      goalId: goalId || null
-    });
-    setAddTaskReturnTo(state.returnTo || null);
-    setAddTaskInitialTask({
-      title: title || '',
-      date: dueDateLocal
-    });
-    setAddTaskModalOpen(true);
-    navigateTo(location.pathname, { replace: true, state: {} });
-  }, [location.state, location.pathname, navigateTo]);
-
-  // Open Add Task modal in edit mode when navigated from GoalDetailPage (edit task)
-  useEffect(() => {
-    const state = location.state;
-    const task = state?.editTask;
-    if (!task?.id) return;
-
-    setAddTaskGoalContext({
-      goalMilestoneId: task.goalMilestoneId ?? null,
-      goalId: task.goalId ?? null
-    });
-    setAddTaskReturnTo(state.returnTo || null);
-    setAddTaskInitialTask(task);
-    setAddTaskModalOpen(true);
-    navigateTo(location.pathname, { replace: true, state: {} });
-  }, [location.state, location.pathname, navigateTo]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
@@ -255,11 +200,81 @@ const DailyPage = () => {
     } catch (error) {
       console.error('Failed to load data:', error);
     }
-  };
+  }, [taskPage, taskPageSize, taskStatusFilter, taskPriorityFilter, taskTagFilter, taskSortOrder]);
+
+  // Load tasks and main goal on mount and when pagination or filter changes
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // When a task is in "progress" (user checked checkbox): animate bar for 3s then call toggle API and refresh
+  useEffect(() => {
+    if (taskIdInProgress == null) return;
+    const startProgress = requestAnimationFrame(() => setToggleProgressPercent(100));
+    const finishTimer = setTimeout(async () => {
+      try {
+        await tasksAPI.completeTask(taskIdInProgress);
+        await loadData();
+      } catch (err) {
+        console.error('Failed to toggle task:', err);
+      } finally {
+        setTaskIdInProgress(null);
+        setToggleProgressPercent(0);
+      }
+    }, 3000);
+    return () => {
+      cancelAnimationFrame(startProgress);
+      clearTimeout(finishTimer);
+    };
+  }, [taskIdInProgress, loadData]);
+
+  // Refresh every minute when showing time-based progress so % updates
+  useEffect(() => {
+    const id = setInterval(() => setTimeProgressTick((t) => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Open Add Task modal with pre-fill when navigated from GoalDetailPage (from milestone)
+  useEffect(() => {
+    const state = location.state;
+    if (!state?.openAddTaskFromMilestone || !state?.milestone) return;
+    const { id, title, date, goalId } = state.milestone;
+    const dueDateLocal = date ? `${String(date).slice(0, 10)}T12:00` : '';
+
+    setAddTaskGoalContext({
+      goalMilestoneId: id || null,
+      goalId: goalId || null
+    });
+    setAddTaskReturnTo(state.returnTo || null);
+    setAddTaskInitialTask({
+      title: title || '',
+      date: dueDateLocal
+    });
+    setAddTaskModalOpen(true);
+    navigateTo(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigateTo]);
+
+  // Open Add Task modal in edit mode when navigated from GoalDetailPage (edit task)
+  useEffect(() => {
+    const state = location.state;
+    const task = state?.editTask;
+    if (!task?.id) return;
+
+    setAddTaskGoalContext({
+      goalMilestoneId: task.goalMilestoneId ?? null,
+      goalId: task.goalId ?? null
+    });
+    setAddTaskReturnTo(state.returnTo || null);
+    setAddTaskInitialTask(task);
+    setAddTaskModalOpen(true);
+    navigateTo(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigateTo]);
 
   const totalTasks = taskTotalAll; // all tasks (isCompleted=true + isCompleted=false)
   const completedTasks = taskCompletedCount;
-  const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const trackingMethod = getPlansTrackingMethod();
+  const taskProgressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const progressPercentage = trackingMethod === 'time' ? getTodayTimeProgressPercent() : taskProgressPercent;
 
   const handleTaskCheckboxChange = (taskId) => {
     setTaskIdInProgress(taskId);
@@ -306,17 +321,6 @@ const DailyPage = () => {
       case 0:
       default:
         return 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300';
-    }
-  };
-
-  const getPriorityFlagClass = (priority) => {
-    switch (priority) {
-      case 'high':
-        return 'text-red-500 dark:text-red-400';
-      case 'medium':
-        return 'text-yellow-500 dark:text-yellow-400';
-      default:
-        return 'text-gray-400 dark:text-slate-500';
     }
   };
 
@@ -370,7 +374,9 @@ const DailyPage = () => {
                 </div>
                 <div className="flex items-end gap-2">
                   <p className="text-[#111418] dark:text-white text-3xl font-bold leading-tight">{progressPercentage}%</p>
-                  <p className="text-gray-500 dark:text-slate-400 text-xs pb-1">{t('daily.completed')}</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-xs pb-1">
+                    {trackingMethod === 'time' ? t('daily.progressByTime') : t('daily.progressByTasks')}
+                  </p>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-1.5 mt-2">
                   <div 

@@ -77,7 +77,7 @@ const AdminLogsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadLogs();
@@ -178,10 +178,6 @@ const AdminLogsPage = () => {
     } catch (err) {
       setError(err?.message || t('admin.downloadFail'));
     }
-  };
-
-  const handleDeleteLog = () => {
-    // Backend does not support delete; keep as no-op or show message
   };
 
   return (

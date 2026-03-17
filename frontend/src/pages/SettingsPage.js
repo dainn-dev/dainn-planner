@@ -7,7 +7,6 @@ import FormInput from '../components/FormInput';
 import FormSelect from '../components/FormSelect';
 import FormTextarea from '../components/FormTextarea';
 import Toggle from '../components/Toggle';
-import WarningMessage from '../components/WarningMessage';
 import {
   validateName,
   validateEmail,
@@ -24,11 +23,10 @@ import {
   INITIAL_PLANS_SETTINGS,
   INITIAL_NOTIFICATION_SETTINGS,
   INITIAL_SECURITY_SETTINGS,
-  INITIAL_LOGS_SETTINGS,
   SETTINGS_MENU_ITEMS,
   SETTINGS_ROUTES,
 } from '../constants/settings';
-import { userAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
+import { userAPI, notificationsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl, getGoogleCalendarAuthorizeUrl } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 
 const SettingsPage = () => {
@@ -55,9 +53,7 @@ const SettingsPage = () => {
   const [plansSettings, setPlansSettings] = useState(INITIAL_PLANS_SETTINGS);
   const [notificationSettings, setNotificationSettings] = useState(INITIAL_NOTIFICATION_SETTINGS);
   const [securitySettings, setSecuritySettings] = useState(INITIAL_SECURITY_SETTINGS);
-  const [logsSettings, setLogsSettings] = useState(INITIAL_LOGS_SETTINGS);
   const [profileErrors, setProfileErrors] = useState({});
-  const [warningMessage, setWarningMessage] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState(null);
@@ -67,8 +63,25 @@ const SettingsPage = () => {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [securityPasswordErrors, setSecurityPasswordErrors] = useState({ currentPassword: null, newPassword: null, confirmPassword: null });
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
-  // Hydrate settings state from a fetched or stored settings object (general, plans, notifications, logs, display options)
+  // After OAuth callback we land with ?google=connected; refetch settings and clear the param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('google') !== 'connected') return;
+    const run = async () => {
+      try {
+        const data = await userAPI.getSettings();
+        if (data && typeof data === 'object') applySettingsToState(data);
+      } catch (_) {
+        // ignore
+      }
+      window.history.replaceState(null, '', location.pathname || '/settings/profile');
+    };
+    run();
+  }, [location.search, location.pathname]);
+
+  // Hydrate settings state from a fetched or stored settings object (general, plans, notifications, display options)
   const applySettingsToState = (data) => {
     if (!data || typeof data !== 'object') return;
     if (data.general && typeof data.general === 'object') {
@@ -79,9 +92,6 @@ const SettingsPage = () => {
     }
     if (data.notifications && typeof data.notifications === 'object') {
       setNotificationSettings(prev => ({ ...prev, ...data.notifications }));
-    }
-    if (data.logs && typeof data.logs === 'object') {
-      setLogsSettings(prev => ({ ...prev, ...data.logs }));
     }
     const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
     const hasDisplay = displayKeys.some(k => data[k] !== undefined);
@@ -229,18 +239,9 @@ const SettingsPage = () => {
   const handlePlansSettingChange = createHandler(setPlansSettings);
   const handleNotificationSettingChange = createHandler(setNotificationSettings);
   const handleSecuritySettingChange = createHandler(setSecuritySettings);
-  const handleLogsSettingChange = createHandler(setLogsSettings);
-
-  const showWarning = (message) => {
-    const msg = message ?? t('settings.savedSuccess');
-    setWarningMessage(msg);
-    // Auto-hide after 3 seconds
-    setTimeout(() => setWarningMessage(''), 3000);
-  };
 
   const handleLanguageChange = (locale) => {
     handleGeneralSettingChange('language', locale);
-    setWarningMessage('');
   };
 
   const handleProfileBlur = (field, value) => {
@@ -301,10 +302,8 @@ const SettingsPage = () => {
         } catch (e) {
           // ignore
         }
-        showWarning(t('settings.savedSuccess'));
       } catch (error) {
         console.error('Failed to save profile:', error);
-        showWarning(error.message || t('settings.saveError'));
       }
       return;
     }
@@ -313,7 +312,6 @@ const SettingsPage = () => {
       const { currentPassword, newPassword, confirmPassword } = securitySettings;
       const anyFilled = currentPassword || newPassword || confirmPassword;
       if (!anyFilled) {
-        showWarning(t('settings.savedSuccess'));
         return;
       }
       const errors = {
@@ -335,9 +333,8 @@ const SettingsPage = () => {
           newPassword: '',
           confirmPassword: '',
         }));
-        showWarning(t('settings.passwordChangedSuccess', 'Password changed successfully'));
       } catch (error) {
-        showWarning(error.message || t('settings.passwordChangeError', 'Failed to change password'));
+        // Password change failed
       }
       return;
     }
@@ -347,7 +344,6 @@ const SettingsPage = () => {
         general: generalSettings,
         plans: plansSettings,
         notifications: notificationSettings,
-        logs: logsSettings,
       });
 
       const newLang = generalSettings.language;
@@ -357,11 +353,8 @@ const SettingsPage = () => {
           localStorage.setItem('app_lang', newLang);
         }
       }
-
-      showWarning(t('settings.savedSuccess'));
     } catch (error) {
       console.error('Failed to save settings:', error);
-      showWarning(error.message || 'Không thể lưu thay đổi.');
     }
   };
 
@@ -373,13 +366,11 @@ const SettingsPage = () => {
     setPlansSettings(INITIAL_PLANS_SETTINGS);
     setNotificationSettings(INITIAL_NOTIFICATION_SETTINGS);
     setSecuritySettings(INITIAL_SECURITY_SETTINGS);
-    setLogsSettings(INITIAL_LOGS_SETTINGS);
     setProfileErrors({});
     setSecurityPasswordErrors({ currentPassword: null, newPassword: null, confirmPassword: null });
   };
 
   const handleLogoutDevice = async (deviceId) => {
-    setWarningMessage('');
     try {
       await userAPI.revokeDevice(deviceId);
       setSecuritySettings(prev => ({
@@ -387,7 +378,7 @@ const SettingsPage = () => {
         devices: prev.devices.filter(device => device.id !== deviceId),
       }));
     } catch (err) {
-      setWarningMessage(err?.message || t('settings.revokeDeviceError', 'Failed to revoke device'));
+      // Revoke failed – no inline message
     }
   };
 
@@ -437,7 +428,6 @@ const SettingsPage = () => {
       await userAPI.enable2FA({ code: twoFactorCode.trim() });
       setSecuritySettings(prev => ({ ...prev, twoFactorAuth: true }));
       close2FAModal();
-      showWarning(t('settings.twoFactorEnabledSuccess'));
     } catch (err) {
       setTwoFactorError(err?.message || t('settings.twoFactorEnableError'));
     } finally {
@@ -456,7 +446,6 @@ const SettingsPage = () => {
       await userAPI.disable2FA({ code: twoFactorCode.trim() });
       setSecuritySettings(prev => ({ ...prev, twoFactorAuth: false }));
       close2FAModal();
-      showWarning(t('settings.twoFactorDisabledSuccess'));
     } catch (err) {
       setTwoFactorError(err?.message || t('settings.twoFactorDisableError'));
     } finally {
@@ -479,7 +468,6 @@ const SettingsPage = () => {
         return;
       }
       
-      setWarningMessage('');
       setSelectedImage(file);
       
       // Create preview
@@ -493,7 +481,6 @@ const SettingsPage = () => {
 
   const handleUploadImage = async () => {
     if (!selectedImage) return;
-    setWarningMessage('');
     setUploadingAvatar(true);
     try {
       const url = await userAPI.uploadAvatar(selectedImage);
@@ -506,13 +493,11 @@ const SettingsPage = () => {
           localStorage.setItem('user', JSON.stringify(u));
         } catch (e) { /* ignore */ }
       }
-      showWarning(t('settings.savedSuccess'));
       setUploadImageModalOpen(false);
       setSelectedImage(null);
       setImagePreview(null);
     } catch (error) {
       console.error('Avatar upload failed:', error);
-      showWarning(error.message || t('settings.uploadError'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -557,12 +542,11 @@ const SettingsPage = () => {
         {/* Mobile Navigation - horizontal scrollable nav bar on mobile only */}
         <div className="md:hidden flex border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-x-auto overflow-y-hidden shrink-0">
           <nav className="flex flex-nowrap items-stretch gap-0 px-2 min-w-min">
-            {SETTINGS_MENU_ITEMS.filter(item => item.id !== 'logs' || isAdmin).map((item) => {
+            {SETTINGS_MENU_ITEMS.map((item) => {
               const route = item.id === 'general' ? '/settings/general' :
                   item.id === 'plans' ? '/settings/goals' :
                   item.id === 'notifications' ? '/settings/notification' :
                   item.id === 'security' ? '/settings/security' :
-                  item.id === 'logs' ? '/settings/logs' :
                 '/settings';
               const isActive = activeTab === item.id;
               return (
@@ -588,12 +572,11 @@ const SettingsPage = () => {
           {/* Desktop Sidebar Navigation */}
           <aside className="hidden md:flex w-64 shrink-0 flex-col gap-8 bg-transparent">
             <nav className="flex flex-col gap-1.5">
-              {SETTINGS_MENU_ITEMS.filter(item => item.id !== 'logs' || isAdmin).map((item) => {
+              {SETTINGS_MENU_ITEMS.map((item) => {
                 const route = item.id === 'general' ? '/settings/general' :
                     item.id === 'plans' ? '/settings/goals' :
                     item.id === 'notifications' ? '/settings/notification' :
                     item.id === 'security' ? '/settings/security' :
-                    item.id === 'logs' ? '/settings/logs' :
                   '/settings';
                 return (
                   <Link
@@ -616,14 +599,6 @@ const SettingsPage = () => {
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
-            {warningMessage && (
-              <div className="mb-4">
-                <WarningMessage
-                  message={warningMessage}
-                  onClose={() => setWarningMessage('')}
-                />
-              </div>
-            )}
             {activeTab === 'profile' && (
               <div className="flex flex-col gap-10">
                 <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
@@ -638,10 +613,7 @@ const SettingsPage = () => {
                   <button
                     type="button"
                     className="relative group cursor-pointer"
-                    onClick={() => {
-                      setWarningMessage('');
-                      setUploadImageModalOpen(true);
-                    }}
+                    onClick={() => setUploadImageModalOpen(true)}
                     aria-label={t('settings.largeAvatarPreview')}
                   >
                     <div
@@ -702,16 +674,20 @@ const SettingsPage = () => {
                           required
                           error={profileErrors.email}
                     />
-                    <FormInput
-                          id="job"
-                      label={t('settings.job')}
-                          type="text"
-                          value={profileForm.job}
-                          onChange={(e) => handleProfileChange('job', e.target.value)}
-                          onBlur={(e) => handleProfileBlur('job', e.target.value)}
-                      placeholder={t('settings.jobPlaceholder')}
-                          error={profileErrors.job}
-                    />
+                    <div className="opacity-60 pointer-events-none">
+                      <FormInput
+                        id="job"
+                        label={t('settings.job')}
+                        type="text"
+                        value={profileForm.job}
+                        onChange={(e) => handleProfileChange('job', e.target.value)}
+                        onBlur={(e) => handleProfileBlur('job', e.target.value)}
+                        placeholder={t('settings.jobPlaceholder')}
+                        error={profileErrors.job}
+                        disabled
+                        readOnly
+                      />
+                    </div>
                     <FormSelect
                           id="location"
                       label={t('settings.location')}
@@ -724,17 +700,21 @@ const SettingsPage = () => {
                       ]}
                     />
                       </div>
-                  <FormTextarea
+                  <div className="opacity-60 pointer-events-none">
+                    <FormTextarea
                       id="bio"
-                    label={t('settings.bio')}
+                      label={t('settings.bio')}
                       value={profileForm.bio}
                       onChange={(e) => handleProfileChange('bio', e.target.value)}
                       onBlur={(e) => handleProfileBlur('bio', e.target.value)}
-                    placeholder={t('settings.bioPlaceholder')}
-                    rows={4}
+                      placeholder={t('settings.bioPlaceholder')}
+                      rows={4}
                       maxLength={150}
                       error={profileErrors.bio}
+                      disabled
+                      readOnly
                     />
+                  </div>
                 </div>
 
                 {/* Display Options */}
@@ -777,13 +757,22 @@ const SettingsPage = () => {
                         </button>
                       </div>
                     </div>
-                    <Toggle
-                      id="publicProfile"
-                      label={t('settings.publicProfile')}
-                      description={t('settings.publicProfileDesc')}
-                          checked={settings.publicProfile}
-                          onChange={(e) => handleSettingChange('publicProfile', e.target.checked)}
+                    <div className="flex items-center justify-between opacity-60 pointer-events-none">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.publicProfile')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.publicProfileDesc')}</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-not-allowed">
+                        <input
+                          className="sr-only peer"
+                          type="checkbox"
+                          checked={false}
+                          disabled
+                          readOnly
                         />
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5"></div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -1054,19 +1043,42 @@ const SettingsPage = () => {
                         </div>
                       </div>
                       {plansSettings.googleCalendarConnected ? (
-                        <button className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-transparent">
-                          {t('settings.connected')}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">{t('settings.connected')}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setDisconnectingGoogle(true);
+                              try {
+                                await integrationsAPI.disconnectGoogleCalendar();
+                                const data = await userAPI.getSettings();
+                                if (data?.plans) setPlansSettings(prev => ({ ...prev, ...data.plans }));
+                              } catch (_) {
+                                // ignore
+                              } finally {
+                                setDisconnectingGoogle(false);
+                              }
+                            }}
+                            disabled={disconnectingGoogle}
+                            className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+                          >
+                            {t('settings.disconnect')}
+                          </button>
+                        </div>
                       ) : (
                         <button
-                          onClick={() => handlePlansSettingChange('googleCalendarConnected', true)}
+                          type="button"
+                          onClick={() => { window.location.href = getGoogleCalendarAuthorizeUrl(); }}
                           className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
                         >
                           {t('settings.connect')}
                         </button>
                       )}
                     </div>
-                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex items-center justify-between hover:border-zinc-300 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-800">
+                    {plansSettings.googleCalendarConnected && (
+                      <p className="text-xs text-secondary dark:text-slate-400 col-span-full">{t('settings.googleCalendarConnected')}</p>
+                    )}
+                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex items-center justify-between bg-white dark:bg-slate-800 opacity-60 pointer-events-none">
                       <div className="flex items-center gap-3">
                         <div className="size-10 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 dark:text-red-400">
                           <span className="material-symbols-outlined">check_circle</span>
@@ -1077,13 +1089,14 @@ const SettingsPage = () => {
                         </div>
                       </div>
                       {plansSettings.todoistConnected ? (
-                        <button className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-transparent">
+                        <button type="button" disabled className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-transparent cursor-not-allowed">
                           {t('settings.connected')}
                         </button>
                       ) : (
                         <button
-                          onClick={() => handlePlansSettingChange('todoistConnected', true)}
-                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
+                          type="button"
+                          disabled
+                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg cursor-not-allowed"
                         >
                           {t('settings.connect')}
                         </button>
@@ -1117,9 +1130,9 @@ const SettingsPage = () => {
             {activeTab === 'notifications' && (
               <div className="flex flex-col gap-10">
                 <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
-                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">Cài đặt thông báo</h1>
+                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.notificationsTitle')}</h1>
                   <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
-                    Quản lý cách bạn nhận thông báo và cập nhật từ MyPlanner.
+                    {t('settings.notificationsSubtitle')}
                   </p>
                 </div>
 
@@ -1127,13 +1140,13 @@ const SettingsPage = () => {
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-zinc-900 dark:text-white">mail</span>
-                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Thông báo qua Email</h3>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.emailNotifications')}</h3>
                   </div>
                   <div className="bg-white dark:bg-slate-800 rounded-lg border border-border-light dark:border-slate-700 shadow-sm p-6 flex flex-col gap-6">
                     <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Tổng kết tuần</span>
-                        <span className="text-sm text-secondary dark:text-slate-400">Nhận email tóm tắt hiệu suất làm việc mỗi tuần.</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.weeklySummary')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.weeklySummaryDesc')}</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1147,8 +1160,8 @@ const SettingsPage = () => {
                     </div>
                     <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Nhắc nhở công việc</span>
-                        <span className="text-sm text-secondary dark:text-slate-400">Nhận email khi có công việc sắp đến hạn hoặc quá hạn.</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.taskReminders')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.taskRemindersDesc')}</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1160,19 +1173,20 @@ const SettingsPage = () => {
                         <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between opacity-60 pointer-events-none">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Khuyến mãi & Tin tức</span>
-                        <span className="text-sm text-secondary dark:text-slate-400">Thông tin về các tính năng mới và mẹo sử dụng.</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.promotionsNews')}</span>
+                        <span className="text-sm text-secondary dark:text-slate-400">{t('settings.promotionsDesc')}</span>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-not-allowed">
                         <input
                           className="sr-only peer"
                           type="checkbox"
-                          checked={notificationSettings.emailPromotions}
-                          onChange={(e) => handleNotificationSettingChange('emailPromotions', e.target.checked)}
+                          checked={false}
+                          disabled
+                          readOnly
                         />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5"></div>
                       </label>
                     </div>
                   </div>
@@ -1185,19 +1199,20 @@ const SettingsPage = () => {
                     <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.inAppNotifications')}</h3>
                   </div>
                   <div className="bg-white dark:bg-slate-800 rounded-lg border border-border-light dark:border-slate-700 shadow-sm p-6 flex flex-col gap-6">
-                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700 opacity-60 pointer-events-none">
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.newActivity')}</span>
                         <span className="text-sm text-secondary dark:text-slate-400">{t('settings.newActivityDesc')}</span>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-not-allowed">
                         <input
                           className="sr-only peer"
                           type="checkbox"
-                          checked={notificationSettings.inAppNewActivities}
-                          onChange={(e) => handleNotificationSettingChange('inAppNewActivities', e.target.checked)}
+                          checked={false}
+                          disabled
+                          readOnly
                         />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
+                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5"></div>
                       </label>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1222,7 +1237,6 @@ const SettingsPage = () => {
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={() => {
-                      setWarningMessage('');
                       setNotificationSettings({
                         emailWeeklySummary: true,
                         emailTaskReminders: true,
@@ -1436,269 +1450,8 @@ const SettingsPage = () => {
               </div>
             )}
 
-            {/* Logs Settings Tab */}
-            {activeTab === 'logs' && (
-              <div className="flex flex-col gap-10">
-                <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
-                  <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">{t('settings.logsTitle')}</h1>
-                  <p className="text-secondary dark:text-slate-400 text-sm font-normal leading-relaxed max-w-lg">
-                    {t('settings.logsSubtitle')}
-                  </p>
-                </div>
-
-                {/* Log Level Section */}
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.logLevel')}</h3>
-                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.logLevelHint')}</p>
-                  </div>
-                  <div className="max-w-md">
-                    <FormSelect
-                      label={t('settings.logLevel')}
-                      value={logsSettings.logLevel}
-                      onChange={(e) => handleLogsSettingChange('logLevel', e.target.value)}
-                      options={[
-                        { value: 'debug', label: t('settings.logLevelDebug') },
-                        { value: 'info', label: t('settings.logLevelInfo') },
-                        { value: 'warn', label: t('settings.logLevelWarn') },
-                        { value: 'error', label: t('settings.logLevelError') },
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
-
-                {/* Log Retention Section */}
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.logRetention')}</h3>
-                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.logRetentionHint')}</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
-                    <div>
-                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="log-retention">
-                        {t('settings.retentionDays')}
-                      </label>
-                      <input
-                        className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500"
-                        id="log-retention"
-                        type="number"
-                        min="1"
-                        max="365"
-                        value={logsSettings.logRetentionDays}
-                        onChange={(e) => handleLogsSettingChange('logRetentionDays', e.target.value)}
-                      />
-                      <p className="text-xs text-secondary dark:text-slate-500 mt-1">{t('settings.retentionHint')}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="max-log-size">
-                        {t('settings.maxFileSize')}
-                      </label>
-                      <input
-                        className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500"
-                        id="max-log-size"
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={logsSettings.maxLogFileSize}
-                        onChange={(e) => handleLogsSettingChange('maxLogFileSize', e.target.value)}
-                      />
-                      <p className="text-xs text-secondary dark:text-slate-500 mt-1">{t('settings.fileSizeHint')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
-
-                {/* Log Types Section */}
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.logTypes')}</h3>
-                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.logTypesHint')}</p>
-                  </div>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
-                      <div>
-                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.activityLogs')}</h4>
-                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.activityLogsDesc')}</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input
-                          className="sr-only peer"
-                          type="checkbox"
-                          checked={logsSettings.enableActivityLogs}
-                          onChange={(e) => handleLogsSettingChange('enableActivityLogs', e.target.checked)}
-                        />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
-                      <div>
-                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.errorLogs')}</h4>
-                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.errorLogsDesc')}</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input
-                          className="sr-only peer"
-                          type="checkbox"
-                          checked={logsSettings.enableErrorLogs}
-                          onChange={(e) => handleLogsSettingChange('enableErrorLogs', e.target.checked)}
-                        />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
-                      <div>
-                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.accessLogs')}</h4>
-                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.accessLogsDesc')}</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input
-                          className="sr-only peer"
-                          type="checkbox"
-                          checked={logsSettings.enableAccessLogs}
-                          onChange={(e) => handleLogsSettingChange('enableAccessLogs', e.target.checked)}
-                        />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
-
-                {/* Export Settings Section */}
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.exportLogs')}</h3>
-                    <p className="text-sm text-secondary dark:text-slate-400 mt-1">{t('settings.exportLogsHint')}</p>
-                  </div>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
-                      <div>
-                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.autoExport')}</h4>
-                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.autoExportDesc')}</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input
-                          className="sr-only peer"
-                          type="checkbox"
-                          checked={logsSettings.autoExportLogs}
-                          onChange={(e) => handleLogsSettingChange('autoExportLogs', e.target.checked)}
-                        />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                    {logsSettings.autoExportLogs && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl pl-4">
-                        <div>
-                          <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="export-frequency">
-                            {t('settings.exportFrequency')}
-                          </label>
-                          <FormSelect
-                            value={logsSettings.exportFrequency}
-                            onChange={(e) => handleLogsSettingChange('exportFrequency', e.target.value)}
-                            options={[
-                              { value: 'daily', label: t('settings.daily') },
-                              { value: 'weekly', label: t('settings.weekly') },
-                              { value: 'monthly', label: t('settings.monthly') },
-                            ]}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-zinc-900 mb-2 block" htmlFor="log-format">
-                            {t('settings.format')}
-                          </label>
-                          <FormSelect
-                            value={logsSettings.logFormat}
-                            onChange={(e) => handleLogsSettingChange('logFormat', e.target.value)}
-                            options={[
-                              { value: 'json', label: t('settings.json') },
-                              { value: 'csv', label: t('settings.csv') },
-                              { value: 'txt', label: t('settings.txt') },
-                            ]}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
-                      <div>
-                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.sendLogsEmail')}</h4>
-                        <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.sendLogsEmailDesc')}</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input
-                          className="sr-only peer"
-                          type="checkbox"
-                          checked={logsSettings.sendLogsToEmail}
-                          onChange={(e) => handleLogsSettingChange('sendLogsToEmail', e.target.checked)}
-                        />
-                        <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                    {logsSettings.sendLogsToEmail && (
-                      <div className="max-w-md pl-4">
-                        <label className="text-sm font-medium text-zinc-900 dark:text-slate-200 mb-2 block" htmlFor="email-logs">
-                          {t('settings.emailAddress')}
-                        </label>
-                        <input
-                          className="w-full bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-primary focus:border-transparent transition-all placeholder-zinc-400 dark:placeholder-slate-500"
-                          id="email-logs"
-                          type="email"
-                          placeholder="email@example.com"
-                          value={logsSettings.emailForLogs}
-                          onChange={(e) => handleLogsSettingChange('emailForLogs', e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>
-
-                {/* Compression Section */}
-                <div className="flex flex-col gap-6">
-                  <div className="flex items-start md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg">
-                    <div>
-                      <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.compressOldLogs')}</h4>
-                      <p className="text-xs text-secondary dark:text-slate-400 mt-1">{t('settings.compressOldLogsDesc')}</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                      <input
-                        className="sr-only peer"
-                        type="checkbox"
-                        checked={logsSettings.compressOldLogs}
-                        onChange={(e) => handleLogsSettingChange('compressOldLogs', e.target.checked)}
-                      />
-                      <div className="w-10 h-6 bg-zinc-200 dark:bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 dark:after:border-slate-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-primary"></div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-4 border-t border-border-light dark:border-slate-700">
-                  <button
-                    onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
-                  >
-                    {t('settings.cancel')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSave();
-                      console.log('Saving logs settings:', logsSettings);
-                    }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
-                  >
-                    {t('settings.saveChanges')}
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Other tabs content */}
-            {activeTab !== 'profile' && activeTab !== 'general' && activeTab !== 'plans' && activeTab !== 'notifications' && activeTab !== 'security' && activeTab !== 'logs' && (
+            {activeTab !== 'profile' && activeTab !== 'general' && activeTab !== 'plans' && activeTab !== 'notifications' && activeTab !== 'security' && (
               <div className="flex flex-col gap-10">
                 <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
                   <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">

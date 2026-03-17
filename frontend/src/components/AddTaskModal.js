@@ -4,6 +4,8 @@ import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI } from '../services/api';
 import { DefaultTemplate } from './lexkit/DefaultTemplate';
 
+const USER_SETTINGS_STORAGE_KEY = 'user_settings';
+
 const dateToDatetimeLocal = (dateVal) => {
   if (!dateVal) return '';
   const d = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
@@ -14,6 +16,27 @@ const dateToDatetimeLocal = (dateVal) => {
   const h = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${y}-${m}-${day}T${h}:${min}`;
+};
+
+/** Get default duration in minutes from user_settings.plans.defaultDuration (e.g. "30 phút" -> 30). */
+const getDefaultDurationMinutes = () => {
+  try {
+    const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+    if (!raw) return 30;
+    const settings = JSON.parse(raw);
+    const value = settings?.plans?.defaultDuration ?? settings?.Plans?.defaultDuration ?? '';
+    const match = String(value).match(/\d+/);
+    const minutes = match ? parseInt(match[0], 10) : 30;
+    return Number.isNaN(minutes) || minutes <= 0 ? 30 : Math.min(120, minutes);
+  } catch {
+    return 30;
+  }
+};
+
+/** Return current time + minutes in datetime-local string. */
+const getDueDateNowPlusMinutes = (minutes) => {
+  const d = new Date(Date.now() + minutes * 60 * 1000);
+  return dateToDatetimeLocal(d);
 };
 
 const getPriorityFlagClass = (priority) => {
@@ -81,13 +104,17 @@ const AddTaskModal = ({
       // Create new task (optionally prefilled from milestone)
       const prefilledName = initialTask?.title || initialTask?.name || '';
       const prefilledDate = initialTask?.dueDate || initialTask?.date || '';
+      const defaultMinutes = getDefaultDurationMinutes();
+      const dueDate = prefilledDate
+        ? (dateToDatetimeLocal(prefilledDate) || getDueDateNowPlusMinutes(defaultMinutes))
+        : getDueDateNowPlusMinutes(defaultMinutes);
       setEditingTaskId(null);
       setFormGoalMilestoneId(goalContext?.goalMilestoneId ?? null);
       setFormGoalId(goalContext?.goalId ?? null);
       setTaskForm({
         name: prefilledName,
         description: initialTask?.description ?? '',
-        dueDate: prefilledDate,
+        dueDate,
         reminderTime: initialTask?.reminderTime ?? '',
         repeat: 'none',
         priority: 'low',

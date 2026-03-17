@@ -11,5 +11,9 @@ public class CalendarEventDto
     public string? Color { get; set; }
     public bool IsAllDay { get; set; }
     public DateTime CreatedAt { get; set; }
+    /// <summary>Optional source identifier, e.g. "Google" for Google Calendar events.</summary>
+    public string? Source { get; set; }
+    /// <summary>External id from the source (e.g. Google event id). Used as stable key when Source is set.</summary>
+    public string? ExternalId { get; set; }
 }
 

@@ -7,7 +7,6 @@ import SmartScheduling from '../components/SmartScheduling';
 import GoalBreakdown from '../components/GoalBreakdown';
 import FocusMode from '../components/FocusMode';
 import AdditionalFeatures from '../components/AdditionalFeatures';
-import CTA from '../components/CTA';
 import Footer from '../components/Footer';
 
 // Optional: set REACT_APP_DEMO_VIDEO_URL to a YouTube embed URL (e.g. https://www.youtube.com/embed/VIDEO_ID)

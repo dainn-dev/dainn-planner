@@ -3,6 +3,7 @@ using System;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DailyPlanner.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317120000_AddUserStatistics")]
+    partial class AddUserStatistics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -654,35 +657,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.ToTable("UserStatistics");
                 });
 
-            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserGoogleIntegration", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AccessToken")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("UserGoogleIntegrations");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -973,17 +947,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserGoogleIntegration", b =>
-                {
-                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
-                        .WithOne("GoogleIntegration")
-                        .HasForeignKey("DailyPlanner.Domain.Entities.UserGoogleIntegration", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1054,8 +1017,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("UserDevices");
 
                     b.Navigation("UserSettings");
-
-                    b.Navigation("GoogleIntegration");
                 });
 
             modelBuilder.Entity("DailyPlanner.Domain.Entities.LongTermGoal", b =>

@@ -209,7 +209,7 @@ const GoalDetailPage = () => {
     };
     load();
     return () => { cancelled = true; };
-  }, [id, navigate]);
+  }, [id, navigate, i18n.language, loadGoalTasks]);
 
   const handleEdit = () => {
     setSaveError(null);

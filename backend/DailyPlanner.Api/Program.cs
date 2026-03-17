@@ -128,6 +128,11 @@ builder.Services.AddCors(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Google Calendar OAuth
+builder.Services.AddMemoryCache();
+builder.Services.Configure<DailyPlanner.Application.Options.GoogleCalendarOptions>(
+    builder.Configuration.GetSection(DailyPlanner.Application.Options.GoogleCalendarOptions.SectionName));
+
 // Admin logs (file-based, uses ContentRootPath)
 builder.Services.AddScoped<DailyPlanner.Application.Interfaces.ILogsService, DailyPlanner.Infrastructure.Services.LogsService>();
 builder.Services.AddScoped<DailyPlanner.Infrastructure.Services.LogStreamService>();
@@ -143,6 +148,8 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 builder.Services.AddScoped<RecurringTaskRenewalJob>();
 builder.Services.AddScoped<OldDailyTaskCleanupJob>();
+builder.Services.AddScoped<WeeklySummaryEmailJob>();
+builder.Services.AddScoped<EmailTaskReminderJob>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
@@ -297,6 +304,14 @@ RecurringJob.AddOrUpdate<TaskReminderJob>(
     "task-reminders",
     j => j.ExecuteAsync(CancellationToken.None),
     "* * * * *"); // every minute: send in-app notification at exact reminder time (hours and minutes)
+RecurringJob.AddOrUpdate<WeeklySummaryEmailJob>(
+    "email-weekly-summary",
+    j => j.ExecuteAsync(CancellationToken.None),
+    "0 9 * * 1"); // Monday 09:00 UTC: record stats and send weekly performance summary to users with emailWeeklySummary enabled
+RecurringJob.AddOrUpdate<EmailTaskReminderJob>(
+    "email-task-reminders",
+    j => j.ExecuteAsync(CancellationToken.None),
+    "* * * * *"); // every minute: send email when task ReminderTime is reached for users with emailTaskReminders enabled
 
 // Ensure database is created, roles exist, and seed data
 using (var scope = app.Services.CreateScope())

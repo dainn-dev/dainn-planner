@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IDailyTaskService, DailyTaskService>();
         services.AddScoped<ILongTermGoalService, LongTermGoalService>();
         services.AddScoped<ICalendarEventService, CalendarEventService>();
+        services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IUserActivityService, UserActivityService>();

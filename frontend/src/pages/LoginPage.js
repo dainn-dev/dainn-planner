@@ -5,9 +5,8 @@ import PublicHeader from '../components/PublicHeader';
 import PasswordInput from '../components/PasswordInput';
 import ErrorMessage from '../components/ErrorMessage';
 import { validateEmail, validatePassword } from '../utils/formValidation';
-import { authAPI, userAPI } from '../services/api';
+import { authAPI, userAPI, getGoogleLoginAuthorizeUrl } from '../services/api';
 
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
 const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID || '';
 
 const LoginPage = () => {
@@ -22,54 +21,46 @@ const LoginPage = () => {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
-  const googleTokenClientRef = useRef(null);
-  const pendingGoogleCallbackRef = useRef(null);
-  const googleFallbackTimerRef = useRef(null);
 
-  // Redirect if already logged in
+  // Handle return from Google OAuth (login with calendar): ?token=JWT
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) return;
+    const run = async () => {
+      try {
+        localStorage.setItem('token', token);
+        const profile = await userAPI.getProfile();
+        const user = profile?.id ? profile : (profile?.data ?? profile);
+        if (user?.id) localStorage.setItem('user', JSON.stringify(user));
+        userAPI.getSettings().catch(() => {});
+        window.history.replaceState(null, '', window.location.pathname || '/login');
+        const role = user?.role ?? (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').role; } catch { return null; } })();
+        if (role === 'Admin') navigate('/admin/dashboard', { replace: true });
+        else navigate('/daily', { replace: true });
+      } catch (_) {
+        window.history.replaceState(null, '', window.location.pathname || '/login');
+      }
+    };
+    run();
+  }, [navigate]);
+
+  // Redirect if already logged in (and no token in URL)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('token')) return;
     const token = localStorage.getItem('token');
     if (token) {
       try {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : null;
-        
-        if (user && user.role === 'Admin') {
-          navigate('/admin/dashboard', { replace: true });
-        } else {
-          navigate('/daily', { replace: true });
-        }
+        if (user && user.role === 'Admin') navigate('/admin/dashboard', { replace: true });
+        else navigate('/daily', { replace: true });
       } catch (error) {
         navigate('/daily', { replace: true });
       }
     }
   }, [navigate]);
-
-  // Load Google Identity Services and init token client
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || typeof window === 'undefined') return;
-    const initClient = () => {
-      if (!window.google?.accounts?.oauth2) return;
-      googleTokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-        callback: (res) => {
-          const fn = pendingGoogleCallbackRef.current;
-          if (fn && res?.access_token) fn(res.access_token);
-        },
-      });
-    };
-    if (window.google?.accounts?.oauth2) {
-      initClient();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.onload = initClient;
-    document.head.appendChild(script);
-    return () => {};
-  }, []);
 
   // Load Facebook SDK
   useEffect(() => {
@@ -109,44 +100,8 @@ const LoginPage = () => {
   };
 
   const handleGoogleClick = () => {
-    if (!GOOGLE_CLIENT_ID) {
-      setErrors((prev) => ({ ...prev, submit: t('auth.socialNotConfigured') }));
-      return;
-    }
-    const client = googleTokenClientRef.current;
-    if (!client) {
-      setErrors((prev) => ({ ...prev, submit: t('auth.socialNotReady') }));
-      return;
-    }
-    setErrors((prev => ({ ...prev, submit: null })));
-    setIsSocialLoading(true);
-    pendingGoogleCallbackRef.current = async (accessToken) => {
-      if (googleFallbackTimerRef.current) {
-        clearTimeout(googleFallbackTimerRef.current);
-        googleFallbackTimerRef.current = null;
-      }
-      try {
-        const response = await authAPI.socialLogin('Google', accessToken);
-        if (response?.token || response?.user) {
-          redirectAfterSocialLogin(response);
-        } else {
-          setErrors((prev) => ({ ...prev, submit: response?.message || t('auth.loginFail') }));
-        }
-      } catch (err) {
-        setErrors((prev) => ({ ...prev, submit: err?.message || t('auth.loginFail') }));
-      } finally {
-        setIsSocialLoading(false);
-        pendingGoogleCallbackRef.current = null;
-      }
-    };
-    client.requestAccessToken();
-    googleFallbackTimerRef.current = setTimeout(() => {
-      googleFallbackTimerRef.current = null;
-      if (pendingGoogleCallbackRef.current) {
-        pendingGoogleCallbackRef.current = null;
-        setIsSocialLoading(false);
-      }
-    }, 90000);
+    setErrors((prev) => ({ ...prev, submit: null }));
+    window.location.href = getGoogleLoginAuthorizeUrl();
   };
 
   const handleFacebookClick = () => {

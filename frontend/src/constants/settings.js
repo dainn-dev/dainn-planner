@@ -27,7 +27,7 @@ export const INITIAL_PLANS_SETTINGS = {
   trackingMethod: 'tasks',
   goalVision: 'Trở thành một chuyên gia thiết kế sản phẩm và đạt được sự cân bằng giữa công việc và cuộc sống.',
   googleCalendarConnected: false,
-  todoistConnected: true,
+  todoistConnected: false,
 };
 
 export const INITIAL_NOTIFICATION_SETTINGS = {
@@ -48,21 +48,6 @@ export const INITIAL_SECURITY_SETTINGS = {
   devices: [],
 };
 
-export const INITIAL_LOGS_SETTINGS = {
-  logLevel: 'info',
-  logRetentionDays: '30',
-  enableActivityLogs: true,
-  enableErrorLogs: true,
-  enableAccessLogs: false,
-  autoExportLogs: false,
-  exportFrequency: 'weekly',
-  logFormat: 'json',
-  maxLogFileSize: '10',
-  compressOldLogs: true,
-  sendLogsToEmail: false,
-  emailForLogs: '',
-};
-
 // Settings menu items
 export const SETTINGS_MENU_ITEMS = [
   { id: 'profile', label: 'Hồ sơ', icon: 'person' },
@@ -70,7 +55,6 @@ export const SETTINGS_MENU_ITEMS = [
   { id: 'plans', label: 'Kế hoạch & Mục tiêu', icon: 'calendar_month' },
   { id: 'notifications', label: 'Thông báo', icon: 'notifications' },
   { id: 'security', label: 'Bảo mật', icon: 'lock' },
-  { id: 'logs', label: 'Nhật ký', icon: 'description' },
 ];
 
 // Route mapping for settings tabs
@@ -80,6 +64,5 @@ export const SETTINGS_ROUTES = {
   '/settings/goals': 'plans',
   '/settings/notification': 'notifications',
   '/settings/security': 'security',
-  '/settings/logs': 'logs',
 };
 

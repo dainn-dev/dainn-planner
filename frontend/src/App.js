@@ -105,11 +105,6 @@ function App() {
             <SettingsPage />
           </ProtectedRoute>
         } />
-        <Route path="/settings/logs" element={
-          <ProtectedRoute>
-            <SettingsPage />
-          </ProtectedRoute>
-        } />
         
         {/* Admin Routes - Require Admin Role */}
         <Route path="/admin/dashboard" element={

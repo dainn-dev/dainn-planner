@@ -11,37 +11,46 @@ public class CalendarEventService : ICalendarEventService
 {
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IGoogleCalendarService _googleCalendarService;
 
     private static DateTime ToUtc(DateTime d) => DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
     private static DateTime ToUtcFull(DateTime d) => d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
 
-    public CalendarEventService(ApplicationDbContext context, IMapper mapper)
+    public CalendarEventService(ApplicationDbContext context, IMapper mapper, IGoogleCalendarService googleCalendarService)
     {
         _context = context;
         _mapper = mapper;
+        _googleCalendarService = googleCalendarService;
     }
 
     public async Task<ApiResponse<List<CalendarEventDto>>> GetEventsAsync(string userId, DateTime? startDate, DateTime? endDate)
     {
         var query = _context.CalendarEvents.Where(e => e.UserId == userId);
 
+        var startUtc = startDate.HasValue ? ToUtc(startDate.Value) : DateTime.UtcNow.Date;
+        var endUtc = endDate.HasValue
+            ? DateTime.SpecifyKind(endDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc)
+            : startUtc.AddYears(1);
+
         if (startDate.HasValue)
-        {
-            var startUtc = ToUtc(startDate.Value);
             query = query.Where(e => e.StartDate >= startUtc);
-        }
         if (endDate.HasValue)
-        {
-            var endUtc = DateTime.SpecifyKind(endDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
             query = query.Where(e => e.EndDate <= endUtc);
-        }
 
         var events = await query.OrderBy(e => e.StartDate).ToListAsync();
+        var dtos = _mapper.Map<List<CalendarEventDto>>(events);
+
+        var googleEvents = await _googleCalendarService.GetEventsAsync(userId, startUtc, endUtc);
+        if (googleEvents.Count > 0)
+        {
+            dtos.AddRange(googleEvents);
+            dtos = dtos.OrderBy(e => e.StartDate).ToList();
+        }
 
         return new ApiResponse<List<CalendarEventDto>>
         {
             Success = true,
-            Data = _mapper.Map<List<CalendarEventDto>>(events)
+            Data = dtos
         };
     }
 

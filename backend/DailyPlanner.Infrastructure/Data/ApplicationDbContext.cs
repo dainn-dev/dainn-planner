@@ -24,6 +24,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<UserActivity> UserActivities { get; set; }
     public DbSet<ContactMessage> ContactMessages { get; set; }
+    public DbSet<UserStatistics> UserStatistics { get; set; }
+    public DbSet<UserGoogleIntegration> UserGoogleIntegrations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -203,6 +205,31 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.UserId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure UserStatistics
+        builder.Entity<UserStatistics>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => new { e.UserId, e.PeriodStart }).IsUnique();
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UserGoogleIntegration (one-to-one per user for Google Calendar)
+        builder.Entity<UserGoogleIntegration>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.Property(e => e.AccessToken).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.RefreshToken).IsRequired().HasMaxLength(2000);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.GoogleIntegration)
+                .HasForeignKey<UserGoogleIntegration>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

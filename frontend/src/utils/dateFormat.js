@@ -5,9 +5,6 @@
 
 const USER_SETTINGS_STORAGE_KEY = 'user_settings';
 
-const DEFAULT_LOCALE = 'vi-VN';
-const DEFAULT_HOUR12 = false;
-
 function getStoredSettings() {
   try {
     const raw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);

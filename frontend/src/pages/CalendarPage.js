@@ -23,7 +23,7 @@ const mapEventFromApi = (e) => {
   const timeFrom = !isAllDay && e.startDate ? e.startDate.slice(11, 16) : null;
   const timeTo = !isAllDay && e.endDate ? e.endDate.slice(11, 16) : null;
   return {
-    id: e.id,
+    id: e.externalId || e.id,
     date: start,
     time: timeFrom || null,
     timeFrom: timeFrom || null,
@@ -34,6 +34,7 @@ const mapEventFromApi = (e) => {
     allDay: isAllDay,
     address: e.location || '',
     location: e.location,
+    source: e.source || null,
   };
 };
 
@@ -131,7 +132,8 @@ const CalendarPage = () => {
           notificationsAPI.getNotifications({ limit: 20 }),
         ]);
         if (cancelled) return;
-        setEvents(Array.isArray(eventsData) ? eventsData.map(mapEventFromApi) : []);
+        const eventList = Array.isArray(eventsData?.data) ? eventsData.data : (Array.isArray(eventsData) ? eventsData : []);
+        setEvents(eventList.map(mapEventFromApi));
         const notifList = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []);
         setNotifications(notifList.map(mapNotificationFromApi));
       } catch (error) {
@@ -259,10 +261,15 @@ const CalendarPage = () => {
     }
   };
 
-  const handleDeleteEvent = async (eventId) => {
+  const handleDeleteEvent = async (eventId, event) => {
+    if (event?.source === 'Google') {
+      setEventDetailModalOpen(false);
+      setSelectedEvent(null);
+      return;
+    }
     try {
       await eventsAPI.deleteEvent(eventId);
-      setEvents(events.filter(event => event.id !== eventId));
+      setEvents(events.filter(ev => ev.id !== eventId));
       if (selectedEvent && selectedEvent.id === eventId) {
         setEventDetailModalOpen(false);
         setSelectedEvent(null);
@@ -297,6 +304,7 @@ const CalendarPage = () => {
   };
 
   const handleSaveEvent = async () => {
+    if (selectedEvent?.source === 'Google') return;
     if (!editedEvent.title.trim()) return;
 
     if (
@@ -922,6 +930,7 @@ const CalendarPage = () => {
                         <p className={`text-[11px] sm:text-xs font-medium truncate ${getTextColorClasses(event.color)} ${event.allDay ? 'flex items-center gap-1.5' : ''}`}>
                           {event.allDay && <span className="text-sm sm:text-base shrink-0">🌴</span>}
                           {event.title}
+                          {event.source === 'Google' && <span className="ml-1 shrink-0 text-[9px] font-medium opacity-90">(Google)</span>}
                         </p>
                       </div>
                     ))}
@@ -1155,6 +1164,11 @@ const CalendarPage = () => {
                       <h3 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-white break-words" id="event-detail-title">
                         {selectedEvent.title}
                       </h3>
+                      {selectedEvent.source === 'Google' && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">
+                          Google
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1179,14 +1193,16 @@ const CalendarPage = () => {
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={handleStartEdit}
-                      className="min-h-[44px] min-w-[44px] p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 active:bg-zinc-200 dark:active:bg-slate-600 transition-colors focus:outline-none flex items-center justify-center touch-manipulation"
-                      aria-label={t('common.edit')}
-                    >
-                      <span className="material-symbols-outlined text-zinc-400 dark:text-slate-400 hover:text-zinc-600 dark:hover:text-slate-200 text-[20px]">edit</span>
-                    </button>
+                    selectedEvent.source !== 'Google' && (
+                      <button
+                        type="button"
+                        onClick={handleStartEdit}
+                        className="min-h-[44px] min-w-[44px] p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 active:bg-zinc-200 dark:active:bg-slate-600 transition-colors focus:outline-none flex items-center justify-center touch-manipulation"
+                        aria-label={t('common.edit')}
+                      >
+                        <span className="material-symbols-outlined text-zinc-400 dark:text-slate-400 hover:text-zinc-600 dark:hover:text-slate-200 text-[20px]">edit</span>
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -1392,17 +1408,19 @@ const CalendarPage = () => {
             </div>
             {!isEditingEvent && (
               <div className="bg-zinc-50 dark:bg-slate-800 px-4 py-3 sm:px-6 flex flex-col-reverse sm:flex-row sm:flex-row-reverse gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteEvent(selectedEvent.id);
-                  }}
-                  className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-red-600 text-white text-sm font-medium hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition-colors shadow-sm touch-manipulation"
-                >
-                  <span className="material-symbols-outlined text-[18px] mr-2">delete</span>
-                  {t('calendar.deleteEvent')}
-                </button>
+                {selectedEvent.source !== 'Google' && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteEvent(selectedEvent.id, selectedEvent);
+                    }}
+                    className="w-full sm:w-auto inline-flex justify-center items-center min-h-[44px] rounded-lg px-4 py-2.5 bg-red-600 text-white text-sm font-medium hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition-colors shadow-sm touch-manipulation"
+                  >
+                    <span className="material-symbols-outlined text-[18px] mr-2">delete</span>
+                    {t('calendar.deleteEvent')}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleCloseEventDetail}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import PublicHeader from '../components/PublicHeader';
 import ContactFooter from '../components/ContactFooter';
@@ -10,6 +10,7 @@ import { contactAPI } from '../services/api';
 
 const ContactPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -166,12 +167,12 @@ const ContactPage = () => {
               </div>
               <div className="w-full h-px bg-slate-100"></div>
               <div className="flex gap-4 pt-2">
-                <a className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary hover:bg-blue-50 transition-all" href="#">
+                <button type="button" className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary hover:bg-blue-50 transition-all" aria-label={t('contact.social')}>
                   <span className="material-symbols-outlined text-xl">public</span>
-                </a>
-                <a className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary hover:bg-blue-50 transition-all" href="#">
+                </button>
+                <button type="button" className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-primary hover:bg-blue-50 transition-all" aria-label={t('contact.share')}>
                   <span className="material-symbols-outlined text-xl">share</span>
-                </a>
+                </button>
               </div>
             </div>
             <div className="flex gap-2 items-center text-text-muted text-sm">
@@ -274,9 +275,9 @@ const ContactPage = () => {
               </button>
               <p className="text-center text-xs text-slate-500 mt-2">
                 {t('contact.agreeWithPrivacy')}{' '}
-                <a className="text-slate-700 font-medium hover:text-primary underline decoration-dashed" href="#">
+                <button type="button" onClick={() => navigate('/privacy')} className="text-slate-700 font-medium hover:text-primary underline decoration-dashed bg-transparent border-0 p-0 cursor-pointer">
                   {t('legal.privacy')}
-                </a>
+                </button>
               </p>
             </form>
           </div>

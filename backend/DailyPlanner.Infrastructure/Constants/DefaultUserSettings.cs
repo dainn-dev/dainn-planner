@@ -1,7 +1,7 @@
 namespace DailyPlanner.Infrastructure.Constants;
 
 /// <summary>
-/// Server-side default user settings JSON matching frontend INITIAL_* constants (general, plans, notifications, logs).
+/// Server-side default user settings JSON matching frontend INITIAL_* constants (general, plans, notifications).
 /// </summary>
 public static class DefaultUserSettings
 {
@@ -23,7 +23,7 @@ public static class DefaultUserSettings
             "trackingMethod": "tasks",
             "goalVision": "Trở thành một chuyên gia thiết kế sản phẩm và đạt được sự cân bằng giữa công việc và cuộc sống.",
             "googleCalendarConnected": false,
-            "todoistConnected": true
+            "todoistConnected": false
           },
           "notifications": {
             "emailWeeklySummary": true,
@@ -33,20 +33,6 @@ public static class DefaultUserSettings
             "inAppGoalAchievements": true,
             "emailFrequency": "Tổng hợp hàng ngày",
             "notificationSound": "Mặc định (Ping)"
-          },
-          "logs": {
-            "logLevel": "info",
-            "logRetentionDays": "30",
-            "enableActivityLogs": true,
-            "enableErrorLogs": true,
-            "enableAccessLogs": false,
-            "autoExportLogs": false,
-            "exportFrequency": "weekly",
-            "logFormat": "json",
-            "maxLogFileSize": "10",
-            "compressOldLogs": true,
-            "sendLogsToEmail": false,
-            "emailForLogs": ""
           }
         }
         """;

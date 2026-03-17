@@ -13,6 +13,20 @@ export const getAvatarFullUrl = (path) => {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 };
 
+/** Full URL for Google login (with calendar sync). Redirect here to sign in with Google and auto-sync calendar. */
+export const getGoogleLoginAuthorizeUrl = () =>
+  `${API_BASE_URL}/auth/google/authorize`;
+
+/** Full URL for Google Calendar OAuth authorize (redirect the browser here to start connect flow when already logged in). */
+export const getGoogleCalendarAuthorizeUrl = () =>
+  `${API_BASE_URL}/integrations/google/authorize`;
+
+/** Integrations API (Google Calendar, etc.) */
+export const integrationsAPI = {
+  disconnectGoogleCalendar: async () =>
+    apiRequest('/integrations/google/disconnect', { method: 'POST' }),
+};
+
 function hashString(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
