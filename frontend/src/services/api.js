@@ -17,14 +17,22 @@ export const getAvatarFullUrl = (path) => {
 export const getGoogleLoginAuthorizeUrl = () =>
   `${API_BASE_URL}/auth/google/authorize`;
 
-/** Full URL for Google Calendar OAuth authorize (redirect the browser here to start connect flow when already logged in). */
-export const getGoogleCalendarAuthorizeUrl = () =>
-  `${API_BASE_URL}/integrations/google/authorize`;
-
 /** Integrations API (Google Calendar, etc.) */
 export const integrationsAPI = {
+  /** Returns Google OAuth URL; call with Bearer via apiRequest, then window.location.href = url. */
+  getGoogleCalendarOAuthUrl: async () => {
+    const r = await apiRequest('/integrations/google/authorize-url');
+    const url = r?.url ?? r?.data?.url;
+    if (!url || typeof url !== 'string') {
+      throw new Error('Could not start Google Calendar connection');
+    }
+    return url;
+  },
   disconnectGoogleCalendar: async () =>
     apiRequest('/integrations/google/disconnect', { method: 'POST' }),
+
+  /** `{ src }` = Google account email for embed when Calendar is connected; `src` may be null. */
+  getGoogleCalendarEmbedSrc: async () => apiRequest('/integrations/google/calendar-embed-src'),
 };
 
 function hashString(str) {

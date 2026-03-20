@@ -119,3 +119,63 @@ export function formatDateWithWeekday(date) {
   const dateStr = formatDateByOrder(d, dateOrder);
   return `${weekday}, ${dateStr}`;
 }
+
+/**
+ * Local calendar date YYYY-MM-DD (not UTC — avoids wrong day near midnight).
+ * @param {Date | string | number} date
+ * @returns {string}
+ */
+export function formatLocalDateIso(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Local wall-clock time as HH:mm (24h). Use for API-derived instants and &lt;input type="time"&gt;.
+ * Do not use ISO string slice(11,16) — that is UTC in "…Z" responses (e.g. Google Calendar).
+ * @param {Date | string | number} date
+ * @returns {string | null}
+ */
+export function formatLocalTimeHHmm(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Local calendar date + local time → UTC ISO string for the API.
+ * @param {string} dateStr YYYY-MM-DD
+ * @param {string} timeStr HH:mm
+ * @returns {string | null}
+ */
+export function localDateTimeToUtcIso(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const tp = timeStr.split(':');
+  const h = Number(tp[0]);
+  const min = tp.length > 1 ? Number(tp[1]) : 0;
+  if (!y || mo < 1 || mo > 12 || d < 1 || d > 31 || Number.isNaN(h) || Number.isNaN(min)) return null;
+  const dt = new Date(y, mo - 1, d, h, min, 0, 0);
+  return dt.toISOString();
+}
+
+/**
+ * Start/end of a local calendar day as UTC ISO (all-day events).
+ * @param {string} dateStr YYYY-MM-DD
+ */
+export function localDateStartUtcIso(dateStr) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  if (!y || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return new Date(y, mo - 1, d, 0, 0, 0, 0).toISOString();
+}
+
+/** @param {string} dateStr YYYY-MM-DD */
+export function localDateEndUtcIso(dateStr) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  if (!y || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return new Date(y, mo - 1, d, 23, 59, 59, 999).toISOString();
+}

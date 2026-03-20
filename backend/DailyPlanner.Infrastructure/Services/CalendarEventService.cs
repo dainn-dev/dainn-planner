@@ -93,6 +93,13 @@ public class CalendarEventService : ICalendarEventService
         _context.CalendarEvents.Add(eventEntity);
         await _context.SaveChangesAsync();
 
+        var pushedId = await _googleCalendarService.PushCalendarEventToGoogleAsync(userId, eventEntity);
+        if (!string.IsNullOrEmpty(pushedId) && eventEntity.GoogleEventId != pushedId)
+        {
+            eventEntity.GoogleEventId = pushedId;
+            await _context.SaveChangesAsync();
+        }
+
         return new ApiResponse<CalendarEventDto>
         {
             Success = true,
@@ -133,6 +140,13 @@ public class CalendarEventService : ICalendarEventService
         eventEntity.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        var pushedId = await _googleCalendarService.PushCalendarEventToGoogleAsync(userId, eventEntity);
+        if (!string.IsNullOrEmpty(pushedId) && eventEntity.GoogleEventId != pushedId)
+        {
+            eventEntity.GoogleEventId = pushedId;
+            await _context.SaveChangesAsync();
+        }
+
         return new ApiResponse<CalendarEventDto>
         {
             Success = true,
@@ -155,8 +169,10 @@ public class CalendarEventService : ICalendarEventService
             };
         }
 
+        var googleEventId = eventEntity.GoogleEventId;
         _context.CalendarEvents.Remove(eventEntity);
         await _context.SaveChangesAsync();
+        await _googleCalendarService.DeleteGoogleCalendarEventAsync(userId, googleEventId);
 
         return new ApiResponse<object>
         {

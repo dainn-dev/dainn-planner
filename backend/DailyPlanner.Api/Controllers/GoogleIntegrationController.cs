@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json.Nodes;
+using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Application.Options;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Constants;
@@ -18,33 +19,62 @@ public class GoogleIntegrationController : ControllerBase
 {
     private const string StateCacheKeyPrefix = "google_oauth_state:";
     private static readonly TimeSpan StateExpiration = TimeSpan.FromMinutes(10);
-    private static readonly string[] Scopes = { "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events.readonly" };
+    private static readonly string[] Scopes = { "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events" };
 
     private readonly ApplicationDbContext _context;
     private readonly IMemoryCache _cache;
     private readonly GoogleCalendarOptions _options;
+    private readonly IGoogleCalendarService _googleCalendarService;
 
     public GoogleIntegrationController(
         ApplicationDbContext context,
         IMemoryCache cache,
-        IOptions<DailyPlanner.Application.Options.GoogleCalendarOptions> options)
+        IOptions<DailyPlanner.Application.Options.GoogleCalendarOptions> options,
+        IGoogleCalendarService googleCalendarService)
     {
         _context = context;
         _cache = cache;
         _options = options.Value;
+        _googleCalendarService = googleCalendarService;
     }
 
     /// <summary>
-    /// Starts OAuth flow for calendar-only (user already logged in). Redirects to Google; callback is GET api/auth/google/callback.
+    /// Returns the Google OAuth URL for SPAs: a top-level <c>window.location</c> to /authorize cannot send Bearer tokens.
+    /// Call this with Authorization, then redirect the browser to <see cref="AuthorizeUrlResponse.Url"/>.
+    /// </summary>
+    [HttpGet("authorize-url")]
+    [Authorize]
+    public ActionResult<AuthorizeUrlResponse> GetAuthorizeUrl()
+    {
+        var url = BuildGoogleAuthorizeUrl(out var error);
+        if (error != null)
+            return Unauthorized();
+        return Ok(new AuthorizeUrlResponse { Url = url });
+    }
+
+    /// <summary>
+    /// Starts OAuth flow (server-side or clients that attach cookies). Redirects to Google; callback is GET api/auth/google/callback.
     /// </summary>
     [HttpGet("authorize")]
     [Authorize]
     public IActionResult Authorize()
     {
+        var url = BuildGoogleAuthorizeUrl(out var error);
+        if (error != null)
+            return Unauthorized();
+        return Redirect(url);
+    }
+
+    private string? BuildGoogleAuthorizeUrl(out string? error)
+    {
+        error = null;
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue("sub");
         if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        {
+            error = "unauthorized";
+            return null;
+        }
 
         var state = Guid.NewGuid().ToString("N");
         _cache.Set(StateCacheKeyPrefix + state, userId, StateExpiration);
@@ -52,8 +82,29 @@ public class GoogleIntegrationController : ControllerBase
         var redirectUri = Uri.EscapeDataString(_options.RedirectUri);
         var scope = Uri.EscapeDataString(string.Join(" ", Scopes));
         var clientId = Uri.EscapeDataString(_options.ClientId);
-        var url = $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope={scope}&state={state}&access_type=offline&prompt=consent";
-        return Redirect(url);
+        return $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope={scope}&state={state}&access_type=offline&prompt=consent";
+    }
+
+    public sealed class AuthorizeUrlResponse
+    {
+        public string Url { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Primary calendar id for the Google account linked in Settings (use as embed <c>src</c>).
+    /// Matches the account that receives API-created events; null if not connected.
+    /// </summary>
+    [HttpGet("calendar-embed-src")]
+    [Authorize]
+    public async Task<ActionResult<object>> GetCalendarEmbedSrc(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var src = await _googleCalendarService.GetGoogleCalendarEmbedSrcAsync(userId, ct);
+        return Ok(new { src });
     }
 
     /// <summary>

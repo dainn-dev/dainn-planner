@@ -118,6 +118,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.GoogleEventId).HasMaxLength(1024);
             entity.HasIndex(e => new { e.UserId, e.StartDate, e.EndDate });
             entity.HasOne(e => e.User)
                 .WithMany(u => u.CalendarEvents)

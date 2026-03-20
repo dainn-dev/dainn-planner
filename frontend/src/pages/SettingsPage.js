@@ -26,7 +26,7 @@ import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_ROUTES,
 } from '../constants/settings';
-import { userAPI, notificationsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl, getGoogleCalendarAuthorizeUrl } from '../services/api';
+import { userAPI, notificationsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 
 const SettingsPage = () => {
@@ -64,6 +64,7 @@ const SettingsPage = () => {
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [securityPasswordErrors, setSecurityPasswordErrors] = useState({ currentPassword: null, newPassword: null, confirmPassword: null });
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   // After OAuth callback we land with ?google=connected; refetch settings and clear the param
   useEffect(() => {
@@ -1068,10 +1069,21 @@ const SettingsPage = () => {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => { window.location.href = getGoogleCalendarAuthorizeUrl(); }}
-                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
+                          disabled={connectingGoogle}
+                          onClick={async () => {
+                            setConnectingGoogle(true);
+                            try {
+                              const url = await integrationsAPI.getGoogleCalendarOAuthUrl();
+                              window.location.href = url;
+                            } catch (e) {
+                              console.error(e);
+                            } finally {
+                              setConnectingGoogle(false);
+                            }
+                          }}
+                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
                         >
-                          {t('settings.connect')}
+                          {connectingGoogle ? t('common.loading') : t('settings.connect')}
                         </button>
                       )}
                     </div>

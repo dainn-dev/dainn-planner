@@ -24,7 +24,7 @@ public class AuthController : ControllerBase
 {
     private const string GoogleStateCachePrefix = "google_oauth_state:";
     private static readonly TimeSpan GoogleStateExpiration = TimeSpan.FromMinutes(10);
-    private static readonly string[] GoogleScopes = { "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events.readonly" };
+    private static readonly string[] GoogleScopes = { "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events" };
 
     private readonly IAuthService _authService;
     private readonly ApplicationDbContext _context;

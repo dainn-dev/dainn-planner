@@ -1,5 +1,6 @@
 using Xunit;
 using DailyPlanner.Application.DTOs;
+using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using DailyPlanner.Infrastructure.Services;
@@ -7,6 +8,7 @@ using DailyPlanner.Infrastructure.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
+using Moq;
 
 namespace DailyPlanner.Infrastructure.Tests.Services;
 
@@ -14,13 +16,20 @@ public class CalendarEventServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly Mock<IGoogleCalendarService> _googleCalendar = new();
     private readonly CalendarEventService _service;
 
     public CalendarEventServiceTests()
     {
         _context = TestHelpers.CreateInMemoryDbContext();
         _mapper = TestHelpers.CreateMapper();
-        _service = new CalendarEventService(_context, _mapper);
+        _googleCalendar
+            .Setup(g => g.PushCalendarEventToGoogleAsync(It.IsAny<string>(), It.IsAny<CalendarEvent>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+        _googleCalendar
+            .Setup(g => g.DeleteGoogleCalendarEventAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _service = new CalendarEventService(_context, _mapper, _googleCalendar.Object);
     }
 
     [Fact]

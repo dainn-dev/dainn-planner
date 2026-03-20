@@ -13,6 +13,8 @@ public class CalendarEvent
     public bool IsAllDay { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    /// <summary>Google Calendar event id when this row was pushed to the user's primary calendar.</summary>
+    public string? GoogleEventId { get; set; }
 
     // Navigation property
     public ApplicationUser User { get; set; } = null!;

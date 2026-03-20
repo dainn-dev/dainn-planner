@@ -144,7 +144,9 @@ builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
+    .UsePostgreSqlStorage(
+    options => options.UseNpgsqlConnection(connectionString),
+    new PostgreSqlStorageOptions { DistributedLockTimeout = TimeSpan.FromMinutes(2) }));
 builder.Services.AddHangfireServer();
 builder.Services.AddScoped<RecurringTaskRenewalJob>();
 builder.Services.AddScoped<OldDailyTaskCleanupJob>();

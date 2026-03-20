@@ -649,11 +649,11 @@ const GoalsPage = () => {
             </Link>
             <Link
               to="/goals"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-100 dark:bg-slate-800 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
               onClick={() => setSidebarOpen(false)}
             >
-              <span className="material-symbols-outlined text-zinc-900 dark:text-white" style={{ fontSize: '20px' }}>track_changes</span>
-              <p className="text-zinc-900 dark:text-white text-sm font-medium">{t('sidebar.goals')}</p>
+              <span className="material-symbols-outlined text-primary dark:text-blue-300" style={{ fontSize: '20px' }}>track_changes</span>
+              <p className="text-primary dark:text-blue-300 text-sm font-medium">{t('sidebar.goals')}</p>
             </Link>
             <Link
               to="/calendar"

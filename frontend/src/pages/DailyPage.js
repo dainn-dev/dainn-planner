@@ -7,18 +7,18 @@ import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI, notificationsAPI, eventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
-import { formatDate, formatTime } from '../utils/dateFormat';
+import { formatDate, formatTime, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 import AddTaskModal from '../components/AddTaskModal';
 
-const toDateOnly = (d) => (d instanceof Date ? d : new Date(d)).toISOString().slice(0, 10);
 const mapEventForDaily = (e) => {
   const start = new Date(e.startDate);
+  const end = new Date(e.endDate);
   const isAllDay = e.isAllDay ?? e.allDay;
-  const timeFrom = !isAllDay && e.startDate ? e.startDate.slice(11, 16) : null;
-  const timeTo = !isAllDay && e.endDate ? e.endDate.slice(11, 16) : null;
+  const timeFrom = !isAllDay && e.startDate ? formatLocalTimeHHmm(start) : null;
+  const timeTo = !isAllDay && e.endDate ? formatLocalTimeHHmm(end) : null;
   return {
-    id: e.id,
-    date: toDateOnly(start),
+    id: e.externalId || e.id,
+    date: formatLocalDateIso(start),
     time_from: timeFrom,
     time_to: timeTo,
     title: e.title,
@@ -142,8 +142,10 @@ const DailyPage = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
+      // Use local calendar date (not UTC) so the "today" range matches the user's day,
+      // and event fetching stays consistent with Google Calendar day boundaries.
+      const today = formatLocalDateIso(new Date());
+
       // Load tasks for today (paged, filtered)
       try {
         const params = { date: today, page: taskPage, pageSize: taskPageSize };
@@ -174,22 +176,25 @@ const DailyPage = () => {
         setTaskTotalAll(0);
         setTaskCompletedCount(0);
       }
-      
+
       // Load events for today
       try {
         const todayStr = today;
         const eventsData = await eventsAPI.getEvents({ startDate: todayStr, endDate: todayStr });
         const list = Array.isArray(eventsData) ? eventsData : (eventsData?.data ?? eventsData?.Data ?? []);
-        setEvents(list.map(mapEventForDaily));
+        const byStart = [...list].sort(
+          (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+        );
+        setEvents(byStart.map(mapEventForDaily));
       } catch (err) {
         console.error('Failed to load events for today:', err);
         setEvents([]);
       }
-      
+
       // Main goal is not loaded here - it should only be loaded on the Goals page
       // Keeping mainGoal state null for DailyPage
       setMainGoal(null);
-      
+
       // Load notifications
       try {
         const notificationsData = await notificationsAPI.getNotifications({ limit: 20 });
@@ -379,8 +384,8 @@ const DailyPage = () => {
                   </p>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-1.5 mt-2">
-                  <div 
-                    className="bg-[#1380ec] h-1.5 rounded-full transition-all duration-300" 
+                  <div
+                    className="bg-[#1380ec] h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                     role="progressbar"
                     aria-valuenow={progressPercentage}
@@ -409,11 +414,11 @@ const DailyPage = () => {
                   <label className="relative flex cursor-pointer items-center gap-3 z-10">
                     <span className="text-gray-500 dark:text-slate-400 text-sm hidden sm:block">{t('daily.markComplete')}</span>
                     <div className={`relative flex h-[31px] w-[51px] items-center rounded-full border-none p-0.5 transition-colors ${mainGoal.completed ? 'bg-[#1380ec]' : 'bg-gray-200 dark:bg-slate-600'}`}>
-                      <div 
+                      <div
                         className={`h-[27px] w-[27px] rounded-full bg-white dark:bg-slate-200 shadow-md transition-transform ${mainGoal.completed ? 'translate-x-[20px]' : 'translate-x-0'}`}
                       />
-                      <input 
-                        className="peer sr-only" 
+                      <input
+                        className="peer sr-only"
                         type="checkbox"
                         checked={mainGoal.completed || false}
                         onChange={async (e) => {
@@ -454,40 +459,39 @@ const DailyPage = () => {
                       const eventTime = event.time_from ? new Date(`${event.date}T${event.time_from}`) : null;
                       const isActive = eventTime && eventTime <= currentTime && (!event.time_to || new Date(`${event.date}T${event.time_to}`) >= currentTime);
                       const isPast = eventTime && eventTime < currentTime && (!isActive);
-                      
+
                       return (
                         <div key={event.id} className="flex gap-4 group">
-                    <div className="flex flex-col items-center pt-1 w-12 flex-shrink-0">
+                          <div className="flex flex-col items-center pt-1 w-12 flex-shrink-0">
                             <span className={`text-sm font-medium ${isActive ? 'text-[#111418] dark:text-white font-bold' : isPast ? 'text-gray-400 dark:text-slate-500' : 'text-gray-500 dark:text-slate-400'}`}>
                               {event.time_from ? event.time_from.substring(0, 5) : t('daily.allDay')}
                             </span>
                             {index < events.length - 1 && (
-                      <div className="w-px h-full bg-gray-200 dark:bg-slate-600 mt-2"></div>
+                              <div className="w-px h-full bg-gray-200 dark:bg-slate-600 mt-2"></div>
                             )}
-                    </div>
-                    <div className="flex-1 pb-6">
-                            <div className={`p-4 rounded-lg border ${
-                              isActive 
-                                ? 'bg-white dark:bg-slate-800 border-l-4 border-l-primary shadow-md shadow-gray-100 dark:shadow-none' 
+                          </div>
+                          <div className="flex-1 pb-4 sm:pb-6">
+                            <div className={`p-3 sm:p-4 rounded-lg border ${isActive
+                                ? 'bg-white dark:bg-slate-800 border-l-4 border-l-primary shadow-md shadow-gray-100 dark:shadow-none'
                                 : isPast
-                                ? 'bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700'
-                                : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer'
-                            }`}>
-                        <div className="flex justify-between items-start">
-                                <p className={`font-medium ${isActive ? 'text-[#111418] dark:text-white font-bold text-lg' : isPast ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-slate-200'}`}>
+                                  ? 'bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700'
+                                  : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer'
+                              }`}>
+                              <div className="flex justify-between items-start">
+                                <p className={`text-sm sm:text-base font-medium leading-tight ${isPast ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-white'}`}>
                                   {event.title}
                                 </p>
                                 {isActive && (
-                          <span className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-300 text-xs px-2 py-1 rounded">{t('daily.ongoing')}</span>
+                                  <span className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-300 text-xs px-2 py-1 rounded">{t('daily.ongoing')}</span>
                                 )}
                               </div>
                               {event.description && (
-                                <p className={`text-sm mt-1 ${isPast ? 'text-gray-400 dark:text-slate-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                                <p className={`text-xs sm:text-sm mt-0.5 sm:mt-1 ${isPast ? 'text-gray-400 dark:text-slate-500' : 'text-gray-500 dark:text-slate-400'}`}>
                                   {event.description}
                                 </p>
                               )}
                               {(event.address || event.platform) && (
-                                <div className="flex items-center gap-1 mt-2 text-gray-500 dark:text-slate-400 text-xs">
+                                <div className="flex items-center gap-1 mt-1 sm:mt-2 text-gray-500 dark:text-slate-400 text-xs">
                                   {event.location_type === 'online' ? (
                                     <>
                                       <span className="material-symbols-outlined text-[14px]">videocam</span>
@@ -499,7 +503,7 @@ const DailyPage = () => {
                                       <span>{event.address}</span>
                                     </>
                                   )}
-                        </div>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -533,30 +537,30 @@ const DailyPage = () => {
                       </button>
                     </div>
                     {taskTotalCount > 0 && (
-                    <div className="flex items-center gap-2 max-lg:hidden">
-                      <button
-                        type="button"
-                        onClick={() => taskPage > 1 && setTaskPage(p => p - 1)}
-                        disabled={taskPage <= 1}
-                        className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
-                        aria-label={t('daily.prevPage')}
-                      >
-                        <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_left</span>
-                      </button>
-                      <span className="text-sm text-gray-600 dark:text-slate-400 min-w-[80px] text-center">
-                        {t('daily.pageOf', { current: taskPage, total: Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) })}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => taskPage < Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) && setTaskPage(p => p + 1)}
-                        disabled={taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
-                        className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
-                        aria-label={t('daily.nextPage')}
-                      >
-                        <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_right</span>
-                      </button>
-                    </div>
-                  )}
+                      <div className="flex items-center gap-2 max-lg:hidden">
+                        <button
+                          type="button"
+                          onClick={() => taskPage > 1 && setTaskPage(p => p - 1)}
+                          disabled={taskPage <= 1}
+                          className={`p-1.5 rounded-md transition-colors ${taskPage <= 1 ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                          aria-label={t('daily.prevPage')}
+                        >
+                          <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_left</span>
+                        </button>
+                        <span className="text-sm text-gray-600 dark:text-slate-400 min-w-[80px] text-center">
+                          {t('daily.pageOf', { current: taskPage, total: Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) })}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => taskPage < Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) && setTaskPage(p => p + 1)}
+                          disabled={taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize))}
+                          className={`p-1.5 rounded-md transition-colors ${taskPage >= Math.max(1, Math.ceil(taskTotalCount / taskPageSize)) ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'text-gray-500 dark:text-slate-400 hover:text-[#111418] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                          aria-label={t('daily.nextPage')}
+                        >
+                          <span className="material-symbols-outlined text-[20px] pt-[5px]">chevron_right</span>
+                        </button>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -607,80 +611,80 @@ const DailyPage = () => {
                     </div>
                   )}
                   {filterExpanded && (
-                  <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-800/80 p-3 overflow-visible">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
-                        <span className="material-symbols-outlined text-[18px] text-primary dark:text-blue-400">tune</span>
-                        <span>{t('daily.filterSortOptions')}</span>
+                    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-800/80 p-3 overflow-visible">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
+                          <span className="material-symbols-outlined text-[18px] text-primary dark:text-blue-400">tune</span>
+                          <span>{t('daily.filterSortOptions')}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTaskStatusFilter('');
+                            setTaskPriorityFilter('');
+                            setTaskTagFilter('');
+                            setTaskSortOrder('desc');
+                            setTaskPage(1);
+                          }}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200/80 dark:hover:bg-slate-700 transition-colors shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">refresh</span>
+                          <span>{t('daily.reset')}</span>
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTaskStatusFilter('');
-                          setTaskPriorityFilter('');
-                          setTaskTagFilter('');
-                          setTaskSortOrder('desc');
-                          setTaskPage(1);
-                        }}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200/80 dark:hover:bg-slate-700 transition-colors shrink-0"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">refresh</span>
-                        <span>{t('daily.reset')}</span>
-                      </button>
+                      <div className="flex flex-wrap items-end gap-3 mt-3">
+                        <div className="flex flex-col gap-0.5">
+                          <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.status')}</label>
+                          <select
+                            value={taskStatusFilter}
+                            onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
+                            className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          >
+                            <option value="">{t('daily.all')}</option>
+                            <option value="completed">{t('daily.completed')}</option>
+                            <option value="incomplete">{t('daily.incomplete')}</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.priority')}</label>
+                          <select
+                            value={taskPriorityFilter}
+                            onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
+                            className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          >
+                            <option value="">{t('daily.all')}</option>
+                            <option value="0">{t('daily.priorityLow')}</option>
+                            <option value="1">{t('daily.priorityMedium')}</option>
+                            <option value="2">{t('daily.priorityHigh')}</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.label')}</label>
+                          <select
+                            value={taskTagFilter}
+                            onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
+                            className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          >
+                            <option value="">{t('daily.all')}</option>
+                            {DEFAULT_TAGS.map((tag) => (
+                              <option key={tag} value={tag}>{getTagLabel(tag)}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="h-px w-px bg-gray-300 dark:bg-slate-600 self-stretch hidden sm:block" aria-hidden="true" />
+                        <div className="flex flex-col gap-0.5">
+                          <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.sort')}</label>
+                          <select
+                            value={taskSortOrder}
+                            onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
+                            className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                          >
+                            <option value="desc">{t('daily.sortNewestFirst')}</option>
+                            <option value="asc">{t('daily.sortOldestFirst')}</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-end gap-3 mt-3">
-                      <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.status')}</label>
-                        <select
-                          value={taskStatusFilter}
-                          onChange={(e) => { setTaskStatusFilter(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        >
-                          <option value="">{t('daily.all')}</option>
-                          <option value="completed">{t('daily.completed')}</option>
-                          <option value="incomplete">{t('daily.incomplete')}</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.priority')}</label>
-                        <select
-                          value={taskPriorityFilter}
-                          onChange={(e) => { setTaskPriorityFilter(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        >
-                          <option value="">{t('daily.all')}</option>
-                          <option value="0">{t('daily.priorityLow')}</option>
-                          <option value="1">{t('daily.priorityMedium')}</option>
-                          <option value="2">{t('daily.priorityHigh')}</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.label')}</label>
-                        <select
-                          value={taskTagFilter}
-                          onChange={(e) => { setTaskTagFilter(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        >
-                          <option value="">{t('daily.all')}</option>
-                          {DEFAULT_TAGS.map((tag) => (
-                            <option key={tag} value={tag}>{getTagLabel(tag)}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="h-px w-px bg-gray-300 dark:bg-slate-600 self-stretch hidden sm:block" aria-hidden="true" />
-                      <div className="flex flex-col gap-0.5">
-                        <label className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">{t('daily.sort')}</label>
-                        <select
-                          value={taskSortOrder}
-                          onChange={(e) => { setTaskSortOrder(e.target.value); setTaskPage(1); }}
-                          className="min-w-[120px] rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-sm text-gray-700 dark:text-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                        >
-                          <option value="desc">{t('daily.sortNewestFirst')}</option>
-                          <option value="asc">{t('daily.sortOldestFirst')}</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
                   )}
                 </div>
 
@@ -692,86 +696,86 @@ const DailyPage = () => {
                     <p className="text-gray-400 dark:text-slate-500 text-xs text-center mt-1">{t('daily.addTaskToStart')}</p>
                   </div>
                 ) : (
-                <div className="flex flex-col gap-3">
-                  {tasks.map((task) => (
-                    <div 
-                      key={task.id} 
-                      className="group flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                    >
-                      <div className="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="relative flex items-center pt-1">
-                            <input 
-                              checked={task.completed ?? task.isCompleted} 
-                              className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-slate-600 bg-transparent dark:bg-slate-700/50 checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait" 
-                              type="checkbox"
-                              onChange={() => handleTaskCheckboxChange(task.id)}
-                              disabled={taskIdInProgress === task.id}
-                              aria-label={t('daily.markTaskComplete', { title: task.text || task.title })}
-                            />
-                          <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity pt-1">
-                            <span className="material-symbols-outlined text-[16px] font-bold">check</span>
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-1 flex-1 min-w-0">                          
-                          <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-white'}`}>
-                          {task.priority !== undefined && task.priority !== null && (
-                              <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
-                                {getPriorityLabel(task.priority)}
+                  <div className="flex flex-col gap-3">
+                    {tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="group flex flex-col rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                      >
+                        <div className="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4">
+                          <div className="flex items-start gap-4 flex-1">
+                            <div className="relative flex items-center pt-1">
+                              <input
+                                checked={task.completed ?? task.isCompleted}
+                                className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-slate-600 bg-transparent dark:bg-slate-700/50 checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait"
+                                type="checkbox"
+                                onChange={() => handleTaskCheckboxChange(task.id)}
+                                disabled={taskIdInProgress === task.id}
+                                aria-label={t('daily.markTaskComplete', { title: task.text || task.title })}
+                              />
+                              <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity pt-1">
+                                <span className="material-symbols-outlined text-[16px] font-bold">check</span>
                               </span>
-                            )} 
-                            {task.text || task.title}
-                          </p>
-                          {formatDeadline(task.date) && (
-                            <p className={`flex items-center gap-1.5 text-[11px] sm:text-xs ${(() => {
-                              if (!(task.completed ?? task.isCompleted) || !task.completedDateObj || !task.dateObj) return 'text-gray-500';
-                              const cDay = new Date(task.completedDateObj); cDay.setHours(0, 0, 0, 0);
-                              const dDay = new Date(task.dateObj); dDay.setHours(0, 0, 0, 0);
-                              return cDay > dDay ? 'text-red-600' : 'text-green-600';
-                            })()}`}>
-                              <span className="material-symbols-outlined text-[12px] sm:text-[14px]">event</span>
-                              <span>{t('daily.dueLabel')} {formatDeadline(task.date)}</span>
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">                            
-                              {task.tags && task.tags.map((tag, idx) => (
-                              <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 dark:bg-slate-700 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-slate-300">
-                                {getTagLabel(tag)}
-                              </span>
-                            ))}
+                            </div>
+                            <div className="flex flex-col gap-1 flex-1 min-w-0">
+                              <p className={`text-sm sm:text-base font-medium leading-tight ${(task.completed ?? task.isCompleted) ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-[#111418] dark:text-white'}`}>
+                                {task.priority !== undefined && task.priority !== null && (
+                                  <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
+                                    {getPriorityLabel(task.priority)}
+                                  </span>
+                                )}
+                                {task.text || task.title}
+                              </p>
+                              {formatDeadline(task.date) && (
+                                <p className={`flex items-center gap-1.5 text-[11px] sm:text-xs ${(() => {
+                                  if (!(task.completed ?? task.isCompleted) || !task.completedDateObj || !task.dateObj) return 'text-gray-500';
+                                  const cDay = new Date(task.completedDateObj); cDay.setHours(0, 0, 0, 0);
+                                  const dDay = new Date(task.dateObj); dDay.setHours(0, 0, 0, 0);
+                                  return cDay > dDay ? 'text-red-600' : 'text-green-600';
+                                })()}`}>
+                                  <span className="material-symbols-outlined text-[12px] sm:text-[14px]">event</span>
+                                  <span>{t('daily.dueLabel')} {formatDeadline(task.date)}</span>
+                                </p>
+                              )}
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                {task.tags && task.tags.map((tag, idx) => (
+                                  <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 dark:bg-slate-700 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-slate-300">
+                                    {getTagLabel(tag)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors p-1 rounded"
+                              onClick={() => handleOpenEditTask(task)}
+                              aria-label={t('daily.editTaskLabel', { title: task.text || task.title })}
+                            >
+                              <span className="material-symbols-outlined text-lg">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded"
+                              onClick={() => handleDeleteTask(task.id)}
+                              aria-label={t('daily.deleteTaskLabel', { title: task.text || task.title })}
+                            >
+                              <span className="material-symbols-outlined text-lg">delete</span>
+                            </button>
                           </div>
                         </div>
+                        {taskIdInProgress === task.id && (
+                          <div className="h-1.5 w-full bg-gray-100 dark:bg-slate-700 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t('daily.updating')}>
+                            <div
+                              className="h-full bg-primary rounded-b-lg transition-[width] duration-[3000ms] ease-linear"
+                              style={{ width: `${toggleProgressPercent}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors p-1 rounded"
-                          onClick={() => handleOpenEditTask(task)}
-                          aria-label={t('daily.editTaskLabel', { title: task.text || task.title })}
-                        >
-                          <span className="material-symbols-outlined text-lg">edit</span>
-                        </button>
-                        <button 
-                          type="button"
-                          className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded"
-                          onClick={() => handleDeleteTask(task.id)}
-                          aria-label={t('daily.deleteTaskLabel', { title: task.text || task.title })}
-                        >
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
-                      </div>
-                      </div>
-                      {taskIdInProgress === task.id && (
-                        <div className="h-1.5 w-full bg-gray-100 dark:bg-slate-700 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t('daily.updating')}>
-                          <div
-                            className="h-full bg-primary rounded-b-lg transition-[width] duration-[3000ms] ease-linear"
-                            style={{ width: `${toggleProgressPercent}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
                 )}
                 {/* Pagination below task list on mobile */}
                 {taskTotalCount > 0 && (
@@ -815,7 +819,7 @@ const DailyPage = () => {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -826,7 +830,7 @@ const DailyPage = () => {
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
           <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
-          <button 
+          <button
             className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close menu"
@@ -864,32 +868,32 @@ const DailyPage = () => {
               <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
-          <Link 
-            to="/daily" 
+          <Link
+            to="/daily"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined fill-1">today</span>
             <span>{t('sidebar.dailyPlan')}</span>
           </Link>
-          <Link 
-            to="/goals" 
+          <Link
+            to="/goals"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
             <span>{t('sidebar.goals')}</span>
           </Link>
-          <Link 
-            to="/calendar" 
+          <Link
+            to="/calendar"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
             <span>{t('sidebar.calendar')}</span>
           </Link>
-          <Link 
-            to="/settings" 
+          <Link
+            to="/settings"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
