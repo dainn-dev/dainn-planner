@@ -47,9 +47,9 @@ const getInitials = (name) => {
 const emptyDisplay = (value) => (value && String(value).trim() ? value : '—');
 
 const LoadingSkeleton = () => (
-  <div className="max-w-[1200px] w-full flex flex-col gap-8 animate-pulse">
+  <div className="max-w-[1200px] w-full flex flex-col gap-4 sm:gap-6 lg:gap-8 animate-pulse">
     <div className="h-5 w-32 bg-gray-200 dark:bg-slate-600 rounded" />
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 flex flex-col sm:flex-row gap-6">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row gap-4 sm:gap-6">
       <div className="h-24 w-24 rounded-full bg-gray-200 dark:bg-slate-600 shrink-0" />
       <div className="flex-1 space-y-3">
         <div className="h-8 w-48 bg-gray-200 dark:bg-slate-600 rounded" />
@@ -57,16 +57,16 @@ const LoadingSkeleton = () => (
         <div className="h-5 w-32 bg-gray-100 dark:bg-slate-700 rounded mt-4" />
       </div>
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-4 sm:p-6 flex flex-col gap-1 sm:gap-2">
           <div className="h-4 w-20 bg-gray-100 dark:bg-slate-700 rounded mb-3" />
           <div className="h-8 w-12 bg-gray-200 dark:bg-slate-600 rounded" />
         </div>
       ))}
     </div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-4 sm:p-6">
         <div className="h-5 w-28 bg-gray-200 dark:bg-slate-600 rounded mb-4" />
         <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
@@ -74,7 +74,7 @@ const LoadingSkeleton = () => (
           ))}
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-4 sm:p-6">
         <div className="h-5 w-32 bg-gray-200 dark:bg-slate-600 rounded mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -320,7 +320,7 @@ const AdminUserDetailPage = () => {
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header title={t('admin.userDetails')} icon="person" notifications={[]} onNotificationsChange={() => {}} onToggleSidebar={() => {}} />
-          <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
+          <div className="flex-1 flex justify-center py-4 sm:py-6 px-4 md:px-8 overflow-y-auto">
             <LoadingSkeleton />
           </div>
         </div>
@@ -353,8 +353,8 @@ const AdminUserDetailPage = () => {
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
-          <div className="max-w-[1200px] flex-1 flex flex-col gap-8 w-full">
+        <div className="flex-1 flex justify-center py-4 sm:py-6 px-4 md:px-8 overflow-y-auto">
+          <div className="max-w-[1200px] flex-1 flex flex-col gap-4 sm:gap-6 lg:gap-8 w-full">
             {/* Back + Save message */}
             <div className="flex flex-col gap-3 self-start w-full">
               <button
@@ -383,7 +383,7 @@ const AdminUserDetailPage = () => {
             </div>
 
             {/* User Header */}
-            <div className="flex flex-col sm:flex-row sm:items-start gap-6 bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 bg-white dark:bg-slate-800 p-4 sm:p-6 md:p-8 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex flex-col items-center gap-3 shrink-0">
                 <div className="h-24 w-24 rounded-full ring-2 ring-gray-200 dark:ring-slate-600 overflow-hidden bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
                   {showAvatarFallback ? (
@@ -495,64 +495,64 @@ const AdminUserDetailPage = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.totalGoals')}</span>
-                  <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-2 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">flag</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium leading-tight">{t('admin.totalGoals')}</span>
+                  <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-1.5 sm:p-2 rounded-lg shrink-0">
+                    <span className="material-symbols-outlined text-[18px] sm:text-[20px]" aria-hidden="true">flag</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418] dark:text-white">{user.totalGoals ?? '—'}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">{t('admin.completedCount', { count: user.completedGoals })}</p>
+                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{user.totalGoals ?? '—'}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 dark:text-slate-500">{t('admin.completedCount', { count: user.completedGoals })}</p>
               </div>
-              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.totalTasks')}</span>
-                  <div className="bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 p-2 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">check_circle</span>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium leading-tight">{t('admin.totalTasks')}</span>
+                  <div className="bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 p-1.5 sm:p-2 rounded-lg shrink-0">
+                    <span className="material-symbols-outlined text-[18px] sm:text-[20px]" aria-hidden="true">check_circle</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418] dark:text-white">{user.totalTasks ?? '—'}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">{t('admin.completedCount', { count: user.completedTasks })}</p>
+                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">{user.totalTasks ?? '—'}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 dark:text-slate-500">{t('admin.completedCount', { count: user.completedTasks })}</p>
               </div>
-              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.completionRate')}</span>
-                  <div className="bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 p-2 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">trending_up</span>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium leading-tight">{t('admin.completionRate')}</span>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 p-1.5 sm:p-2 rounded-lg shrink-0">
+                    <span className="material-symbols-outlined text-[18px] sm:text-[20px]" aria-hidden="true">trending_up</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418] dark:text-white">
+                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">
                   {user.totalTasks > 0 ? Math.round((user.completedTasks / user.totalTasks) * 100) : 0}%
                 </p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">{t('admin.taskCompletion')}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 dark:text-slate-500">{t('admin.taskCompletion')}</p>
               </div>
-              <div className="flex flex-col gap-2 p-5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-slate-400 text-sm font-medium">{t('admin.lastActive')}</span>
-                  <div className="bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 p-2 rounded-lg">
-                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">schedule</span>
+              <div className="flex flex-col gap-1 sm:gap-2 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-gray-500 dark:text-slate-400 text-xs sm:text-sm font-medium leading-tight">{t('admin.lastActive')}</span>
+                  <div className="bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 p-1.5 sm:p-2 rounded-lg shrink-0">
+                    <span className="material-symbols-outlined text-[18px] sm:text-[20px]" aria-hidden="true">schedule</span>
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-[#111418] dark:text-white">
+                <p className="text-[#111418] dark:text-white text-lg sm:text-xl md:text-2xl font-bold leading-none">
                   {lastActiveDisplay ? lastActiveDisplay.split(' ')[0] : '—'}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">
+                <p className="text-[10px] sm:text-xs text-gray-400 dark:text-slate-500">
                   {lastActiveDisplay ? lastActiveDisplay.split(' ').slice(1).join(' ') : t('common.noData')}
                 </p>
               </div>
             </div>
 
             {/* User Details and Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* User Details */}
-              <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[22px] text-gray-500 dark:text-slate-400">person</span>
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <h3 className="text-base sm:text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] sm:text-[22px] text-gray-500 dark:text-slate-400">person</span>
                   {t('admin.userDetailsTitle')}
                 </h3>
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{t('admin.phone')}</label>
@@ -647,12 +647,12 @@ const AdminUserDetailPage = () => {
               </div>
 
               {/* Recent Activity */}
-              <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[22px] text-gray-500 dark:text-slate-400">history</span>
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <h3 className="text-base sm:text-lg font-semibold text-[#111418] dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] sm:text-[22px] text-gray-500 dark:text-slate-400">history</span>
                   {t('admin.recentActivity')}
                 </h3>
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm min-h-[200px]">
+                <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow min-h-[200px]">
                   {user.recentActivity && user.recentActivity.length > 0 ? (
                     <div className="flex flex-col gap-4 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
                       {groupActivitiesByDate(user.recentActivity).map((group) => {
