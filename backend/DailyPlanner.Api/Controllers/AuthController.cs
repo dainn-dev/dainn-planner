@@ -153,9 +153,16 @@ public class AuthController : ControllerBase
 
         _cache.Remove(GoogleStateCachePrefix + state);
 
-        var tokenResponse = await ExchangeGoogleCodeAsync(code, ct);
+        var (tokenResponse, exchangeError) = await ExchangeGoogleCodeAsync(code, ct);
         if (tokenResponse == null)
-            return StatusCode(500, "Failed to exchange code for tokens. Check API logs; ensure Google redirect URI matches this host and the code was not reused.");
+        {
+            var redirectUsed = GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions);
+            var hint = exchangeError != null ? $"{exchangeError} " : string.Empty;
+            return StatusCode(500,
+                $"Failed to exchange code for tokens. {hint}" +
+                $"redirect_uri used: {redirectUsed}. " +
+                "Register that exact URL under Google Cloud OAuth redirect URIs; do not refresh this page (code is one-time).");
+        }
 
         string userId;
         string? tokenForFrontend = null;
@@ -194,7 +201,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    private async Task<GoogleTokenResponse?> ExchangeGoogleCodeAsync(string code, CancellationToken ct)
+    private async Task<(GoogleTokenResponse? Response, string? GoogleError)> ExchangeGoogleCodeAsync(string code, CancellationToken ct)
     {
         var redirectUri = GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions);
         using var http = _httpClientFactory.CreateClient();
@@ -212,15 +219,48 @@ public class AuthController : ControllerBase
         var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
+            var googleErr = TryFormatGoogleTokenError(json);
             _logger.LogWarning(
                 "Google token exchange failed ({StatusCode}). redirect_uri used: {RedirectUri}. Response: {Body}",
                 (int)response.StatusCode,
                 redirectUri,
                 json.Length > 500 ? json[..500] + "…" : json);
-            return null;
+            return (null, googleErr);
         }
 
-        return JsonSerializer.Deserialize<GoogleTokenResponse>(json);
+        var tokenResponse = JsonSerializer.Deserialize<GoogleTokenResponse>(json);
+        if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+        {
+            _logger.LogWarning(
+                "Google token response missing access_token. redirect_uri: {RedirectUri}. Body: {Body}",
+                redirectUri,
+                json.Length > 400 ? json[..400] + "…" : json);
+            return (null, "Token response from Google was empty or invalid.");
+        }
+
+        return (tokenResponse, null);
+    }
+
+    private static string? TryFormatGoogleTokenError(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("error", out var errEl))
+                return null;
+            var code = errEl.GetString();
+            root.TryGetProperty("error_description", out var descEl);
+            var desc = descEl.ValueKind == JsonValueKind.String ? descEl.GetString() : null;
+            if (string.IsNullOrEmpty(code))
+                return null;
+            return string.IsNullOrEmpty(desc) ? code : $"{code}: {desc}";
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private async Task SaveGoogleCalendarTokensAsync(string userId, GoogleTokenResponse tokenResponse, CancellationToken ct)

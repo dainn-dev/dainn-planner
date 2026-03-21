@@ -12,4 +12,11 @@ public class GoogleCalendarOptions
     /// If empty, the API builds <c>{scheme}://{host}/api/auth/google/callback</c> from each request (works with ngrok without editing config).
     /// </summary>
     public string RedirectUri { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional public origin with no path, e.g. <c>https://abc.ngrok-free.dev</c>.
+    /// Use when ngrok/your proxy does not set forwarded headers correctly and inferred <see cref="RedirectUri"/> would be wrong.
+    /// Callback becomes <c>{PublicBaseUrl}/api/auth/google/callback</c>.
+    /// </summary>
+    public string? PublicBaseUrl { get; set; }
 }
