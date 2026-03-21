@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using DailyPlanner.Api.OAuth;
 
 namespace DailyPlanner.Api.Controllers;
 
@@ -79,7 +80,7 @@ public class GoogleIntegrationController : ControllerBase
         var state = Guid.NewGuid().ToString("N");
         _cache.Set(StateCacheKeyPrefix + state, userId, StateExpiration);
 
-        var redirectUri = Uri.EscapeDataString(_options.RedirectUri);
+        var redirectUri = Uri.EscapeDataString(GoogleOAuthRedirectUriHelper.Resolve(Request, _options));
         var scope = Uri.EscapeDataString(string.Join(" ", Scopes));
         var clientId = Uri.EscapeDataString(_options.ClientId);
         return $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope={scope}&state={state}&access_type=offline&prompt=consent";

@@ -15,6 +15,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
+using DailyPlanner.Api.OAuth;
+using Microsoft.Extensions.Logging;
 
 namespace DailyPlanner.Api.Controllers;
 
@@ -32,6 +34,7 @@ public class AuthController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly GoogleCalendarOptions _googleOptions;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         IAuthService authService,
@@ -39,7 +42,8 @@ public class AuthController : ControllerBase
         IMemoryCache cache,
         IHttpClientFactory httpClientFactory,
         IOptions<GoogleCalendarOptions> googleOptions,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<AuthController> logger)
     {
         _authService = authService;
         _context = context;
@@ -47,6 +51,7 @@ public class AuthController : ControllerBase
         _httpClientFactory = httpClientFactory;
         _googleOptions = googleOptions.Value;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -126,7 +131,7 @@ public class AuthController : ControllerBase
     {
         var state = Guid.NewGuid().ToString("N");
         _cache.Set(GoogleStateCachePrefix + state, "login", GoogleStateExpiration);
-        var redirectUri = Uri.EscapeDataString(_googleOptions.RedirectUri);
+        var redirectUri = Uri.EscapeDataString(GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions));
         var scope = Uri.EscapeDataString(string.Join(" ", GoogleScopes));
         var clientId = Uri.EscapeDataString(_googleOptions.ClientId);
         var url = $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope={scope}&state={state}&access_type=offline&prompt=consent";
@@ -150,7 +155,7 @@ public class AuthController : ControllerBase
 
         var tokenResponse = await ExchangeGoogleCodeAsync(code, ct);
         if (tokenResponse == null)
-            return StatusCode(500, "Failed to exchange code for tokens.");
+            return StatusCode(500, "Failed to exchange code for tokens. Check API logs; ensure Google redirect URI matches this host and the code was not reused.");
 
         string userId;
         string? tokenForFrontend = null;
@@ -191,6 +196,7 @@ public class AuthController : ControllerBase
 
     private async Task<GoogleTokenResponse?> ExchangeGoogleCodeAsync(string code, CancellationToken ct)
     {
+        var redirectUri = GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions);
         using var http = _httpClientFactory.CreateClient();
         var request = new HttpRequestMessage(HttpMethod.Post, "https://oauth2.googleapis.com/token");
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -199,12 +205,21 @@ public class AuthController : ControllerBase
             ["code"] = code,
             ["client_id"] = _googleOptions.ClientId,
             ["client_secret"] = _googleOptions.ClientSecret,
-            ["redirect_uri"] = _googleOptions.RedirectUri,
+            ["redirect_uri"] = redirectUri,
             ["grant_type"] = "authorization_code"
         });
         var response = await http.SendAsync(request, ct);
         var json = await response.Content.ReadAsStringAsync(ct);
-        if (!response.IsSuccessStatusCode) return null;
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "Google token exchange failed ({StatusCode}). redirect_uri used: {RedirectUri}. Response: {Body}",
+                (int)response.StatusCode,
+                redirectUri,
+                json.Length > 500 ? json[..500] + "…" : json);
+            return null;
+        }
+
         return JsonSerializer.Deserialize<GoogleTokenResponse>(json);
     }
 
