@@ -712,7 +712,7 @@ const CalendarPage = () => {
                       {t('calendar.colorLabel')}
                     </label>
                     <div className="flex flex-wrap gap-2 py-1">
-                      {['#1380ec','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4'z].map((color) => (
+                      {['#1380ec','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4'].map((color) => (
                         <button
                           key={color}
                           type="button"
