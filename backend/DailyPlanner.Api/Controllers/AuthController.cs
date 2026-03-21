@@ -17,6 +17,7 @@ using System.Security.Claims;
 using System.Text.Json.Nodes;
 using DailyPlanner.Api.OAuth;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace DailyPlanner.Api.Controllers;
 
@@ -157,11 +158,13 @@ public class AuthController : ControllerBase
         if (tokenResponse == null)
         {
             var redirectUsed = GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions);
-            var hint = exchangeError != null ? $"{exchangeError} " : string.Empty;
-            return StatusCode(500,
-                $"Failed to exchange code for tokens. {hint}" +
-                $"redirect_uri used: {redirectUsed}. " +
-                "Register that exact URL under Google Cloud OAuth redirect URIs; do not refresh this page (code is one-time).");
+            var body = BuildGoogleTokenExchangeUserMessage(exchangeError, redirectUsed);
+            return new ContentResult
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+                Content = body,
+                ContentType = "text/plain; charset=utf-8",
+            };
         }
 
         string userId;
@@ -203,6 +206,12 @@ public class AuthController : ControllerBase
 
     private async Task<(GoogleTokenResponse? Response, string? GoogleError)> ExchangeGoogleCodeAsync(string code, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(_googleOptions.ClientId) || string.IsNullOrWhiteSpace(_googleOptions.ClientSecret))
+        {
+            _logger.LogWarning("Google OAuth token exchange skipped: ClientId or ClientSecret is empty in configuration.");
+            return (null, "configuration: ClientId or ClientSecret is missing. Set Authentication:Google in appsettings, user secrets, or environment variables.");
+        }
+
         var redirectUri = GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions);
         using var http = _httpClientFactory.CreateClient();
         var request = new HttpRequestMessage(HttpMethod.Post, "https://oauth2.googleapis.com/token");
@@ -261,6 +270,41 @@ public class AuthController : ControllerBase
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// <see href="https://developers.google.com/identity/protocols/oauth2/web-server#handlingresponse">Google token errors</see>:
+    /// <c>invalid_client</c> = bad/missing client secret or wrong credential type; <c>invalid_grant</c> often = redirect_uri_mismatch or reused code.
+    /// </summary>
+    private static string BuildGoogleTokenExchangeUserMessage(string? googleErr, string redirectUsed)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Failed to exchange code for tokens.");
+        if (!string.IsNullOrEmpty(googleErr))
+            sb.AppendLine($"Google: {googleErr}");
+
+        var errLower = googleErr?.ToLowerInvariant() ?? string.Empty;
+        if (errLower.Contains("invalid_client"))
+        {
+            sb.AppendLine();
+            sb.AppendLine("invalid_client usually means Client ID / Client Secret are wrong, missing, or not from the same \"Web application\" OAuth client.");
+            sb.AppendLine("Fix: Google Cloud Console → APIs & Services → Credentials → your OAuth 2.0 Client ID → copy Client ID and Client secret, set Authentication:Google (or env Authentication__Google__ClientId / ClientSecret), restart the API. Regenerate the secret if unsure.");
+        }
+        else if (errLower.Contains("redirect_uri_mismatch"))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Add this exact Authorized redirect URI for that same OAuth client: {redirectUsed}");
+        }
+        else
+        {
+            sb.AppendLine();
+            sb.AppendLine($"redirect_uri used: {redirectUsed}");
+            sb.AppendLine("(If Google says redirect_uri_mismatch, add that URI in the OAuth client.)");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Do not refresh this callback URL — the authorization code is single-use.");
+        return sb.ToString();
     }
 
     private async Task SaveGoogleCalendarTokensAsync(string userId, GoogleTokenResponse tokenResponse, CancellationToken ct)
