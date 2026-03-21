@@ -100,10 +100,13 @@ public class WeeklySummaryEmailJob
     {
         var periodEndInclusive = periodEnd.Date.AddDays(1).AddTicks(-1);
 
-        var tasksInPeriod = await _context.DailyTasks
-            .AsNoTracking()
-            .Where(t => t.UserId == userId && t.Date >= periodStart && t.Date <= periodEndInclusive)
-            .Select(t => new { t.IsCompleted })
+        var tasksInPeriod = await
+            (from inst in _context.TaskInstances.AsNoTracking()
+             join task in _context.DailyTasks.AsNoTracking() on inst.TaskId equals task.Id
+             where task.UserId == userId
+                   && inst.InstanceDate.Date >= periodStart.Date
+                   && inst.InstanceDate.Date <= periodEndInclusive.Date
+             select new { IsCompleted = inst.Status == TaskInstance.StatusCompleted })
             .ToListAsync(cancellationToken);
 
         var tasksTotal = tasksInPeriod.Count;

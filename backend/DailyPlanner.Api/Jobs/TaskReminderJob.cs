@@ -28,26 +28,32 @@ public class TaskReminderJob
         var fromDate = nowUtc.Date.AddDays(-1);
         var toDate = nowUtc.Date.AddDays(1);
 
-        var tasks = await _context.DailyTasks
+        var taskInstances = await _context.TaskInstances
             .AsNoTracking()
-            .Where(t => !t.IsCompleted
-                && t.ReminderTime != null
-                && t.ReminderTime != ""
-                && t.Date >= fromDate
-                && t.Date <= toDate)
-            .Include(t => t.User)
+            .Where(i =>
+                i.Status == TaskInstance.StatusIncomplete
+                && i.InstanceDate >= fromDate
+                && i.InstanceDate <= toDate
+                && i.Task.ReminderTime != null
+                && i.Task.ReminderTime != "")
+            .Include(i => i.Task)
+            .ThenInclude(t => t.User)
             .ToListAsync(cancellationToken);
 
         var windowStart = nowUtc.AddSeconds(-90);
         var windowEnd = nowUtc.AddSeconds(30);
         var dueTasks = new List<(DailyTask task, DateTime reminderUtc)>();
 
-        foreach (var task in tasks)
+        foreach (var inst in taskInstances)
         {
+            var task = inst.Task;
+            if (task == null)
+                continue;
+
             if (!ParseReminderTime(task.ReminderTime!, out var timeOfDay))
                 continue;
 
-            var reminderUtc = GetReminderUtc(task.Date, timeOfDay, task.User?.Timezone);
+            var reminderUtc = GetReminderUtc(inst.InstanceDate, timeOfDay, task.User?.Timezone);
             if (reminderUtc == null)
                 continue;
 
@@ -109,6 +115,7 @@ public class TaskReminderJob
     {
         try
         {
+            taskDateUtc = DateTime.SpecifyKind(taskDateUtc.Date, DateTimeKind.Utc);
             var tz = TimeZoneInfo.Utc;
             if (!string.IsNullOrWhiteSpace(userTimezone))
             {

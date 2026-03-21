@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import { adminAPI, getAvatarFullUrl } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
-import { formatDate } from '../utils/dateFormat';
+import { formatDate, formatLocalDateIso } from '../utils/dateFormat';
 
 const mapUserDetailFromApi = (u) => ({
   id: u.id,
@@ -29,6 +29,7 @@ const mapUserDetailFromApi = (u) => ({
     id: a.id,
     type: a.type,
     action: a.action,
+    rawDate: a.date ?? null,
     date: a.date ? formatDate(a.date) : '',
     entityType: a.entityType ?? null,
     entityId: a.entityId ?? null,
@@ -84,6 +85,32 @@ const LoadingSkeleton = () => (
     </div>
   </div>
 );
+
+const todayIso = formatLocalDateIso(new Date());
+const yesterdayIso = formatLocalDateIso(new Date(Date.now() - 86400000));
+
+const getRelativeDateLabel = (rawDate, t) => {
+  if (!rawDate) return '';
+  const iso = rawDate.slice(0, 10);
+  if (iso === todayIso) return t('common.today');
+  if (iso === yesterdayIso) return t('common.yesterday');
+  return formatDate(rawDate);
+};
+
+const groupActivitiesByDate = (activities) => {
+  const groups = [];
+  const seen = new Map();
+  for (const a of activities) {
+    const key = a.rawDate ? a.rawDate.slice(0, 10) : '';
+    if (!seen.has(key)) {
+      seen.set(key, groups.length);
+      groups.push({ key, items: [a] });
+    } else {
+      groups[seen.get(key)].items.push(a);
+    }
+  }
+  return groups;
+};
 
 const AdminUserDetailPage = () => {
   const { id } = useParams();
@@ -627,25 +654,46 @@ const AdminUserDetailPage = () => {
                 </h3>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm min-h-[200px]">
                   {user.recentActivity && user.recentActivity.length > 0 ? (
-                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
-                      {user.recentActivity.map((activity) => (
-                        <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                          <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-2 rounded-lg shrink-0">
-                            <span className="material-symbols-outlined text-lg" aria-hidden="true">{getActivityIcon(activity.type)}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-[#111418] dark:text-white min-w-0">{activity.action?.startsWith('admin.activity.') ? t(activity.action) : activity.action}</p>
-                              <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">{activity.date}</span>
+                    <div className="flex flex-col gap-4 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                      {groupActivitiesByDate(user.recentActivity).map((group) => {
+                        const label = getRelativeDateLabel(group.items[0].rawDate, t);
+                        const isToday = group.items[0].rawDate?.slice(0, 10) === todayIso;
+                        return (
+                          <div key={group.key}>
+                            {/* Date group header */}
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-xs font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full ${
+                                isToday
+                                  ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-300'
+                                  : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
+                              }`}>
+                                {label}
+                              </span>
+                              <div className="flex-1 h-px bg-gray-100 dark:bg-slate-700" />
                             </div>
-                            {activity.entityTitle && (
-                              <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5 truncate" title={activity.entityTitle}>
-                                {activity.entityTitle}
-                              </p>
-                            )}
+                            {/* Activities for this date */}
+                            <div className="flex flex-col gap-1">
+                              {group.items.map((activity) => (
+                                <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                  <div className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 p-2 rounded-lg shrink-0">
+                                    <span className="material-symbols-outlined text-lg" aria-hidden="true">{getActivityIcon(activity.type)}</span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-[#111418] dark:text-white">
+                                      {activity.action?.startsWith('admin.activity.') ? t(activity.action) : activity.action}
+                                    </p>
+                                    {activity.entityTitle && (
+                                      <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5 truncate" title={activity.entityTitle}>
+                                        {activity.entityTitle}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center">

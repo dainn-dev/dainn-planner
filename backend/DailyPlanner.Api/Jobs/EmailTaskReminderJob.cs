@@ -59,34 +59,41 @@ public class EmailTaskReminderJob
         if (enabledUserIds.Count == 0)
             return;
 
-        var tasks = await _context.DailyTasks
+        // Load task instances (per-day) and join to the recurring task template for reminder config + title.
+        var taskInstances = await _context.TaskInstances
             .AsNoTracking()
-            .Where(t => !t.IsCompleted
-                && t.ReminderTime != null
-                && t.ReminderTime != ""
-                && t.Date >= fromDate
-                && t.Date <= toDate
-                && enabledUserIds.Contains(t.UserId))
-            .Include(t => t.User)
+            .Where(i =>
+                i.Status == TaskInstance.StatusIncomplete
+                && i.InstanceDate >= fromDate
+                && i.InstanceDate <= toDate
+                && i.Task.ReminderTime != null
+                && i.Task.ReminderTime != ""
+                && enabledUserIds.Contains(i.Task.UserId))
+            .Include(i => i.Task)
+            .ThenInclude(t => t.User)
             .ToListAsync(cancellationToken);
 
         var windowStart = nowUtc.AddSeconds(-90);
         var windowEnd = nowUtc.AddSeconds(30);
-        var dueTasks = new List<(DailyTask task, DateTime reminderUtc)>();
+        var dueTasks = new List<(DailyTask task, TaskInstance instance, DateTime reminderUtc)>();
 
-        foreach (var task in tasks)
+        foreach (var inst in taskInstances)
         {
+            var task = inst.Task;
+            if (task == null)
+                continue;
+
             if (!ParseReminderTime(task.ReminderTime!, out var timeOfDay))
                 continue;
 
-            var reminderUtc = GetReminderUtc(task.Date, timeOfDay, task.User?.Timezone);
+            var reminderUtc = GetReminderUtc(inst.InstanceDate, timeOfDay, task.User?.Timezone);
             if (reminderUtc == null)
                 continue;
 
             if (reminderUtc < windowStart || reminderUtc > windowEnd)
                 continue;
 
-            dueTasks.Add((task, reminderUtc.Value));
+            dueTasks.Add((task, inst, reminderUtc.Value));
         }
 
         if (dueTasks.Count == 0)
@@ -112,8 +119,8 @@ public class EmailTaskReminderJob
         foreach (var group in byUser)
         {
             var userId = group.Key;
-            var userTasks = group.Select(x => x.task).ToList();
-            var user = userTasks[0].User;
+            var userTasks = group.ToList();
+            var user = userTasks[0].task.User;
             if (user == null || string.IsNullOrWhiteSpace(user.Email))
                 continue;
 
@@ -123,7 +130,7 @@ public class EmailTaskReminderJob
                 var body = BuildEmailBody(userTasks);
                 await _emailSender.SendAsync(user.Email, subject, body, cancellationToken);
 
-                foreach (var task in userTasks)
+                foreach (var row in userTasks)
                 {
                     _context.Notifications.Add(new Notification
                     {
@@ -131,11 +138,11 @@ public class EmailTaskReminderJob
                         UserId = userId,
                         Type = "EmailTaskReminder",
                         Title = "Task reminder",
-                        Message = $"Task: {task.Title}",
+                        Message = $"Task: {row.task.Title}",
                         Icon = "schedule",
                         IconColor = "text-primary",
                         IsRead = false,
-                        ReferenceId = task.Id,
+                        ReferenceId = row.task.Id,
                     });
                 }
 
@@ -168,15 +175,15 @@ public class EmailTaskReminderJob
         }
     }
 
-    private static string BuildEmailBody(List<DailyTask> userTasks)
+    private static string BuildEmailBody(List<(DailyTask task, TaskInstance instance, DateTime reminderUtc)> userTasks)
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("<p>You have the following task(s) due:</p>");
         sb.AppendLine("<ul>");
-        foreach (var task in userTasks)
+        foreach (var row in userTasks)
         {
-            var title = System.Net.WebUtility.HtmlEncode(task.Title);
-            var dateStr = task.Date.ToString("yyyy-MM-dd");
+            var title = System.Net.WebUtility.HtmlEncode(row.task.Title);
+            var dateStr = row.instance.InstanceDate.ToString("yyyy-MM-dd");
             sb.AppendLine($"<li><strong>{title}</strong> (due {dateStr})</li>");
         }
         sb.AppendLine("</ul>");
@@ -198,6 +205,7 @@ public class EmailTaskReminderJob
     {
         try
         {
+            taskDateUtc = DateTime.SpecifyKind(taskDateUtc.Date, DateTimeKind.Utc);
             var tz = TimeZoneInfo.Utc;
             if (!string.IsNullOrWhiteSpace(userTimezone))
             {

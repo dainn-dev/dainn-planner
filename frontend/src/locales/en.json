@@ -21,7 +21,9 @@
     "deleteAll": "Delete all",
     "noNotifications": "No notifications",
     "viewAllNotifications": "View all notifications",
-    "userProfile": "User profile"
+    "userProfile": "User profile",
+    "today": "Today",
+    "yesterday": "Yesterday"
   },
   "notifications": {
     "milestoneCompletedTitle": "Congratulations",
@@ -671,7 +673,10 @@
     "lunarMonth9": "9th",
     "lunarMonth10": "10th",
     "lunarMonth11": "11th",
-    "lunarMonth12": "12th"
+    "lunarMonth12": "12th",
+    "noEvents": "No events",
+    "description": "Description",
+    "update": "Update"
   },
   "admin": {
     "dashboard": "Dashboard",

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI } from '../services/api';
+import { formatDate, formatLocalDateIso } from '../utils/dateFormat';
 import { DefaultTemplate } from './lexkit/DefaultTemplate';
 
 const USER_SETTINGS_STORAGE_KEY = 'user_settings';
@@ -60,6 +61,8 @@ const AddTaskModal = ({
   const { t } = useTranslation();
   const editorMethodsRef = useRef(null);
   const taskFormRef = useRef(null);
+  const pendingInjectRef = useRef(null);       // queues HTML to inject when editor becomes ready
+  const selectedHistoryItemRef = useRef(null); // always mirrors the currently selected history item
   const [editorKey, setEditorKey] = useState(0);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [formGoalMilestoneId, setFormGoalMilestoneId] = useState(null);
@@ -75,6 +78,9 @@ const AddTaskModal = ({
   });
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
   taskFormRef.current = taskForm;
 
   const getTagLabel = (tag) => (TAG_I18N_KEYS[tag] ? t(`daily.${TAG_I18N_KEYS[tag]}`) : tag);
@@ -125,8 +131,77 @@ const AddTaskModal = ({
     setNewTagValue('');
   }, [open, initialTask, goalContext]);
 
+  // Load task history when editing a recurring task
+  useEffect(() => {
+    if (!open || !editingTaskId) {
+      setHistoryItems([]);
+      setSelectedHistoryDate(null);
+      selectedHistoryItemRef.current = null;
+      pendingInjectRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    setHistoryLoading(true);
+    const todayIso = formatLocalDateIso(new Date());
+    tasksAPI.getTaskHistory(editingTaskId)
+      .then((res) => {
+        if (cancelled) return;
+        const list = res?.items ?? res?.Items ?? [];
+        const items = Array.isArray(list) ? list : [];
+        setHistoryItems(items);
+
+        // Auto-select today's item, or fall back to the most recent one
+        const getItemDateStr = (it) => (it.date ? it.date.slice(0, 10) : '');
+        const todayItem = items.find((it) => getItemDateStr(it) === todayIso);
+        const autoItem = todayItem ?? items[0] ?? null;
+        if (autoItem) {
+          selectedHistoryItemRef.current = autoItem;
+          setSelectedHistoryDate(getItemDateStr(autoItem));
+          // Sync the dueDate field to this instance's date
+          setTaskForm((prev) => ({ ...prev, dueDate: dateToDatetimeLocal(autoItem.date) }));
+          const html = autoItem.description ?? '';
+          if (editorMethodsRef.current?.injectHTML) {
+            editorMethodsRef.current.injectHTML(html);
+          } else {
+            // Editor not ready yet — queue for handleEditorReady
+            pendingInjectRef.current = html;
+          }
+        }
+      })
+      .catch(() => { if (!cancelled) setHistoryItems([]); })
+      .finally(() => { if (!cancelled) setHistoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, editingTaskId]);
+
+  const handleHistoryDateClick = useCallback((item) => {
+    const dateStr = item.date ? item.date.slice(0, 10) : null;
+    const html = item.description ?? '';
+    selectedHistoryItemRef.current = item;
+    setSelectedHistoryDate(dateStr);
+    // Sync the dueDate field so the save targets this instance's date
+    setTaskForm((prev) => ({ ...prev, dueDate: dateToDatetimeLocal(item.date) }));
+    if (editorMethodsRef.current?.injectHTML) {
+      editorMethodsRef.current.injectHTML(html);
+    } else {
+      pendingInjectRef.current = html;
+      setEditorKey((k) => k + 1);
+    }
+  }, []);
+
   const handleEditorReady = useCallback((methods) => {
     editorMethodsRef.current = methods;
+    // A history date was selected before the editor was ready — inject it with priority
+    if (pendingInjectRef.current !== null) {
+      const html = pendingInjectRef.current;
+      pendingInjectRef.current = null;
+      methods.injectHTML(html);
+      return;
+    }
+    // If a history item is already selected, use its description (not the template description)
+    if (selectedHistoryItemRef.current) {
+      methods.injectHTML(selectedHistoryItemRef.current.description ?? '');
+      return;
+    }
     const desc = taskFormRef.current?.description;
     if (desc) {
       methods.injectHTML(desc);
@@ -191,7 +266,37 @@ const AddTaskModal = ({
 
     try {
       if (editingTaskId) {
-        await tasksAPI.updateTask(editingTaskId, payload);
+        // Split: template update (no per-day fields), then instance upsert for selected dueDate.
+        const templatePayload = {
+          title: payload.title,
+          priority: payload.priority,
+          recurrence: payload.recurrence,
+          reminderTime: payload.reminderTime,
+          tags: payload.tags,
+        };
+
+        // Keep goal associations consistent with existing update behavior.
+        templatePayload.goalMilestoneId = payload.goalMilestoneId ?? null;
+        templatePayload.goalId = payload.goalId ?? null;
+
+        await tasksAPI.updateTask(editingTaskId, templatePayload);
+
+        // Use the selected history instance's date and completion status if one is selected,
+        // otherwise fall back to the form's dueDate and the initial task's completion status.
+        const selectedItem = selectedHistoryItemRef.current;
+        const instanceDate = selectedItem?.date
+          ? new Date(selectedItem.date).toISOString()
+          : datePayload;
+        const instanceCompleted = selectedItem
+          ? (selectedItem.isCompleted ?? false)
+          : (initialTask?.isCompleted ?? initialTask?.completed ?? false);
+
+        await tasksAPI.upsertTaskInstance({
+          taskId: editingTaskId,
+          date: instanceDate,
+          description: descriptionFromEditor ?? null,
+          isCompleted: instanceCompleted,
+        });
       } else {
         await tasksAPI.createTask(payload);
       }
@@ -210,6 +315,7 @@ const AddTaskModal = ({
       setEditingTaskId(null);
       setShowNewTagInput(false);
       setNewTagValue('');
+      selectedHistoryItemRef.current = null;
 
       if (onSaved) {
         onSaved();
@@ -237,7 +343,7 @@ const AddTaskModal = ({
       onClick={handleCancel}
     >
       <div
-        className="w-full max-w-[580px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] min-h-0 animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
+        className="w-full max-w-[980px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] min-h-0 animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light dark:bg-slate-800 shrink-0">
@@ -280,9 +386,47 @@ const AddTaskModal = ({
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                {t('daily.description')}
-              </label>
+              <div className="flex items-center gap-2 min-w-0">
+                <label className="shrink-0 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                  {t('daily.description')}
+                </label>
+                {editingTaskId && (
+                  <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0 pb-0.5" style={{ scrollbarWidth: 'none' }}>
+                    {historyLoading && (
+                      <span className="text-[10px] text-gray-400 dark:text-slate-500 shrink-0 italic">Loading…</span>
+                    )}
+                    {!historyLoading && historyItems.map((item) => {
+                      const dateLabel = formatDate(item.date) || item.date || '—';
+                      const done = !!item.isCompleted;
+                      const isSelected = selectedHistoryDate && item.date
+                        ? item.date.slice(0, 10) === selectedHistoryDate
+                        : false;
+                      return (
+                        <button
+                          key={item.id ?? `${item.taskId}-${item.date}`}
+                          type="button"
+                          title={done ? 'Completed' : 'Not completed'}
+                          onClick={() => handleHistoryDateClick(item)}
+                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] ${
+                            isSelected
+                              ? 'border-primary bg-primary text-white dark:border-blue-400 dark:bg-blue-500 dark:text-white'
+                              : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:border-primary dark:hover:border-blue-400 hover:bg-primary/5 dark:hover:bg-blue-900/20'
+                          }`}
+                        >
+                          <span className={`material-symbols-outlined text-[13px] ${
+                            isSelected
+                              ? 'text-white'
+                              : done ? 'text-green-500 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'
+                          }`}>
+                            {done ? 'check_circle' : 'radio_button_unchecked'}
+                          </span>
+                          {dateLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <div className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all overflow-hidden">
                 <DefaultTemplate
                   key={editorKey}

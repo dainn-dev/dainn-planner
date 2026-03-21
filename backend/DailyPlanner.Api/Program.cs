@@ -329,6 +329,11 @@ using (var scope = app.Services.CreateScope())
 
         // Seed database with roles and sample accounts
         await DailyPlanner.Infrastructure.Data.DatabaseSeeder.SeedAsync(context, userManager, roleManager);
+
+        // Ensure existing legacy DailyTask per-date data is available as TaskInstances
+        // so the instance-based /api/tasks endpoints work immediately after startup.
+        var legacyMigration = services.GetRequiredService<DailyPlanner.Infrastructure.Services.LegacyDailyTaskToTaskInstancesMigrationService>();
+        await legacyMigration.RunAsync();
     }
     catch (Exception ex)
     {

@@ -102,6 +102,7 @@ const DailyPage = () => {
   const [taskSortOrder, setTaskSortOrder] = useState('desc'); // 'desc' | 'asc'
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [taskIdInProgress, setTaskIdInProgress] = useState(null); // task id showing 3s progress before toggle
+  const [togglePayloadInProgress, setTogglePayloadInProgress] = useState(null);
   const [toggleProgressPercent, setToggleProgressPercent] = useState(0); // 0..100 for inline progress bar
   const [, setTimeProgressTick] = useState(0); // tick every minute to refresh time-based progress
   const [notifications, setNotifications] = useState([
@@ -218,12 +219,15 @@ const DailyPage = () => {
     const startProgress = requestAnimationFrame(() => setToggleProgressPercent(100));
     const finishTimer = setTimeout(async () => {
       try {
-        await tasksAPI.completeTask(taskIdInProgress);
+        if (togglePayloadInProgress != null) {
+          await tasksAPI.upsertTaskInstance(togglePayloadInProgress);
+        }
         await loadData();
       } catch (err) {
         console.error('Failed to toggle task:', err);
       } finally {
         setTaskIdInProgress(null);
+        setTogglePayloadInProgress(null);
         setToggleProgressPercent(0);
       }
     }, 3000);
@@ -231,7 +235,7 @@ const DailyPage = () => {
       cancelAnimationFrame(startProgress);
       clearTimeout(finishTimer);
     };
-  }, [taskIdInProgress, loadData]);
+  }, [taskIdInProgress, togglePayloadInProgress, loadData]);
 
   // Refresh every minute when showing time-based progress so % updates
   useEffect(() => {
@@ -281,8 +285,16 @@ const DailyPage = () => {
   const taskProgressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const progressPercentage = trackingMethod === 'time' ? getTodayTimeProgressPercent() : taskProgressPercent;
 
-  const handleTaskCheckboxChange = (taskId) => {
-    setTaskIdInProgress(taskId);
+  const handleTaskCheckboxChange = (task) => {
+    const currentCompleted = task.completed ?? task.isCompleted;
+    const willBeCompleted = !currentCompleted;
+    setTogglePayloadInProgress({
+      taskId: task.id,
+      date: task.date,
+      description: task.description ?? null,
+      isCompleted: willBeCompleted,
+    });
+    setTaskIdInProgress(task.id);
     setToggleProgressPercent(0);
   };
 
@@ -709,7 +721,7 @@ const DailyPage = () => {
                                 checked={task.completed ?? task.isCompleted}
                                 className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-slate-600 bg-transparent dark:bg-slate-700/50 checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait"
                                 type="checkbox"
-                                onChange={() => handleTaskCheckboxChange(task.id)}
+                                onChange={() => handleTaskCheckboxChange(task)}
                                 disabled={taskIdInProgress === task.id}
                                 aria-label={t('daily.markTaskComplete', { title: task.text || task.title })}
                               />

@@ -73,6 +73,17 @@ public class TasksController : ControllerBase
         return result.Success ? Ok(result) : NotFound(result);
     }
 
+    [HttpGet("{taskId}/history")]
+    public async Task<ActionResult<ApiResponse<TaskHistoryResult>>> GetTaskHistory([FromRoute] Guid taskId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _taskService.GetTaskHistoryAsync(userId, taskId);
+        return Ok(result);
+    }
+
     [HttpPatch("{id}/toggle")]
     public async Task<ActionResult<ApiResponse<DailyTaskDto>>> ToggleTask(Guid id)
     {

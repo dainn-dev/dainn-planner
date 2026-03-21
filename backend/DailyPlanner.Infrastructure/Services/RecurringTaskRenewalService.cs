@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DailyPlanner.Domain.Entities;
 using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -24,53 +25,74 @@ public class RecurringTaskRenewalService : IRecurringTaskRenewalService
 
         var enabledUserIds = await GetAutoMoveIncompleteEnabledUserIdsAsync(cancellationToken);
 
-        var recurring = await _context.DailyTasks
+        // Track existing instances for today to keep the job idempotent.
+        var existingTodayTaskIdsList = await _context.TaskInstances
+            .Where(i => i.InstanceDate.Date == today.Date)
+            .Select(i => i.TaskId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var existingTodayTaskIds = new HashSet<Guid>(existingTodayTaskIdsList);
+
+        var recurringTemplates = await _context.DailyTasks
             .Where(t => t.Recurrence != 0)
             .ToListAsync(cancellationToken);
 
         int renewed = 0;
 
-        foreach (var task in recurring)
+        foreach (var task in recurringTemplates)
         {
-            var createdAtDate = DateTime.SpecifyKind(task.CreatedAt.Date, DateTimeKind.Utc);
+            if (!ShouldRunToday(task, today))
+                continue;
 
-            if (task.Recurrence == 1)
+            if (existingTodayTaskIds.Contains(task.Id))
+                continue;
+
+            _context.TaskInstances.Add(new TaskInstance
             {
-                task.Date = today;
-                task.IsCompleted = false;
-                task.UpdatedAt = DateTime.UtcNow;
-                renewed++;
-            }
-            else if (task.Recurrence == 2 && createdAtDate != today && today.DayOfWeek == DayOfWeek.Monday)
-            {
-                task.Date = today;
-                task.IsCompleted = false;
-                task.UpdatedAt = DateTime.UtcNow;
-                renewed++;
-            }
-            else if (task.Recurrence == 3 && createdAtDate != today && today.Day == 1)
-            {
-                task.Date = today;
-                task.IsCompleted = false;
-                task.UpdatedAt = DateTime.UtcNow;
-                renewed++;
-            }
+                Id = Guid.NewGuid(),
+                TaskId = task.Id,
+                InstanceDate = today,
+                Description = null,
+                Status = TaskInstance.StatusIncomplete,
+                IsOverride = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            existingTodayTaskIds.Add(task.Id);
+            renewed++;
         }
 
         int moved = 0;
         if (enabledUserIds.Count > 0)
         {
-            var incompleteYesterday = await _context.DailyTasks
-                .Where(t => !t.IsCompleted
-                    && t.Date >= yesterday
-                    && t.Date < today
-                    && enabledUserIds.Contains(t.UserId))
+            var incompleteYesterday = await
+                (from inst in _context.TaskInstances
+                 join task in _context.DailyTasks on inst.TaskId equals task.Id
+                 where inst.Status == TaskInstance.StatusIncomplete
+                       && inst.InstanceDate.Date == yesterday.Date
+                       && enabledUserIds.Contains(task.UserId)
+                 select new { inst.TaskId, inst.Description })
                 .ToListAsync(cancellationToken);
 
-            foreach (var task in incompleteYesterday)
+            foreach (var row in incompleteYesterday)
             {
-                task.Date = today;
-                task.UpdatedAt = DateTime.UtcNow;
+                // Only copy if today doesn't already have an instance for the task.
+                if (existingTodayTaskIds.Contains(row.TaskId))
+                    continue;
+
+                _context.TaskInstances.Add(new TaskInstance
+                {
+                    Id = Guid.NewGuid(),
+                    TaskId = row.TaskId,
+                    InstanceDate = today,
+                    Description = row.Description,
+                    Status = TaskInstance.StatusIncomplete,
+                    IsOverride = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                existingTodayTaskIds.Add(row.TaskId);
                 moved++;
             }
         }
@@ -79,10 +101,23 @@ public class RecurringTaskRenewalService : IRecurringTaskRenewalService
         {
             await _context.SaveChangesAsync(cancellationToken);
             if (renewed > 0)
-                _logger.LogInformation("Recurring task renewal completed. Renewed {Count} task(s).", renewed);
+                _logger.LogInformation("Recurring task renewal completed. Created {Count} task instance(s).", renewed);
             if (moved > 0)
-                _logger.LogInformation("Auto-move incomplete: moved {Count} task(s) for users with autoMoveIncomplete enabled.", moved);
+                _logger.LogInformation("Auto-move incomplete: copied {Count} instance(s) for users with autoMoveIncomplete enabled.", moved);
         }
+    }
+
+    private static bool ShouldRunToday(DailyTask task, DateTime today)
+    {
+        var createdAtDate = DateTime.SpecifyKind(task.CreatedAt.Date, DateTimeKind.Utc);
+
+        return task.Recurrence switch
+        {
+            1 => true,
+            2 => today.DayOfWeek == DayOfWeek.Monday && createdAtDate != today,
+            3 => today.Day == 1 && createdAtDate != today,
+            _ => false
+        };
     }
 
     private static bool IsAutoMoveIncompleteEnabled(string? dataJson)

@@ -25,55 +25,187 @@ public class DailyTaskService : IDailyTaskService
 
     public async Task<ApiResponse<PagedTasksResult>> GetTasksAsync(string userId, DateTime? date, bool? completed, int? page, int? pageSize, int? priority = null, string? tag = null, string? sortOrder = null, Guid? goalId = null)
     {
-        var query = _context.DailyTasks.Where(t => t.UserId == userId);
+        var baseQuery =
+            from inst in _context.TaskInstances.AsNoTracking()
+            join task in _context.DailyTasks.AsNoTracking() on inst.TaskId equals task.Id
+            where task.UserId == userId
+            select new { task, inst };
 
         if (date.HasValue)
         {
             var dateValue = ToUtc(date.Value);
-            query = query.Where(t => t.Date.Date == dateValue);
+            baseQuery = baseQuery.Where(x => x.inst.InstanceDate.Date == dateValue.Date);
         }
 
         if (completed.HasValue)
         {
-            query = query.Where(t => t.IsCompleted == completed.Value);
+            baseQuery = completed.Value
+                ? baseQuery.Where(x => x.inst.Status == TaskInstance.StatusCompleted)
+                : baseQuery.Where(x => x.inst.Status != TaskInstance.StatusCompleted);
         }
 
         if (goalId.HasValue)
         {
-            query = query.Where(t => t.GoalId == goalId.Value);
+            baseQuery = baseQuery.Where(x => x.task.GoalId == goalId.Value);
         }
 
         if (priority.HasValue)
         {
-            query = query.Where(t => t.Priority == priority.Value);
+            baseQuery = baseQuery.Where(x => x.task.Priority == priority.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(tag))
         {
             var tagValue = tag.Trim();
-            query = query.Where(t => t.Tags != null && t.Tags.Contains(tagValue));
+            baseQuery = baseQuery.Where(x => x.task.Tags != null && x.task.Tags.Contains(tagValue));
         }
 
         int pageNum = page ?? 1;
         int size = pageSize ?? 10;
 
-        int totalCount = await query.CountAsync();
+        int totalCount = await baseQuery.CountAsync();
 
         var isAsc = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
         var ordered = isAsc
-            ? query.OrderBy(t => t.Date).ThenBy(t => t.Priority)
-            : query.OrderByDescending(t => t.Date).ThenBy(t => t.Priority);
-        var tasks = await ordered.Skip((pageNum - 1) * size).Take(size).ToListAsync();
+            ? baseQuery.OrderBy(x => x.inst.InstanceDate).ThenBy(x => x.task.Priority)
+            : baseQuery.OrderByDescending(x => x.inst.InstanceDate).ThenBy(x => x.task.Priority);
+
+        var rows = await ordered
+            .Skip((pageNum - 1) * size)
+            .Take(size)
+            .ToListAsync();
+
+        var dtos = rows.Select(x => new DailyTaskDto
+        {
+            Id = x.task.Id,
+            Title = x.task.Title,
+            Description = x.inst.Description,
+            Date = ToUtc(x.inst.InstanceDate),
+            IsCompleted = string.Equals(x.inst.Status, TaskInstance.StatusCompleted, StringComparison.OrdinalIgnoreCase),
+            CompletedDate = x.inst.CompletedDate.HasValue ? ToUtcFull(x.inst.CompletedDate.Value) : null,
+            Priority = x.task.Priority,
+            Recurrence = x.task.Recurrence,
+            ReminderTime = x.task.ReminderTime,
+            Tags = x.task.Tags != null ? x.task.Tags.ToList() : new List<string>(),
+            CreatedAt = x.task.CreatedAt,
+            GoalMilestoneId = x.task.GoalMilestoneId,
+            GoalId = x.task.GoalId
+        }).ToList();
 
         return new ApiResponse<PagedTasksResult>
         {
             Success = true,
             Data = new PagedTasksResult
             {
-                Items = _mapper.Map<List<DailyTaskDto>>(tasks),
+                Items = dtos,
                 TotalCount = totalCount,
                 Page = pageNum,
                 PageSize = size
+            }
+        };
+    }
+
+    public async Task<ApiResponse<TaskInstanceDto>> UpsertTaskInstanceAsync(string userId, UpsertTaskInstanceRequest request)
+    {
+        var task = await _context.DailyTasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == request.TaskId && t.UserId == userId);
+
+        if (task == null)
+        {
+            return new ApiResponse<TaskInstanceDto>
+            {
+                Success = false,
+                Message = "Task not found"
+            };
+        }
+
+        var instanceDateUtc = ToUtc(request.Date);
+
+        var instance = await _context.TaskInstances
+            .FirstOrDefaultAsync(i => i.TaskId == request.TaskId && i.InstanceDate.Date == instanceDateUtc.Date);
+
+        var completedAtUtc = DateTime.UtcNow;
+
+        if (instance == null)
+        {
+            instance = new TaskInstance
+            {
+                Id = Guid.NewGuid(),
+                TaskId = request.TaskId,
+                InstanceDate = instanceDateUtc,
+                Description = request.Description,
+                Status = request.IsCompleted ? TaskInstance.StatusCompleted : TaskInstance.StatusIncomplete,
+                CompletedDate = request.IsCompleted ? completedAtUtc : null,
+                IsOverride = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = completedAtUtc
+            };
+            _context.TaskInstances.Add(instance);
+        }
+        else
+        {
+            instance.Description = request.Description;
+            if (request.IsCompleted)
+                instance.MarkCompleted(completedAtUtc);
+            else
+                instance.MarkIncomplete();
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new ApiResponse<TaskInstanceDto>
+        {
+            Success = true,
+            Data = new TaskInstanceDto
+            {
+                Id = instance.Id,
+                TaskId = instance.TaskId,
+                Date = ToUtc(instance.InstanceDate),
+                Description = instance.Description,
+                IsCompleted = instance.IsCompleted,
+                CompletedDate = instance.CompletedDate.HasValue ? ToUtcFull(instance.CompletedDate.Value) : null
+            }
+        };
+    }
+
+    public async Task<ApiResponse<TaskHistoryResult>> GetTaskHistoryAsync(string userId, Guid taskId)
+    {
+        var exists = await _context.DailyTasks
+            .AsNoTracking()
+            .AnyAsync(t => t.Id == taskId && t.UserId == userId);
+
+        if (!exists)
+        {
+            return new ApiResponse<TaskHistoryResult>
+            {
+                Success = false,
+                Message = "Task not found"
+            };
+        }
+
+        var items = await _context.TaskInstances
+            .AsNoTracking()
+            .Where(i => i.TaskId == taskId)
+            .OrderByDescending(i => i.InstanceDate)
+            .Select(i => new TaskInstanceDto
+            {
+                Id = i.Id,
+                TaskId = i.TaskId,
+                Date = ToUtc(i.InstanceDate),
+                Description = i.Description,
+                IsCompleted = i.Status == TaskInstance.StatusCompleted,
+                CompletedDate = i.CompletedDate
+                    .HasValue ? ToUtcFull(i.CompletedDate.Value) : null
+            })
+            .ToListAsync();
+
+        return new ApiResponse<TaskHistoryResult>
+        {
+            Success = true,
+            Data = new TaskHistoryResult
+            {
+                Items = items
             }
         };
     }
@@ -117,7 +249,8 @@ public class DailyTaskService : IDailyTaskService
             Id = Guid.NewGuid(),
             UserId = userId,
             Title = request.Title,
-            Description = request.Description,
+            // Daily/per-date data is stored in TaskInstance, not in the template.
+            Description = null,
             Date = ToUtcFull(request.Date),
             Priority = request.Priority,
             Recurrence = request.Recurrence,
@@ -128,7 +261,20 @@ public class DailyTaskService : IDailyTaskService
             GoalId = goalId
         };
 
+        var instanceDateUtc = ToUtc(request.Date);
+        var instance = new TaskInstance
+        {
+            Id = Guid.NewGuid(),
+            TaskId = task.Id,
+            InstanceDate = instanceDateUtc,
+            Description = request.Description,
+            Status = TaskInstance.StatusIncomplete,
+            IsOverride = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
         _context.DailyTasks.Add(task);
+        _context.TaskInstances.Add(instance);
         await _context.SaveChangesAsync();
         await _userActivityService.RecordAsync(userId, "task", "admin.activity.taskCreated", "DailyTask", task.Id.ToString());
 
@@ -136,7 +282,22 @@ public class DailyTaskService : IDailyTaskService
         {
             Success = true,
             Message = "Task created successfully",
-            Data = _mapper.Map<DailyTaskDto>(task)
+            Data = new DailyTaskDto
+            {
+                Id = task.Id,
+                Title = task.Title,
+                Description = instance.Description,
+                Date = instance.InstanceDate,
+                IsCompleted = false,
+                CompletedDate = null,
+                Priority = task.Priority,
+                Recurrence = task.Recurrence,
+                ReminderTime = task.ReminderTime,
+                Tags = task.Tags != null ? task.Tags.ToList() : new List<string>(),
+                CreatedAt = task.CreatedAt,
+                GoalMilestoneId = task.GoalMilestoneId,
+                GoalId = task.GoalId
+            }
         };
     }
 
@@ -154,10 +315,6 @@ public class DailyTaskService : IDailyTaskService
 
         if (!string.IsNullOrEmpty(request.Title))
             task.Title = request.Title;
-        if (request.Description != null)
-            task.Description = request.Description;
-        if (request.Date.HasValue)
-            task.Date = ToUtcFull(request.Date.Value);
         if (request.Priority.HasValue)
             task.Priority = request.Priority.Value;
         if (request.Recurrence.HasValue)
@@ -204,6 +361,40 @@ public class DailyTaskService : IDailyTaskService
             task.GoalId = null;
         }
 
+        // Optional: description/date are per-day data; only upsert an instance when description is provided.
+        // This supports the FE split workflow (template update vs per-day instance upsert).
+        TaskInstance? instanceForResponse = null;
+        var responseDateUtc = request.Date.HasValue ? ToUtc(request.Date.Value) : ToUtc(task.Date);
+
+        if (request.Description != null)
+        {
+            var instanceDateUtc = responseDateUtc;
+            var instance = await _context.TaskInstances
+                .FirstOrDefaultAsync(i => i.TaskId == task.Id && i.InstanceDate.Date == instanceDateUtc.Date);
+
+            if (instance == null)
+            {
+                instance = new TaskInstance
+                {
+                    Id = Guid.NewGuid(),
+                    TaskId = task.Id,
+                    InstanceDate = instanceDateUtc,
+                    Description = request.Description,
+                    Status = TaskInstance.StatusIncomplete,
+                    IsOverride = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.TaskInstances.Add(instance);
+            }
+            else
+            {
+                instance.Description = request.Description;
+                instance.UpdatedAt = DateTime.UtcNow;
+            }
+
+            instanceForResponse = instance;
+        }
+
         task.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -211,7 +402,22 @@ public class DailyTaskService : IDailyTaskService
         {
             Success = true,
             Message = "Task updated successfully",
-            Data = _mapper.Map<DailyTaskDto>(task)
+            Data = new DailyTaskDto
+            {
+                Id = task.Id,
+                Title = task.Title,
+                Description = instanceForResponse?.Description,
+                Date = instanceForResponse != null ? ToUtc(instanceForResponse.InstanceDate) : responseDateUtc,
+                IsCompleted = instanceForResponse != null && instanceForResponse.IsCompleted,
+                CompletedDate = instanceForResponse?.CompletedDate.HasValue == true ? ToUtcFull(instanceForResponse.CompletedDate!.Value) : null,
+                Priority = task.Priority,
+                Recurrence = task.Recurrence,
+                ReminderTime = task.ReminderTime,
+                Tags = task.Tags != null ? task.Tags.ToList() : new List<string>(),
+                CreatedAt = task.CreatedAt,
+                GoalMilestoneId = task.GoalMilestoneId,
+                GoalId = task.GoalId
+            }
         };
     }
 
@@ -249,17 +455,61 @@ public class DailyTaskService : IDailyTaskService
             };
         }
 
-        task.IsCompleted = !task.IsCompleted;
-        task.CompletedDate = task.IsCompleted ? DateTime.UtcNow : null;
-        task.UpdatedAt = DateTime.UtcNow;
+        // Toggle completion state for today's instance.
+        var todayUtc = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
+        var instance = await _context.TaskInstances
+            .FirstOrDefaultAsync(i => i.TaskId == task.Id && i.InstanceDate.Date == todayUtc.Date);
+
+        if (instance == null)
+        {
+            instance = new TaskInstance
+            {
+                Id = Guid.NewGuid(),
+                TaskId = task.Id,
+                InstanceDate = todayUtc,
+                Description = null,
+                Status = TaskInstance.StatusIncomplete,
+                IsOverride = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.TaskInstances.Add(instance);
+        }
+
+        var willBeCompleted = !instance.IsCompleted;
+        if (willBeCompleted)
+            instance.MarkCompleted(DateTime.UtcNow);
+        else
+            instance.MarkIncomplete();
+
         await _context.SaveChangesAsync();
-        await _userActivityService.RecordAsync(userId, "task", task.IsCompleted ? "admin.activity.taskCompleted" : "admin.activity.taskUncompleted", "DailyTask", task.Id.ToString());
+        await _userActivityService.RecordAsync(
+            userId,
+            "task",
+            willBeCompleted ? "admin.activity.taskCompleted" : "admin.activity.taskUncompleted",
+            "DailyTask",
+            task.Id.ToString());
 
         return new ApiResponse<DailyTaskDto>
         {
             Success = true,
             Message = "Task toggled successfully",
-            Data = _mapper.Map<DailyTaskDto>(task)
+            Data = new DailyTaskDto
+            {
+                Id = task.Id,
+                Title = task.Title,
+                Description = instance.Description,
+                Date = ToUtc(instance.InstanceDate),
+                IsCompleted = willBeCompleted,
+                CompletedDate = instance.CompletedDate.HasValue ? ToUtcFull(instance.CompletedDate.Value) : null,
+                Priority = task.Priority,
+                Recurrence = task.Recurrence,
+                ReminderTime = task.ReminderTime,
+                Tags = task.Tags != null ? task.Tags.ToList() : new List<string>(),
+                CreatedAt = task.CreatedAt,
+                GoalMilestoneId = task.GoalMilestoneId,
+                GoalId = task.GoalId
+            }
         };
     }
 

@@ -21,7 +21,9 @@
     "deleteAll": "Xóa tất cả",
     "noNotifications": "Không có thông báo nào",
     "viewAllNotifications": "Xem tất cả thông báo",
-    "userProfile": "Hồ sơ người dùng"
+    "userProfile": "Hồ sơ người dùng",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua"
   },
   "notifications": {
     "milestoneCompletedTitle": "Chúc mừng",
@@ -671,7 +673,10 @@
     "lunarMonth9": "Chín",
     "lunarMonth10": "Mười",
     "lunarMonth11": "Mười một",
-    "lunarMonth12": "Chạp"
+    "lunarMonth12": "Chạp",
+    "noEvents": "Không có sự kiện",
+    "description": "Mô tả",
+    "update": "Cập nhật"
   },
   "admin": {
     "dashboard": "Tổng quan",

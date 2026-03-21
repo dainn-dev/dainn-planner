@@ -73,6 +73,8 @@
   font-size: 0.875rem;
   line-height: 1.625;
   color: var(--lexkit-fg);
+  /* Ensure the content area respects the parent's max-height so it can scroll on mobile. */
+  flex: 1;
 }
 
 .lexkit-placeholder {
@@ -90,6 +92,9 @@
   overflow: hidden;
   min-height: 90px;
   max-height: 50vh;
+  /* So the content-editable can flex and become the scrolling region. */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Theme tokens – light */

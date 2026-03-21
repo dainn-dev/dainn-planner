@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 namespace DailyPlanner.Infrastructure.Tests.Services;
 
@@ -23,7 +24,9 @@ public class LongTermGoalServiceTests : IDisposable
         _context = TestHelpers.CreateInMemoryDbContext();
         _mapper = TestHelpers.CreateMapper();
         var userActivityServiceMock = new Mock<IUserActivityService>();
-        _service = new LongTermGoalService(_context, _mapper, userActivityServiceMock.Object);
+        var emailSenderMock = new Mock<IEmailSender>();
+        var loggerMock = new Mock<ILogger<LongTermGoalService>>();
+        _service = new LongTermGoalService(_context, _mapper, userActivityServiceMock.Object, emailSenderMock.Object, loggerMock.Object);
     }
 
     [Fact]

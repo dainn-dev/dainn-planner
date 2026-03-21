@@ -47,10 +47,17 @@ public class UserService : IUserService
             };
         }
 
+        var userDto = _mapper.Map<UserDto>(user);
+
+        // Identity roles are stored separately from the user row, so we must read them explicitly.
+        // The frontend relies on `user.role` for admin UI and routing.
+        var roles = await _userManager.GetRolesAsync(user);
+        userDto.Role = roles.Contains("Admin") ? "Admin" : (roles.Count > 0 ? roles[0] : "User");
+
         return new ApiResponse<UserDto>
         {
             Success = true,
-            Data = _mapper.Map<UserDto>(user)
+            Data = userDto
         };
     }
 

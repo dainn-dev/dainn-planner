@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IOldDailyTaskCleanupService, OldDailyTaskCleanupService>();
         services.AddScoped<IOldUserActivityCleanupService, OldUserActivityCleanupService>();
         services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<LegacyDailyTaskToTaskInstancesMigrationService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddHttpClient();
         services.AddScoped<IGoogleRecaptchaService, GoogleRecaptchaService>();

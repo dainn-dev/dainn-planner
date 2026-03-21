@@ -54,6 +54,7 @@ public class AuthServiceTests : IDisposable
         _jwtServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("refresh-token");
 
         var userActivityServiceMock = new Mock<IUserActivityService>();
+        var emailSenderMock = new Mock<IEmailSender>();
 
         _service = new AuthService(
             _userManagerMock.Object,
@@ -63,7 +64,8 @@ public class AuthServiceTests : IDisposable
             _context,
             _configurationMock.Object,
             userActivityServiceMock.Object,
-            contextAccessor.Object);
+            contextAccessor.Object,
+            emailSenderMock.Object);
     }
 
     [Fact]

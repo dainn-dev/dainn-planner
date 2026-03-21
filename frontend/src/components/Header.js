@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // React needed for React.Fragment in extraButtons
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAvatarFullUrl, notificationsAPI } from '../services/api';
@@ -6,8 +6,9 @@ import { getAvatarFullUrl, notificationsAPI } from '../services/api';
 const Header = ({ 
   title, 
   icon = 'calendar_today',
-  actionButton = null, // { text, onClick, icon }
-  customContent = null, // For pages that need custom content like CalendarPage
+  actionButton = null,   // { text, onClick, icon }
+  extraButtons = null,   // array of JSX nodes rendered before actionButton
+  customContent = null,  // For pages that need custom content on the left side
   notifications = [],
   onNotificationsChange,
   onToggleSidebar
@@ -114,13 +115,16 @@ const Header = ({
             <h2 className="text-[#111418] dark:text-white text-sm sm:text-base md:text-lg font-bold leading-tight tracking-[-0.015em] truncate max-w-[60vw] sm:max-w-none">{title}</h2>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {extraButtons && extraButtons.map((btn, i) => (
+            <React.Fragment key={i}>{btn}</React.Fragment>
+          ))}
           {actionButton && (
             <button 
-              className="hidden sm:flex h-10 cursor-pointer items-center justify-center rounded-lg bg-[#1380ec] px-4 text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-blue-600 transition-colors"
+              className="hidden sm:flex h-10 cursor-pointer items-center justify-center rounded-lg bg-[#1380ec] px-4 text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-blue-600 transition-colors gap-2"
               onClick={actionButton.onClick}
             >
-              {actionButton.icon && <span className="mr-2 material-symbols-outlined text-sm">{actionButton.icon}</span>}
+              {actionButton.icon && <span className="material-symbols-outlined text-sm">{actionButton.icon}</span>}
               <span className="truncate">{actionButton.text}</span>
             </button>
           )}

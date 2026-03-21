@@ -13,6 +13,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     }
 
     public DbSet<DailyTask> DailyTasks { get; set; }
+    public DbSet<TaskInstance> TaskInstances { get; set; }
     public DbSet<MainDailyGoal> MainDailyGoals { get; set; }
     public DbSet<LongTermGoal> LongTermGoals { get; set; }
     public DbSet<GoalMilestone> GoalMilestones { get; set; }
@@ -64,6 +65,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.GoalId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure TaskInstance (per-day execution row)
+        builder.Entity<TaskInstance>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Description).HasColumnType("text");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasColumnType("character varying(20)");
+
+            entity.HasIndex(e => new { e.TaskId, e.InstanceDate })
+                .IsUnique();
+
+            entity.HasOne(e => e.Task)
+                .WithMany(t => t.TaskInstances)
+                .HasForeignKey(e => e.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure MainDailyGoal

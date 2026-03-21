@@ -22,5 +22,8 @@ public class DailyTask
     public ApplicationUser User { get; set; } = null!;
     public GoalMilestone? Milestone { get; set; }
     public LongTermGoal? Goal { get; set; }
+
+    // Per-day instances generated from this recurring template.
+    public List<TaskInstance> TaskInstances { get; set; } = new();
 }
 

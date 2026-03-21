@@ -35,6 +35,24 @@ export const integrationsAPI = {
   getGoogleCalendarEmbedSrc: async () => apiRequest('/integrations/google/calendar-embed-src'),
 };
 
+/** Google Calendar event CRUD (for Google-sourced events only). */
+export const googleEventsAPI = {
+  updateGoogleEvent: async (googleEventId, eventData) => {
+    if (!googleEventId) throw new Error('Missing googleEventId');
+    return await apiRequest(`/integrations/google/events/${encodeURIComponent(googleEventId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(eventData),
+    });
+  },
+
+  deleteGoogleEvent: async (googleEventId) => {
+    if (!googleEventId) throw new Error('Missing googleEventId');
+    return await apiRequest(`/integrations/google/events/${encodeURIComponent(googleEventId)}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 function hashString(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -525,6 +543,22 @@ export const tasksAPI = {
     return await apiRequest(`/tasks/${taskId}/toggle`, {
       method: 'PATCH',
     });
+  },
+
+  upsertTaskInstance: async ({ taskId, date, description, isCompleted }) => {
+    return await apiRequest('/task-instances', {
+      method: 'POST',
+      body: JSON.stringify({
+        taskId,
+        date,
+        description,
+        isCompleted,
+      }),
+    });
+  },
+
+  getTaskHistory: async (taskId) => {
+    return await apiRequest(`/tasks/${taskId}/history`);
   },
 
   deleteTask: async (taskId) => {
