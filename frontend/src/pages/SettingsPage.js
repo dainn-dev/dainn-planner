@@ -481,15 +481,15 @@ const SettingsPage = () => {
         alert(t('settings.fileSizeError'));
         return;
       }
-      
+
       // Check file type
       if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
         alert(t('settings.fileTypeError'));
         return;
       }
-      
+
       setSelectedImage(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -551,7 +551,7 @@ const SettingsPage = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-y-auto relative bg-background-subtle dark:bg-[#101922]">
-        <Header 
+        <Header
           title={t('settings.title')}
           icon="settings"
           notifications={notifications}
@@ -564,21 +564,20 @@ const SettingsPage = () => {
           <nav className="flex flex-nowrap items-stretch gap-0 px-2 min-w-min">
             {SETTINGS_MENU_ITEMS.map((item) => {
               const route = item.id === 'general' ? '/settings/general' :
-                  item.id === 'plans' ? '/settings/goals' :
+                item.id === 'plans' ? '/settings/goals' :
                   item.id === 'notifications' ? '/settings/notification' :
-                  item.id === 'security' ? '/settings/security' :
-                '/settings';
+                    item.id === 'security' ? '/settings/security' :
+                      '/settings';
               const isActive = activeTab === item.id;
               return (
                 <Link
                   key={item.id}
                   to={route}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-1.5 py-3 font-medium text-sm whitespace-nowrap px-3 transition-colors shrink-0 ${
-                    isActive
+                  className={`flex items-center gap-1.5 py-3 font-medium text-sm whitespace-nowrap px-3 transition-colors shrink-0 ${isActive
                       ? 'text-primary border-b-2 border-primary'
                       : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-lg shrink-0">{item.icon}</span>
                   <span>{t(`settings.${item.id}`)}</span>
@@ -594,27 +593,26 @@ const SettingsPage = () => {
             <nav className="flex flex-col gap-1.5">
               {SETTINGS_MENU_ITEMS.map((item) => {
                 const route = item.id === 'general' ? '/settings/general' :
-                    item.id === 'plans' ? '/settings/goals' :
+                  item.id === 'plans' ? '/settings/goals' :
                     item.id === 'notifications' ? '/settings/notification' :
-                    item.id === 'security' ? '/settings/security' :
-                  '/settings';
+                      item.id === 'security' ? '/settings/security' :
+                        '/settings';
                 return (
                   <Link
                     key={item.id}
                     to={route}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${
-                    activeTab === item.id
-                      ? 'bg-zinc-100 dark:bg-slate-800 text-zinc-900 dark:text-white'
-                      : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                  <span className="text-sm font-medium">{t(`settings.${item.id}`)}</span>
-                </Link>
+                    onClick={() => setActiveTab(item.id)}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${activeTab === item.id
+                        ? 'bg-zinc-100 dark:bg-slate-800 text-zinc-900 dark:text-white'
+                        : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-slate-800'
+                      }`}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                    <span className="text-sm font-medium">{t(`settings.${item.id}`)}</span>
+                  </Link>
                 );
               })}
-            </nav>            
+            </nav>
           </aside>
 
           {/* Main Content Area */}
@@ -673,26 +671,26 @@ const SettingsPage = () => {
                 <div className="flex flex-col gap-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     <FormInput
-                          id="fullname"
+                      id="fullname"
                       label={t('settings.fullName')}
-                          type="text"
-                          value={profileForm.fullname}
-                          onChange={(e) => handleProfileChange('fullname', e.target.value)}
-                          onBlur={(e) => handleProfileBlur('fullname', e.target.value)}
+                      type="text"
+                      value={profileForm.fullname}
+                      onChange={(e) => handleProfileChange('fullname', e.target.value)}
+                      onBlur={(e) => handleProfileBlur('fullname', e.target.value)}
                       placeholder={t('settings.fullNamePlaceholder')}
-                          required
-                          error={profileErrors.fullname}
+                      required
+                      error={profileErrors.fullname}
                     />
                     <FormInput
-                          id="email"
+                      id="email"
                       label={t('settings.email')}
-                          type="email"
-                          value={profileForm.email}
-                          onChange={(e) => handleProfileChange('email', e.target.value)}
-                          onBlur={(e) => handleProfileBlur('email', e.target.value)}
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) => handleProfileChange('email', e.target.value)}
+                      onBlur={(e) => handleProfileBlur('email', e.target.value)}
                       placeholder="name@example.com"
-                          required
-                          error={profileErrors.email}
+                      required
+                      error={profileErrors.email}
                     />
                     <div className="opacity-60 pointer-events-none">
                       <FormInput
@@ -709,17 +707,17 @@ const SettingsPage = () => {
                       />
                     </div>
                     <FormSelect
-                          id="location"
+                      id="location"
                       label={t('settings.location')}
-                          value={profileForm.location}
-                          onChange={(e) => handleProfileChange('location', e.target.value)}
+                      value={profileForm.location}
+                      onChange={(e) => handleProfileChange('location', e.target.value)}
                       options={[
                         'Hà Nội, Việt Nam',
                         'Hồ Chí Minh, Việt Nam',
                         'Đà Nẵng, Việt Nam'
                       ]}
                     />
-                      </div>
+                  </div>
                   <div className="opacity-60 pointer-events-none">
                     <FormTextarea
                       id="bio"
@@ -745,10 +743,10 @@ const SettingsPage = () => {
                       id="darkMode"
                       label={t('settings.darkMode')}
                       description={t('settings.darkModeDesc')}
-                          checked={settings.darkMode}
-                          onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
+                      checked={settings.darkMode}
+                      onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
                       className="pb-4 border-b border-zinc-100 dark:border-slate-700"
-                        />
+                    />
                     <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.weekStartDay')}</span>
@@ -757,21 +755,19 @@ const SettingsPage = () => {
                       <div className="flex bg-zinc-100 dark:bg-slate-800 rounded-lg p-1 border border-border-light dark:border-slate-600">
                         <button
                           onClick={() => handleSettingChange('weekStartDay', 'monday')}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                            settings.weekStartDay === 'monday'
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${settings.weekStartDay === 'monday'
                               ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
                               : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                          }`}
+                            }`}
                         >
                           {t('settings.monday')}
                         </button>
                         <button
                           onClick={() => handleSettingChange('weekStartDay', 'sunday')}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                            settings.weekStartDay === 'sunday'
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${settings.weekStartDay === 'sunday'
                               ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
                               : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                          }`}
+                            }`}
                         >
                           {t('settings.sunday')}
                         </button>
@@ -901,21 +897,19 @@ const SettingsPage = () => {
                       <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 border border-border-light dark:border-slate-600 shadow-sm">
                         <button
                           onClick={() => handleGeneralSettingChange('timeFormat', '12')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                            generalSettings.timeFormat === '12'
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${generalSettings.timeFormat === '12'
                               ? 'bg-zinc-100 dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
                               : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                          }`}
+                            }`}
                         >
                           {t('settings.timeFormat12')}
                         </button>
                         <button
                           onClick={() => handleGeneralSettingChange('timeFormat', '24')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                            generalSettings.timeFormat === '24'
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${generalSettings.timeFormat === '24'
                               ? 'bg-zinc-100 dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
                               : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                          }`}
+                            }`}
                         >
                           {t('settings.timeFormat24')}
                         </button>
@@ -1009,21 +1003,19 @@ const SettingsPage = () => {
                       <div className="flex bg-zinc-100 dark:bg-slate-800 rounded-lg p-1 border border-border-light dark:border-slate-600">
                         <button
                           onClick={() => handlePlansSettingChange('trackingMethod', 'tasks')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                            plansSettings.trackingMethod === 'tasks'
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${plansSettings.trackingMethod === 'tasks'
                               ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
                               : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                          }`}
+                            }`}
                         >
                           {t('settings.byTasks')}
                         </button>
                         <button
                           onClick={() => handlePlansSettingChange('trackingMethod', 'time')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                            plansSettings.trackingMethod === 'time'
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${plansSettings.trackingMethod === 'time'
                               ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-white font-semibold shadow-sm border border-border-light dark:border-slate-600'
                               : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white'
-                          }`}
+                            }`}
                         >
                           {t('settings.byTime')}
                         </button>
@@ -1050,122 +1042,153 @@ const SettingsPage = () => {
 
                 {/* Integration & Sync Section */}
                 <div className="pt-6 border-t border-border-light dark:border-slate-700">
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-4">{t('settings.integrationSync')}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex items-center justify-between hover:border-zinc-300 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-800">
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                          <span className="material-symbols-outlined">calendar_today</span>
+                  <div className="mb-4 max-w-2xl">
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.integrationSync')}</h3>
+                    <p className="mt-1 text-sm text-secondary dark:text-slate-400 leading-relaxed">{t('settings.integrationSyncSubtitle')}</p>
+                  </div>
+                  <div className="rounded-xl border border-border-light dark:border-slate-700 bg-zinc-50/80 dark:bg-slate-900/40 shadow-sm overflow-hidden divide-y divide-border-light dark:divide-slate-700">
+                    {/* Google Calendar */}
+                    <div className="flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-slate-800/90">
+                      <div className="flex gap-4 min-w-0 flex-1">
+                        <div
+                          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-sky-100/90 dark:from-blue-950/60 dark:to-sky-950/40 text-blue-600 dark:text-blue-400 ring-1 ring-blue-100/90 dark:ring-blue-800/40"
+                          aria-hidden
+                        >
+                          <span className="material-symbols-outlined text-[24px]">calendar_today</span>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.googleCalendar')}</h4>
-                          <p className="text-xs text-secondary dark:text-slate-400">{t('settings.syncCalendar')}</p>
+                        <div className="min-w-0 flex flex-col gap-0.5 justify-center">
+                          <span className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.googleCalendar')}</span>
+                          <span className="text-xs text-secondary dark:text-slate-400 leading-snug">{t('settings.syncCalendar')}</span>
                         </div>
                       </div>
-                      {plansSettings.googleCalendarConnected ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">{t('settings.connected')}</span>
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end shrink-0 pt-1 border-t border-border-light/70 dark:border-slate-700/80 sm:border-0 sm:pt-0">
+                        {plansSettings.googleCalendarConnected ? (
+                          <>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/45 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-400">
+                              <span className="size-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
+                              {t('settings.connected')}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setDisconnectingGoogle(true);
+                                try {
+                                  await integrationsAPI.disconnectGoogleCalendar();
+                                  const data = await userAPI.getSettings();
+                                  if (data?.plans) setPlansSettings(prev => ({ ...prev, ...data.plans }));
+                                } catch (_) {
+                                  // ignore
+                                } finally {
+                                  setDisconnectingGoogle(false);
+                                }
+                              }}
+                              disabled={disconnectingGoogle}
+                              aria-busy={disconnectingGoogle}
+                              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] rounded-lg px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                              {disconnectingGoogle ? (
+                                <span className="material-symbols-outlined text-[16px] animate-spin" aria-hidden>progress_activity</span>
+                              ) : null}
+                              {t('settings.disconnect')}
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
+                            disabled={connectingGoogle}
+                            aria-busy={connectingGoogle}
                             onClick={async () => {
-                              setDisconnectingGoogle(true);
+                              setConnectingGoogle(true);
                               try {
-                                await integrationsAPI.disconnectGoogleCalendar();
-                                const data = await userAPI.getSettings();
-                                if (data?.plans) setPlansSettings(prev => ({ ...prev, ...data.plans }));
-                              } catch (_) {
-                                // ignore
+                                const url = await integrationsAPI.getGoogleCalendarOAuthUrl();
+                                window.location.href = url;
+                              } catch (e) {
+                                console.error(e);
                               } finally {
-                                setDisconnectingGoogle(false);
+                                setConnectingGoogle(false);
                               }
                             }}
-                            disabled={disconnectingGoogle}
-                            className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+                            className="inline-flex items-center justify-center gap-1.5 min-h-[36px] rounded-lg bg-zinc-900 dark:bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors disabled:opacity-60 disabled:pointer-events-none w-full sm:w-auto"
                           >
-                            {t('settings.disconnect')}
+                            {connectingGoogle ? (
+                              <span className="material-symbols-outlined text-[16px] animate-spin" aria-hidden>progress_activity</span>
+                            ) : null}
+                            {connectingGoogle ? t('common.loading') : t('settings.connect')}
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={connectingGoogle}
-                          onClick={async () => {
-                            setConnectingGoogle(true);
-                            try {
-                              const url = await integrationsAPI.getGoogleCalendarOAuthUrl();
-                              window.location.href = url;
-                            } catch (e) {
-                              console.error(e);
-                            } finally {
-                              setConnectingGoogle(false);
-                            }
-                          }}
-                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        >
-                          {connectingGoogle ? t('common.loading') : t('settings.connect')}
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
-                    {plansSettings.googleCalendarConnected && (
-                      <p className="text-xs text-secondary dark:text-slate-400 col-span-full">{t('settings.googleCalendarConnected')}</p>
-                    )}
-                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:border-zinc-300 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-800">
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 dark:text-red-400">
-                          <span className="material-symbols-outlined">check_circle</span>
+                    {/* Todoist */}
+                    <div className="flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-slate-800/90">
+                      <div className="flex gap-4 min-w-0 flex-1">
+                        <div
+                          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-50 to-orange-50/90 dark:from-red-950/50 dark:to-orange-950/30 text-red-600 dark:text-red-400 ring-1 ring-red-100/90 dark:ring-red-900/50"
+                          aria-hidden
+                        >
+                          <span className="material-symbols-outlined text-[24px]">task_alt</span>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.todoist')}</h4>
-                          <p className="text-xs text-secondary dark:text-slate-400">{t('settings.importTasks')}</p>
+                        <div className="min-w-0 flex flex-col gap-0.5 justify-center">
+                          <span className="text-sm font-semibold text-zinc-900 dark:text-white">{t('settings.todoist')}</span>
+                          <span className="text-xs text-secondary dark:text-slate-400 leading-snug">{t('settings.importTasks')}</span>
                         </div>
                       </div>
-                      {plansSettings.todoistConnected ? (
-                        <div className="flex flex-wrap items-center gap-2 justify-end">
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">{t('settings.connected')}</span>
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end shrink-0 pt-1 border-t border-border-light/70 dark:border-slate-700/80 sm:border-0 sm:pt-0">
+                        {plansSettings.todoistConnected ? (
+                          <>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/45 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-400">
+                              <span className="size-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
+                              {t('settings.connected')}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setDisconnectingTodoist(true);
+                                try {
+                                  await integrationsAPI.disconnectTodoist();
+                                  const data = await userAPI.getSettings();
+                                  if (data?.plans) setPlansSettings(prev => ({ ...prev, ...data.plans }));
+                                } catch (_) {
+                                  // ignore
+                                } finally {
+                                  setDisconnectingTodoist(false);
+                                }
+                              }}
+                              disabled={disconnectingTodoist}
+                              aria-busy={disconnectingTodoist}
+                              className="inline-flex items-center justify-center gap-1.5 min-h-[36px] rounded-lg px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                              {disconnectingTodoist ? (
+                                <span className="material-symbols-outlined text-[16px] animate-spin" aria-hidden>progress_activity</span>
+                              ) : null}
+                              {t('settings.disconnect')}
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
+                            disabled={connectingTodoist}
+                            aria-busy={connectingTodoist}
                             onClick={async () => {
-                              setDisconnectingTodoist(true);
+                              setConnectingTodoist(true);
                               try {
-                                await integrationsAPI.disconnectTodoist();
-                                const data = await userAPI.getSettings();
-                                if (data?.plans) setPlansSettings(prev => ({ ...prev, ...data.plans }));
-                              } catch (_) {
-                                // ignore
+                                const url = await integrationsAPI.getTodoistOAuthUrl();
+                                window.location.href = url;
+                              } catch (e) {
+                                console.error(e);
                               } finally {
-                                setDisconnectingTodoist(false);
+                                setConnectingTodoist(false);
                               }
                             }}
-                            disabled={disconnectingTodoist}
-                            className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+                            className="inline-flex items-center justify-center gap-1.5 min-h-[36px] rounded-lg bg-zinc-900 dark:bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 transition-colors disabled:opacity-60 disabled:pointer-events-none w-full sm:w-auto"
                           >
-                            {t('settings.disconnect')}
+                            {connectingTodoist ? (
+                              <span className="material-symbols-outlined text-[16px] animate-spin" aria-hidden>progress_activity</span>
+                            ) : null}
+                            {connectingTodoist ? t('common.loading') : t('settings.connect')}
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={connectingTodoist}
-                          onClick={async () => {
-                            setConnectingTodoist(true);
-                            try {
-                              const url = await integrationsAPI.getTodoistOAuthUrl();
-                              window.location.href = url;
-                            } catch (e) {
-                              console.error(e);
-                            } finally {
-                              setConnectingTodoist(false);
-                            }
-                          }}
-                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        >
-                          {connectingTodoist ? t('common.loading') : t('settings.connect')}
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
-                    {plansSettings.todoistConnected && (
-                      <p className="text-xs text-secondary dark:text-slate-400 col-span-full">{t('settings.todoistConnectedHint')}</p>
-                    )}
                   </div>
                 </div>
 
@@ -1480,9 +1503,8 @@ const SettingsPage = () => {
                     {!devicesLoading && !devicesError && securitySettings.devices.map((device) => (
                       <div
                         key={device.id}
-                        className={`flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg shadow-sm ${
-                          !device.isCurrent ? 'hover:border-zinc-300 dark:hover:border-slate-600 transition-colors group' : ''
-                        }`}
+                        className={`flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-border-light dark:border-slate-700 rounded-lg shadow-sm ${!device.isCurrent ? 'hover:border-zinc-300 dark:hover:border-slate-600 transition-colors group' : ''
+                          }`}
                       >
                         <div className="flex items-center gap-4">
                           <div className="p-2 bg-zinc-50 dark:bg-slate-700 rounded-full h-fit text-zinc-500 dark:text-slate-400">
@@ -1785,7 +1807,7 @@ const SettingsPage = () => {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 dark:bg-black/60 z-50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -1796,7 +1818,7 @@ const SettingsPage = () => {
             <span className="material-symbols-outlined text-xl">calendar_today</span>
           </div>
           <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
-          <button 
+          <button
             className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(false)}
             aria-label={t('common.close')}
@@ -1834,32 +1856,32 @@ const SettingsPage = () => {
               <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
             </>
           )}
-          <Link 
-            to="/daily" 
+          <Link
+            to="/daily"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">today</span>
             <span>Kế hoạch hôm nay</span>
           </Link>
-          <Link 
-            to="/goals" 
+          <Link
+            to="/goals"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">target</span>
             <span>Quản lý mục tiêu</span>
           </Link>
-          <Link 
-            to="/calendar" 
+          <Link
+            to="/calendar"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <span className="material-symbols-outlined">calendar_month</span>
             <span>Lịch biểu</span>
           </Link>
-          <Link 
-            to="/settings" 
+          <Link
+            to="/settings"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}
           >

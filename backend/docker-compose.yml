@@ -1,57 +1,80 @@
-version: '3.8'
+# Daily Planner API — run from this directory: docker compose up --build
+#
+# Override secrets via environment or a .env file in this folder, e.g.:
+#   DATABASE_URL=Host=...;...
+#   JWT_KEY=...
+#   INTEGRATIONS_TODOIST_CLIENTID=...
+#   INTEGRATIONS_TODOIST_CLIENTSECRET=...
+#
+# Todoist OAuth redirect (when API is this compose service): set Todoist app redirect URI to
+#   http://localhost:${API_PORT:-8080}/api/auth/todoist/callback
+# and set Integrations__Todoist__PublicBaseUrl / RedirectUri to match (or leave RedirectUri empty to derive from request).
 
 services:
-  # Daily Planner API (uses Neon serverless Postgres)
   dailyplanner-api:
     build:
       context: .
       dockerfile: Dockerfile
+    image: dailyplanner-api:latest
     container_name: dailyplanner-api
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
-      # ConnectionStrings (from appsettings.json)
-      - ConnectionStrings__DefaultConnection=Host=ep-gentle-firefly-ajfcsrrr-pooler.c-3.us-east-2.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_LRfDYB7rp6AU;SSL Mode=Require
-      # Jwt
-      - Jwt__Key=9675bbe42bc6ecfcaf6fba0539afc302913d159a7d9800b065bc3e11b62f4526
-      - Jwt__Issuer=DailyPlanner
-      - Jwt__Audience=DailyPlanner
-      # Authentication - Google
-      - Authentication__Google__Enable=false
-      - Authentication__Google__ClientId=
-      - Authentication__Google__ClientSecret=
-      # Authentication - Facebook
-      - Authentication__Facebook__Enable=false
-      - Authentication__Facebook__AppId=
-      - Authentication__Facebook__AppSecret=
-      # Cors
-      - Cors__AllowedOrigins__0=http://localhost:3005
-      - Cors__AllowedOrigins__1=http://plan.nport.link
-      - Cors__AllowedOrigins__2=https://plan.nport.link
-      # Recaptcha
-      - Recaptcha__SecretKey=
-      # Email
-      - Email__SmtpHost=
-      - Email__SmtpPort=587
-      - Email__From=noreply@dailyplanner.com
-      - Email__User=
-      - Email__Password=
-      - Email__EnableSsl=true
-      - Email__AdminTo=
-      # RequestLogging (excluded paths - from appsettings)
-      - RequestLogging__ExcludedPaths__0=/health
-      - RequestLogging__ExcludedPaths__1=/swagger
-      - RequestLogging__ExcludedPaths__2=/hangfire
-      - Hangfire__Username=admin
-      - Hangfire__Password=Admin@123
-      - AllowedHosts=*
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:8080
+
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=ep-gentle-firefly-ajfcsrrr-pooler.c-3.us-east-2.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_LRfDYB7rp6AU;SSL Mode=Require}
+
+      Jwt__Key: ${JWT_KEY:-9675bbe42bc6ecfcaf6fba0539afc302913d159a7d9800b065bc3e11b62f4526}
+      Jwt__Issuer: ${JWT_ISSUER:-DailyPlanner}
+      Jwt__Audience: ${JWT_AUDIENCE:-DailyPlanner}
+
+      Authentication__Google__Enable: ${AUTH_GOOGLE_ENABLE:-false}
+      Authentication__Google__ClientId: ${AUTH_GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${AUTH_GOOGLE_CLIENT_SECRET:-}
+      Authentication__Google__RedirectUri: ${AUTH_GOOGLE_REDIRECT_URI:-}
+
+      Authentication__Facebook__Enable: ${AUTH_FACEBOOK_ENABLE:-false}
+      Authentication__Facebook__AppId: ${AUTH_FACEBOOK_APP_ID:-}
+      Authentication__Facebook__AppSecret: ${AUTH_FACEBOOK_APP_SECRET:-}
+
+      Cors__AllowedOrigins__0: ${CORS_ORIGIN_0:-http://localhost:3005}
+      Cors__AllowedOrigins__1: ${CORS_ORIGIN_1:-http://plan.nport.link}
+      Cors__AllowedOrigins__2: ${CORS_ORIGIN_2:-https://plan.nport.link}
+
+      Recaptcha__SecretKey: ${RECAPTCHA_SECRET_KEY:-}
+
+      Email__SmtpHost: ${EMAIL_SMTP_HOST:-}
+      Email__SmtpPort: ${EMAIL_SMTP_PORT:-587}
+      Email__From: ${EMAIL_FROM:-noreply@dailyplanner.com}
+      Email__User: ${EMAIL_USER:-}
+      Email__Password: ${EMAIL_PASSWORD:-}
+      Email__EnableSsl: ${EMAIL_ENABLE_SSL:-true}
+      Email__AdminTo: ${EMAIL_ADMIN_TO:-}
+
+      RequestLogging__ExcludedPaths__0: /health
+      RequestLogging__ExcludedPaths__1: /swagger
+      RequestLogging__ExcludedPaths__2: /hangfire
+
+      Hangfire__Username: ${HANGFIRE_USERNAME:-admin}
+      Hangfire__Password: ${HANGFIRE_PASSWORD:-Admin@123}
+
+      Integrations__Todoist__ClientId: ${INTEGRATIONS_TODOIST_CLIENTID:-}
+      Integrations__Todoist__ClientSecret: ${INTEGRATIONS_TODOIST_CLIENTSECRET:-}
+      Integrations__Todoist__RedirectUri: ${INTEGRATIONS_TODOIST_REDIRECT_URI:-http://localhost:8080/api/auth/todoist/callback}
+      Integrations__Todoist__PublicBaseUrl: ${INTEGRATIONS_TODOIST_PUBLIC_BASE_URL:-http://localhost:8080}
+      Integrations__Todoist__Scopes: ${INTEGRATIONS_TODOIST_SCOPES:-data:read_write}
+
+      AllowedHosts: "*"
+
     ports:
-      - "8080:8080"
+      - "${API_PORT:-8080}:8080"
+
     volumes:
       - ./logs:/app/wwwroot/logs
       - ./uploads:/app/wwwroot/uploads
+
     networks:
       - dailyplanner-network
+
     restart: unless-stopped
 
 networks:
