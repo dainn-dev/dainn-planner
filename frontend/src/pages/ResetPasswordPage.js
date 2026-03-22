@@ -7,9 +7,12 @@ import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import { validatePassword, validateConfirmPassword } from '../utils/formValidation';
 import { authAPI } from '../services/api';
+import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
 
 const ResetPasswordPage = () => {
   const { t } = useTranslation();
+  const { recaptchaToken, recaptchaContainerRef, resetRecaptcha } = useRecaptchaV2();
+  const recaptchaSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -59,6 +62,11 @@ const ResetPasswordPage = () => {
     
     const passwordError = validatePassword(formData.password);
     const confirmPasswordError = validateConfirmPassword(formData.password, formData.confirmPassword);
+
+    if (recaptchaSiteKey && !recaptchaToken) {
+      setErrors((prev) => ({ ...prev, submit: t('settings.supportErrorMissingCaptcha') }));
+      return;
+    }
     
     if (passwordError || confirmPasswordError) {
       setErrors({
@@ -82,9 +90,16 @@ const ResetPasswordPage = () => {
         return;
       }
 
-      const response = await authAPI.resetPassword(email, token, formData.password, formData.confirmPassword);
+      const response = await authAPI.resetPassword(
+        email,
+        token,
+        formData.password,
+        formData.confirmPassword,
+        recaptchaSiteKey ? recaptchaToken : undefined
+      );
       if (response.success) {
         setSuccessMessage(response.message || t('auth.resetSuccess'));
+        resetRecaptcha();
         setTimeout(() => {
           navigate('/login');
         }, 1500);
@@ -95,6 +110,7 @@ const ResetPasswordPage = () => {
       } else {
         setErrors({ submit: error.message || t('auth.resetFail') });
       }
+      resetRecaptcha();
     } finally {
       setIsSubmitting(false);
     }
@@ -169,11 +185,14 @@ const ResetPasswordPage = () => {
                 />
               </div>
             </div>
+            {recaptchaSiteKey && (
+              <div ref={recaptchaContainerRef} className="flex justify-start" />
+            )}
             <div className="flex flex-col gap-4 mt-2">
               <button
                 className="flex w-full items-center justify-center rounded-lg h-[52px] px-6 bg-primary-reset hover:bg-primary-reset-hover text-white text-[15px] font-semibold tracking-wide transition-all shadow-sm hover:shadow-md active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                 type="submit"
-                disabled={isSubmitting || !!successMessage}
+                disabled={isSubmitting || !!successMessage || (!!recaptchaSiteKey && !recaptchaToken)}
               >
                 {isSubmitting ? t('common.processing') : t('auth.resetTitle')}
               </button>

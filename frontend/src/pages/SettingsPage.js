@@ -28,6 +28,8 @@ import {
 } from '../constants/settings';
 import { userAPI, notificationsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
+import ErrorMessage from '../components/ErrorMessage';
+import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
 
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
@@ -63,6 +65,9 @@ const SettingsPage = () => {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [securityPasswordErrors, setSecurityPasswordErrors] = useState({ currentPassword: null, newPassword: null, confirmPassword: null });
+  const [securityCaptchaError, setSecurityCaptchaError] = useState('');
+  const { recaptchaToken, recaptchaContainerRef, resetRecaptcha } = useRecaptchaV2({ enabled: activeTab === 'security' });
+  const recaptchaSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
 
@@ -325,9 +330,19 @@ const SettingsPage = () => {
         setSecurityPasswordErrors(errors);
         return;
       }
+      if (recaptchaSiteKey && !recaptchaToken) {
+        setSecurityCaptchaError(t('settings.supportErrorMissingCaptcha'));
+        return;
+      }
+      setSecurityCaptchaError('');
       setSecurityPasswordErrors({ currentPassword: null, newPassword: null, confirmPassword: null });
       try {
-        await userAPI.changePassword({ currentPassword, newPassword });
+        await userAPI.changePassword({
+          currentPassword,
+          newPassword,
+          recaptchaToken: recaptchaSiteKey ? recaptchaToken : undefined,
+        });
+        resetRecaptcha();
         setSecuritySettings(prev => ({
           ...prev,
           currentPassword: '',
@@ -335,7 +350,7 @@ const SettingsPage = () => {
           confirmPassword: '',
         }));
       } catch (error) {
-        // Password change failed
+        resetRecaptcha();
       }
       return;
     }
@@ -369,6 +384,7 @@ const SettingsPage = () => {
     setSecuritySettings(INITIAL_SECURITY_SETTINGS);
     setProfileErrors({});
     setSecurityPasswordErrors({ currentPassword: null, newPassword: null, confirmPassword: null });
+    setSecurityCaptchaError('');
   };
 
   const handleLogoutDevice = async (deviceId) => {
@@ -1320,6 +1336,7 @@ const SettingsPage = () => {
                           onChange={(e) => {
                             handleSecuritySettingChange('currentPassword', e.target.value);
                             if (securityPasswordErrors.currentPassword) setSecurityPasswordErrors(prev => ({ ...prev, currentPassword: null }));
+                            if (securityCaptchaError) setSecurityCaptchaError('');
                           }}
                         />
                         {securityPasswordErrors.currentPassword && (
@@ -1341,6 +1358,7 @@ const SettingsPage = () => {
                           onChange={(e) => {
                             handleSecuritySettingChange('newPassword', e.target.value);
                             if (securityPasswordErrors.newPassword) setSecurityPasswordErrors(prev => ({ ...prev, newPassword: null }));
+                            if (securityCaptchaError) setSecurityCaptchaError('');
                           }}
                         />
                         {securityPasswordErrors.newPassword && (
@@ -1362,6 +1380,7 @@ const SettingsPage = () => {
                           onChange={(e) => {
                             handleSecuritySettingChange('confirmPassword', e.target.value);
                             if (securityPasswordErrors.confirmPassword) setSecurityPasswordErrors(prev => ({ ...prev, confirmPassword: null }));
+                            if (securityCaptchaError) setSecurityCaptchaError('');
                           }}
                         />
                         {securityPasswordErrors.confirmPassword && (
@@ -1373,6 +1392,12 @@ const SettingsPage = () => {
                   <p className="text-xs text-secondary dark:text-slate-500 mt-1">
                     {t('settings.passwordRequirement')}
                   </p>
+                  {recaptchaSiteKey && (
+                    <div className="flex flex-col gap-2 mt-4">
+                      {securityCaptchaError && <ErrorMessage message={securityCaptchaError} />}
+                      <div ref={recaptchaContainerRef} className="flex justify-start" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="w-full h-px bg-zinc-100 dark:bg-slate-700"></div>

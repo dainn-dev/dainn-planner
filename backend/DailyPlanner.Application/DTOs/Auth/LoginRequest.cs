@@ -11,5 +11,8 @@ public class LoginRequest
     public string? DeviceName { get; set; }
     /// <summary>Optional. Platform identifier (e.g. "web", "android", "ios").</summary>
     public string? Platform { get; set; }
+
+    /// <summary>Google reCAPTCHA v2 token when <c>Recaptcha:SecretKey</c> is configured.</summary>
+    public string? RecaptchaToken { get; set; }
 }
 

@@ -6,11 +6,14 @@ import PasswordInput from '../components/PasswordInput';
 import ErrorMessage from '../components/ErrorMessage';
 import { validateEmail, validatePassword } from '../utils/formValidation';
 import { authAPI, userAPI, getGoogleLoginAuthorizeUrl } from '../services/api';
+import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
 
 const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID || '';
 
 const LoginPage = () => {
   const { t } = useTranslation();
+  const { recaptchaToken, recaptchaContainerRef, resetRecaptcha } = useRecaptchaV2();
+  const recaptchaSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -22,7 +25,7 @@ const LoginPage = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
 
-  // Handle return from Google OAuth (login with calendar): ?token=JWT
+  // Handle return from Google OAuth sign-in: ?token=JWT
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
@@ -146,6 +149,11 @@ const LoginPage = () => {
     // Validate form
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
+
+    if (recaptchaSiteKey && !recaptchaToken) {
+      setErrors((prev) => ({ ...prev, submit: t('settings.supportErrorMissingCaptcha') }));
+      return;
+    }
     
     if (emailError || passwordError) {
       setErrors({
@@ -159,7 +167,7 @@ const LoginPage = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await authAPI.login(email, password);
+      const response = await authAPI.login(email, password, recaptchaSiteKey ? recaptchaToken : undefined);
 
       if (response.requiresTwoFactor) {
         setShow2FAModal(true);
@@ -184,9 +192,11 @@ const LoginPage = () => {
         }
       } else {
         setErrors({ submit: response.message || t('auth.loginFail') });
+        resetRecaptcha();
       }
     } catch (error) {
       setErrors({ submit: error.message || t('auth.loginFail') });
+      resetRecaptcha();
     } finally {
       setIsSubmitting(false);
     }
@@ -196,6 +206,7 @@ const LoginPage = () => {
     setShow2FAModal(false);
     setTwoFactorCode('');
     setTwoFactorError('');
+    resetRecaptcha();
   };
 
   const handle2FAVerify = async (e) => {
@@ -324,10 +335,13 @@ const LoginPage = () => {
               />
             </div>
             {errors.submit && <ErrorMessage message={errors.submit} />}
+            {recaptchaSiteKey && (
+              <div ref={recaptchaContainerRef} className="flex justify-start" />
+            )}
             <button 
               className="btn-primary mt-2 disabled:opacity-50 disabled:cursor-not-allowed" 
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (!!recaptchaSiteKey && !recaptchaToken)}
             >
               <span>{isSubmitting ? t('common.processing') : t('auth.login')}</span>
             </button>

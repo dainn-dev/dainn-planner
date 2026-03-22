@@ -20,7 +20,6 @@ public class GoogleIntegrationController : ControllerBase
 {
     private const string StateCacheKeyPrefix = "google_oauth_state:";
     private static readonly TimeSpan StateExpiration = TimeSpan.FromMinutes(10);
-    private static readonly string[] Scopes = { "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events" };
 
     private readonly ApplicationDbContext _context;
     private readonly IMemoryCache _cache;
@@ -40,8 +39,7 @@ public class GoogleIntegrationController : ControllerBase
     }
 
     /// <summary>
-    /// Returns the Google OAuth URL for SPAs: a top-level <c>window.location</c> to /authorize cannot send Bearer tokens.
-    /// Call this with Authorization, then redirect the browser to <see cref="AuthorizeUrlResponse.Url"/>.
+    /// Returns the Google OAuth URL for Calendar (identity + <c>calendar.events</c>, offline refresh token). SPAs call with Bearer, then <c>window.location</c> to the URL.
     /// </summary>
     [HttpGet("authorize-url")]
     [Authorize]
@@ -80,10 +78,13 @@ public class GoogleIntegrationController : ControllerBase
         var state = Guid.NewGuid().ToString("N");
         _cache.Set(StateCacheKeyPrefix + state, userId, StateExpiration);
 
-        var redirectUri = Uri.EscapeDataString(GoogleOAuthRedirectUriHelper.Resolve(Request, _options));
-        var scope = Uri.EscapeDataString(string.Join(" ", Scopes));
-        var clientId = Uri.EscapeDataString(_options.ClientId);
-        return $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope={scope}&state={state}&access_type=offline&prompt=consent";
+        var redirectUri = GoogleOAuthRedirectUriHelper.Resolve(Request, _options);
+        return GoogleOAuthAuthorizationUrl.Build(
+            _options.ClientId,
+            redirectUri,
+            GoogleOAuthScopes.CalendarIntegration,
+            state,
+            forCalendarIntegration: true);
     }
 
     public sealed class AuthorizeUrlResponse

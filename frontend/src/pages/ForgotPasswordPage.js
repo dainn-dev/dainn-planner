@@ -6,9 +6,12 @@ import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import { validateEmail } from '../utils/formValidation';
 import { authAPI } from '../services/api';
+import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
 
 const ForgotPasswordPage = () => {
   const { t } = useTranslation();
+  const { recaptchaToken, recaptchaContainerRef, resetRecaptcha } = useRecaptchaV2();
+  const recaptchaSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -24,16 +27,23 @@ const ForgotPasswordPage = () => {
       return;
     }
 
+    if (recaptchaSiteKey && !recaptchaToken) {
+      setError(t('settings.supportErrorMissingCaptcha'));
+      return;
+    }
+
     setError('');
     setIsSubmitting(true);
 
     try {
-      const response = await authAPI.forgotPassword(email);
+      const response = await authAPI.forgotPassword(email, recaptchaSiteKey ? recaptchaToken : undefined);
       if (response.success) {
         setSuccessMessage(response.message || t('auth.forgotSuccess'));
+        resetRecaptcha();
       }
     } catch (err) {
       setError(err.message || t('auth.forgotFail'));
+      resetRecaptcha();
     } finally {
       setIsSubmitting(false);
     }
@@ -99,10 +109,13 @@ const ForgotPasswordPage = () => {
                     </p>
                   )}
                 </div>
+                {recaptchaSiteKey && (
+                  <div ref={recaptchaContainerRef} className="flex justify-start" />
+                )}
                 <button
                   className="group flex w-full cursor-pointer items-center justify-center rounded-lg h-11 px-5 bg-primary-forgot hover:bg-primary-forgot-hover text-white text-sm font-semibold transition-all shadow-sm hover:shadow-md active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                   type="submit"
-                  disabled={isSubmitting || !!successMessage}
+                  disabled={isSubmitting || !!successMessage || (!!recaptchaSiteKey && !recaptchaToken)}
                 >
                   <span>{isSubmitting ? t('auth.forgotSending') : t('auth.forgotSendLink')}</span>
                   {!isSubmitting && (

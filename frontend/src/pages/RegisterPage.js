@@ -7,9 +7,12 @@ import ErrorMessage from '../components/ErrorMessage';
 import SuccessMessage from '../components/SuccessMessage';
 import { validateEmail, validatePassword, validateConfirmPassword, validateName } from '../utils/formValidation';
 import { authAPI } from '../services/api';
+import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
 
 const RegisterPage = () => {
   const { t } = useTranslation();
+  const { recaptchaToken, recaptchaContainerRef, resetRecaptcha } = useRecaptchaV2();
+  const recaptchaSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const [formData, setFormData] = useState({
     fullname: '',
     email: '',
@@ -55,6 +58,10 @@ const RegisterPage = () => {
       newErrors.terms = t('auth.termsRequired');
     }
 
+    if (recaptchaSiteKey && !recaptchaToken) {
+      newErrors.submit = t('settings.supportErrorMissingCaptcha');
+    }
+
     if (Object.values(newErrors).some(error => error !== null)) {
       setErrors(newErrors);
       return;
@@ -65,9 +72,14 @@ const RegisterPage = () => {
     setSuccessMessage('');
 
     try {
-      const response = await authAPI.register(formData);
+      const payload = {
+        ...formData,
+        recaptchaToken: recaptchaSiteKey ? recaptchaToken : undefined,
+      };
+      const response = await authAPI.register(payload);
       if (response.success) {
         setSuccessMessage(response.message || t('auth.registerSuccessVerify'));
+        resetRecaptcha();
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -79,6 +91,7 @@ const RegisterPage = () => {
       } else {
         setErrors({ submit: error.message || t('auth.registerFail') });
       }
+      resetRecaptcha();
     } finally {
       setIsSubmitting(false);
     }
@@ -203,11 +216,14 @@ const RegisterPage = () => {
                   {errors.terms}
                 </p>
               )}
+              {recaptchaSiteKey && (
+                <div ref={recaptchaContainerRef} className="flex justify-start pt-1" />
+              )}
               <div className="pt-2">
                 <button
                   className="flex w-full items-center justify-center rounded-lg bg-primary-register px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-register-hover focus:outline-none focus:ring-2 focus:ring-highlight focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !!successMessage || (!!recaptchaSiteKey && !recaptchaToken)}
                 >
                   {isSubmitting ? t('common.processing') : t('auth.register')}
                 </button>

@@ -4,6 +4,7 @@ using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 
 namespace DailyPlanner.Api.Controllers;
@@ -14,10 +15,14 @@ namespace DailyPlanner.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IConfiguration _configuration;
+    private readonly IGoogleRecaptchaService _recaptchaService;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, IConfiguration configuration, IGoogleRecaptchaService recaptchaService)
     {
         _userService = userService;
+        _configuration = configuration;
+        _recaptchaService = recaptchaService;
     }
 
     [HttpGet("me")]
@@ -80,11 +85,36 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("me/change-password")]
-    public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
+
+        var secret = _configuration["Recaptcha:SecretKey"];
+        if (!string.IsNullOrEmpty(secret))
+        {
+            if (string.IsNullOrWhiteSpace(request.RecaptchaToken))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "CAPTCHA is required.",
+                    Errors = new Dictionary<string, string[]> { { "recaptcha", new[] { "Please complete the CAPTCHA." } } }
+                });
+            }
+
+            var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            if (!await _recaptchaService.VerifyAsync(request.RecaptchaToken, remoteIp, cancellationToken))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "CAPTCHA verification failed. Please try again.",
+                    Errors = new Dictionary<string, string[]> { { "recaptcha", new[] { "CAPTCHA verification failed." } } }
+                });
+            }
+        }
 
         var result = await _userService.ChangePasswordAsync(userId, request);
         return result.Success ? Ok(result) : BadRequest(result);

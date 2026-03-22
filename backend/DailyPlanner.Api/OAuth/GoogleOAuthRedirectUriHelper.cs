@@ -4,6 +4,42 @@ using Microsoft.Extensions.Primitives;
 
 namespace DailyPlanner.Api.OAuth;
 
+/// <summary>OAuth scopes for sign-in only (userinfo); no Calendar API access.</summary>
+public static class GoogleOAuthScopes
+{
+    public static readonly string[] Login = { "openid", "email", "profile" };
+
+    /// <summary>Sign-in scopes plus Calendar events (Settings → Connect Google Calendar).</summary>
+    public static readonly string[] CalendarIntegration =
+    {
+        "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events"
+    };
+}
+
+/// <summary>
+/// Builds the Google OAuth 2.0 authorization URL. Use <paramref name="forCalendarIntegration"/> when storing refresh tokens for the Calendar API.
+/// </summary>
+public static class GoogleOAuthAuthorizationUrl
+{
+    public static string Build(
+        string clientId,
+        string redirectUri,
+        IReadOnlyList<string> scopes,
+        string state,
+        bool forCalendarIntegration)
+    {
+        var redirectUriEscaped = Uri.EscapeDataString(redirectUri);
+        var scopeEscaped = Uri.EscapeDataString(string.Join(" ", scopes));
+        var clientIdEscaped = Uri.EscapeDataString(clientId);
+        var stateEscaped = Uri.EscapeDataString(state);
+        var tail = forCalendarIntegration
+            ? "access_type=offline&prompt=consent"
+            : "access_type=online&prompt=select_account";
+        return
+            $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientIdEscaped}&redirect_uri={redirectUriEscaped}&response_type=code&scope={scopeEscaped}&state={stateEscaped}&{tail}";
+    }
+}
+
 /// <summary>
 /// Google requires <c>redirect_uri</c> in the token request to exactly match the one used in the authorize request.
 /// When using ngrok (or any public URL) while <see cref="GoogleCalendarOptions.RedirectUri"/> still points at localhost,

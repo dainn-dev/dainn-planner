@@ -13,7 +13,7 @@ export const getAvatarFullUrl = (path) => {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 };
 
-/** Full URL for Google login (with calendar sync). Redirect here to sign in with Google and auto-sync calendar. */
+/** Full URL for Google sign-in (identity only). Connect Google Calendar separately under Settings. */
 export const getGoogleLoginAuthorizeUrl = () =>
   `${API_BASE_URL}/auth/google/authorize`;
 
@@ -263,7 +263,7 @@ export const authAPI = {
     return response;
   },
 
-  login: async (email, password) => {
+  login: async (email, password, recaptchaToken) => {
     const deviceId = (typeof localStorage !== 'undefined' && localStorage.getItem('deviceId')) || (typeof navigator !== 'undefined' && navigator.userAgent ? `web-${hashString(navigator.userAgent).slice(0, 24)}` : undefined);
     const deviceName = typeof navigator !== 'undefined' ? getDeviceLabel() : undefined;
     const platform = 'web';
@@ -271,6 +271,7 @@ export const authAPI = {
     if (deviceId) body.deviceId = deviceId;
     if (deviceName) body.deviceName = deviceName;
     body.platform = platform;
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
     const response = await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -348,17 +349,21 @@ export const authAPI = {
     return { ...response, user, token };
   },
 
-  forgotPassword: async (email) => {
+  forgotPassword: async (email, recaptchaToken) => {
+    const body = { email };
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
     return await apiRequest('/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(body),
     });
   },
 
-  resetPassword: async (email, token, newPassword, confirmPassword) => {
+  resetPassword: async (email, token, newPassword, confirmPassword, recaptchaToken) => {
+    const body = { email, token, newPassword, confirmPassword };
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
     return await apiRequest('/auth/reset-password', {
       method: 'POST',
-      body: JSON.stringify({ email, token, newPassword, confirmPassword }),
+      body: JSON.stringify(body),
     });
   },
 
@@ -482,10 +487,12 @@ export const userAPI = {
     await apiRequest(`/users/me/devices/${deviceId}`, { method: 'DELETE' });
   },
 
-  changePassword: async ({ currentPassword, newPassword }) => {
+  changePassword: async ({ currentPassword, newPassword, recaptchaToken }) => {
+    const body = { currentPassword, newPassword };
+    if (recaptchaToken) body.recaptchaToken = recaptchaToken;
     await apiRequest('/users/me/change-password', {
       method: 'POST',
-      body: JSON.stringify({ currentPassword, newPassword }),
+      body: JSON.stringify(body),
     });
   },
 

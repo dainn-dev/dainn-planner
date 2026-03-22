@@ -132,7 +132,7 @@ const DailyPage = () => {
       id: 3,
       type: 'system',
       title: t('daily.systemUpdate'),
-      message: 'Tính năng đồng bộ lịch Google Calendar đã sẵn sàng để sử dụng.',
+      message: 'Kết nối Google Calendar trong Cài đặt để đồng bộ lịch.',
       time: t('daily.yesterday'),
       unread: false,
       icon: 'settings',

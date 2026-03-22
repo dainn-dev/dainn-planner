@@ -27,7 +27,6 @@ public class AuthController : ControllerBase
 {
     private const string GoogleStateCachePrefix = "google_oauth_state:";
     private static readonly TimeSpan GoogleStateExpiration = TimeSpan.FromMinutes(10);
-    private static readonly string[] GoogleScopes = { "openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events" };
 
     private readonly IAuthService _authService;
     private readonly ApplicationDbContext _context;
@@ -36,6 +35,7 @@ public class AuthController : ControllerBase
     private readonly GoogleCalendarOptions _googleOptions;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
+    private readonly IGoogleRecaptchaService _recaptchaService;
 
     public AuthController(
         IAuthService authService,
@@ -44,7 +44,8 @@ public class AuthController : ControllerBase
         IHttpClientFactory httpClientFactory,
         IOptions<GoogleCalendarOptions> googleOptions,
         IConfiguration configuration,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IGoogleRecaptchaService recaptchaService)
     {
         _authService = authService;
         _context = context;
@@ -53,18 +54,25 @@ public class AuthController : ControllerBase
         _googleOptions = googleOptions.Value;
         _configuration = configuration;
         _logger = logger;
+        _recaptchaService = recaptchaService;
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<ApiResponse<AuthResponse>>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
+        var captcha = await RequireRecaptchaWhenConfiguredAsync(request.RecaptchaToken, cancellationToken);
+        if (captcha != null) return captcha;
+
         var result = await _authService.RegisterAsync(request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
+        var captcha = await RequireRecaptchaWhenConfiguredAsync(request.RecaptchaToken, cancellationToken);
+        if (captcha != null) return captcha;
+
         var result = await _authService.LoginAsync(request);
         return result.Success ? Ok(result) : Unauthorized(result);
     }
@@ -84,15 +92,21 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
-    public async Task<ActionResult<ApiResponse<object>>> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
+        var captcha = await RequireRecaptchaWhenConfiguredAsync(request.RecaptchaToken, cancellationToken);
+        if (captcha != null) return captcha;
+
         var result = await _authService.ForgotPasswordAsync(request);
         return Ok(result);
     }
 
     [HttpPost("reset-password")]
-    public async Task<ActionResult<ApiResponse<object>>> ResetPassword([FromBody] ResetPasswordRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
+        var captcha = await RequireRecaptchaWhenConfiguredAsync(request.RecaptchaToken, cancellationToken);
+        if (captcha != null) return captcha;
+
         var result = await _authService.ResetPasswordAsync(request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
@@ -124,7 +138,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Starts Google OAuth for login (with calendar sync). Redirects to Google; callback is GET google/callback.
+    /// Starts Google OAuth for sign-in only (identity scopes; no Calendar API). Callback is GET google/callback.
     /// </summary>
     [HttpGet("google/authorize")]
     [AllowAnonymous]
@@ -132,15 +146,18 @@ public class AuthController : ControllerBase
     {
         var state = Guid.NewGuid().ToString("N");
         _cache.Set(GoogleStateCachePrefix + state, "login", GoogleStateExpiration);
-        var redirectUri = Uri.EscapeDataString(GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions));
-        var scope = Uri.EscapeDataString(string.Join(" ", GoogleScopes));
-        var clientId = Uri.EscapeDataString(_googleOptions.ClientId);
-        var url = $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope={scope}&state={state}&access_type=offline&prompt=consent";
+        var redirectUri = GoogleOAuthRedirectUriHelper.Resolve(Request, _googleOptions);
+        var url = GoogleOAuthAuthorizationUrl.Build(
+            _googleOptions.ClientId,
+            redirectUri,
+            GoogleOAuthScopes.Login,
+            state,
+            forCalendarIntegration: false);
         return Redirect(url);
     }
 
     /// <summary>
-    /// Google OAuth callback. Handles both login (state=login) and calendar-only (state=userId). Single redirect URI for both flows.
+    /// Google OAuth callback. Login flow (state=login): JWT only, no stored Google tokens. Calendar flow (state=userId): save tokens and set connected.
     /// </summary>
     [HttpGet("google/callback")]
     [AllowAnonymous]
@@ -167,28 +184,21 @@ public class AuthController : ControllerBase
             };
         }
 
-        string userId;
-        string? tokenForFrontend = null;
+        var frontendBaseUrl = GetFrontendBaseUrl();
 
         if (stateValue == "login")
         {
             var loginResult = await _authService.SocialLoginAsync(new SocialLoginRequest { Provider = "Google", AccessToken = tokenResponse.AccessToken });
             if (!loginResult.Success || loginResult.Data?.User == null)
                 return BadRequest(loginResult.Message ?? "Login failed.");
-            userId = loginResult.Data.User.Id;
-            tokenForFrontend = loginResult.Data.Token;
-        }
-        else
-        {
-            userId = stateValue;
+            var tokenForFrontend = loginResult.Data.Token;
+            return Redirect(frontendBaseUrl.TrimEnd('/') + "/login?token=" + Uri.EscapeDataString(tokenForFrontend));
         }
 
+        var userId = stateValue;
         await SaveGoogleCalendarTokensAsync(userId, tokenResponse, ct);
         await SetGoogleCalendarConnectedAsync(userId, true, ct);
 
-        var frontendBaseUrl = GetFrontendBaseUrl();
-        if (tokenForFrontend != null)
-            return Redirect(frontendBaseUrl.TrimEnd('/') + "/login?token=" + Uri.EscapeDataString(tokenForFrontend));
         return Redirect(frontendBaseUrl.TrimEnd('/') + "/settings/goals?google=connected");
     }
 
@@ -356,6 +366,37 @@ public class AuthController : ControllerBase
     {
         var origins = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
         return origins?.FirstOrDefault() ?? "http://localhost:3005";
+    }
+
+    /// <summary>When <c>Recaptcha:SecretKey</c> is set, requires a valid v2 token; otherwise skips.</summary>
+    private async Task<ActionResult?> RequireRecaptchaWhenConfiguredAsync(string? recaptchaToken, CancellationToken cancellationToken)
+    {
+        var secret = _configuration["Recaptcha:SecretKey"];
+        if (string.IsNullOrEmpty(secret))
+            return null;
+
+        if (string.IsNullOrWhiteSpace(recaptchaToken))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "CAPTCHA is required.",
+                Errors = new Dictionary<string, string[]> { { "recaptcha", new[] { "Please complete the CAPTCHA." } } }
+            });
+        }
+
+        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!await _recaptchaService.VerifyAsync(recaptchaToken, remoteIp, cancellationToken))
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "CAPTCHA verification failed. Please try again.",
+                Errors = new Dictionary<string, string[]> { { "recaptcha", new[] { "CAPTCHA verification failed." } } }
+            });
+        }
+
+        return null;
     }
 
     private sealed class GoogleTokenResponse
