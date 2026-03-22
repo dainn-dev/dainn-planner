@@ -27,6 +27,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ContactMessage> ContactMessages { get; set; }
     public DbSet<UserStatistics> UserStatistics { get; set; }
     public DbSet<UserGoogleIntegration> UserGoogleIntegrations { get; set; }
+    public DbSet<UserTodoistIntegration> UserTodoistIntegrations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,6 +66,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(e => e.GoalId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.Property(e => e.TodoistTaskId).HasMaxLength(64);
+            entity.HasIndex(e => new { e.UserId, e.TodoistTaskId })
+                .IsUnique()
+                .HasFilter("\"TodoistTaskId\" IS NOT NULL");
         });
 
         // Configure TaskInstance (per-day execution row)
@@ -251,6 +256,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.User)
                 .WithOne(u => u.GoogleIntegration)
                 .HasForeignKey<UserGoogleIntegration>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<UserTodoistIntegration>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.Property(e => e.AccessToken).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.OAuthScopes).HasMaxLength(512);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.TodoistIntegration)
+                .HasForeignKey<UserTodoistIntegration>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

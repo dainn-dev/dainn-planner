@@ -132,6 +132,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMemoryCache();
 builder.Services.Configure<DailyPlanner.Application.Options.GoogleCalendarOptions>(
     builder.Configuration.GetSection(DailyPlanner.Application.Options.GoogleCalendarOptions.SectionName));
+builder.Services.Configure<DailyPlanner.Application.Options.TodoistOptions>(
+    builder.Configuration.GetSection(DailyPlanner.Application.Options.TodoistOptions.SectionName));
 
 // Admin logs (file-based, uses ContentRootPath)
 builder.Services.AddScoped<DailyPlanner.Application.Interfaces.ILogsService, DailyPlanner.Infrastructure.Services.LogsService>();

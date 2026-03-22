@@ -70,11 +70,14 @@ const SettingsPage = () => {
   const recaptchaSiteKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
-
-  // After OAuth callback we land with ?google=connected; refetch settings and clear the param
+  const [disconnectingTodoist, setDisconnectingTodoist] = useState(false);
+  const [connectingTodoist, setConnectingTodoist] = useState(false);
+  // After OAuth callback we land with ?google=connected or ?todoist=connected; refetch settings and clear the param
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('google') !== 'connected') return;
+    const googleOk = params.get('google') === 'connected';
+    const todoistOk = params.get('todoist') === 'connected';
+    if (!googleOk && !todoistOk) return;
     const run = async () => {
       try {
         const data = await userAPI.getSettings();
@@ -1106,7 +1109,7 @@ const SettingsPage = () => {
                     {plansSettings.googleCalendarConnected && (
                       <p className="text-xs text-secondary dark:text-slate-400 col-span-full">{t('settings.googleCalendarConnected')}</p>
                     )}
-                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex items-center justify-between bg-white dark:bg-slate-800 opacity-60 pointer-events-none">
+                    <div className="border border-border-light dark:border-slate-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:border-zinc-300 dark:hover:border-slate-600 transition-colors bg-white dark:bg-slate-800">
                       <div className="flex items-center gap-3">
                         <div className="size-10 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 dark:text-red-400">
                           <span className="material-symbols-outlined">check_circle</span>
@@ -1117,19 +1120,52 @@ const SettingsPage = () => {
                         </div>
                       </div>
                       {plansSettings.todoistConnected ? (
-                        <button type="button" disabled className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-transparent cursor-not-allowed">
-                          {t('settings.connected')}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2 justify-end">
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">{t('settings.connected')}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setDisconnectingTodoist(true);
+                              try {
+                                await integrationsAPI.disconnectTodoist();
+                                const data = await userAPI.getSettings();
+                                if (data?.plans) setPlansSettings(prev => ({ ...prev, ...data.plans }));
+                              } catch (_) {
+                                // ignore
+                              } finally {
+                                setDisconnectingTodoist(false);
+                              }
+                            }}
+                            disabled={disconnectingTodoist}
+                            className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+                          >
+                            {t('settings.disconnect')}
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
-                          disabled
-                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg cursor-not-allowed"
+                          disabled={connectingTodoist}
+                          onClick={async () => {
+                            setConnectingTodoist(true);
+                            try {
+                              const url = await integrationsAPI.getTodoistOAuthUrl();
+                              window.location.href = url;
+                            } catch (e) {
+                              console.error(e);
+                            } finally {
+                              setConnectingTodoist(false);
+                            }
+                          }}
+                          className="text-xs font-medium text-zinc-900 dark:text-slate-200 border border-border-light dark:border-slate-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
                         >
-                          {t('settings.connect')}
+                          {connectingTodoist ? t('common.loading') : t('settings.connect')}
                         </button>
                       )}
                     </div>
+                    {plansSettings.todoistConnected && (
+                      <p className="text-xs text-secondary dark:text-slate-400 col-span-full">{t('settings.todoistConnectedHint')}</p>
+                    )}
                   </div>
                 </div>
 

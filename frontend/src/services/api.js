@@ -33,6 +33,21 @@ export const integrationsAPI = {
 
   /** `{ src }` = Google account email for embed when Calendar is connected; `src` may be null. */
   getGoogleCalendarEmbedSrc: async () => apiRequest('/integrations/google/calendar-embed-src'),
+
+  getTodoistOAuthUrl: async () => {
+    const r = await apiRequest('/integrations/todoist/authorize-url');
+    const url = r?.url ?? r?.data?.url;
+    if (!url || typeof url !== 'string') {
+      throw new Error('Could not start Todoist connection');
+    }
+    return url;
+  },
+  disconnectTodoist: async () =>
+    apiRequest('/integrations/todoist/disconnect', { method: 'POST' }),
+  /** Active Todoist tasks (not stored in planner DB). */
+  getTodoistTasks: async () => apiRequest('/integrations/todoist/tasks'),
+  closeTodoistTask: async (todoistTaskId) =>
+    apiRequest(`/integrations/todoist/tasks/${encodeURIComponent(todoistTaskId)}/close`, { method: 'POST' }),
 };
 
 /** Google Calendar event CRUD (for Google-sourced events only). */

@@ -17,6 +17,8 @@ public class DailyTask
     public DateTime? UpdatedAt { get; set; }
     public Guid? GoalMilestoneId { get; set; }
     public Guid? GoalId { get; set; }
+    /// <summary>Set when the task was imported or linked from Todoist (dedup key per user).</summary>
+    public string? TodoistTaskId { get; set; }
 
     // Navigation properties
     public ApplicationUser User { get; set; } = null!;

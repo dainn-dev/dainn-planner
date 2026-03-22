@@ -23,6 +23,7 @@ public class ApplicationUser : IdentityUser
     public ICollection<UserDevice> UserDevices { get; set; } = new List<UserDevice>();
     public UserSettings? UserSettings { get; set; }
     public UserGoogleIntegration? GoogleIntegration { get; set; }
+    public UserTodoistIntegration? TodoistIntegration { get; set; }
     public ICollection<UserActivity> UserActivities { get; set; } = new List<UserActivity>();
 }
 

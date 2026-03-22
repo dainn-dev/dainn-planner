@@ -678,6 +678,31 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.ToTable("UserGoogleIntegrations");
                 });
 
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserTodoistIntegration", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("OAuthScopes")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserTodoistIntegrations");
+                });
+
             modelBuilder.Entity("DailyPlanner.Domain.Entities.UserSettings", b =>
                 {
                     b.Property<string>("UserId")
@@ -1021,6 +1046,17 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserTodoistIntegration", b =>
+                {
+                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("TodoistIntegration")
+                        .HasForeignKey("DailyPlanner.Domain.Entities.UserTodoistIntegration", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DailyPlanner.Domain.Entities.UserSettings", b =>
                 {
                     b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
@@ -1101,6 +1137,8 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("DailyTasks");
 
                     b.Navigation("GoogleIntegration");
+
+                    b.Navigation("TodoistIntegration");
 
                     b.Navigation("LongTermGoals");
 

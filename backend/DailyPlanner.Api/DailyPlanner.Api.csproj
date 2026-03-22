@@ -31,6 +31,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Log files are written at runtime; excluding avoids build failures when a dev server has them open. -->
+    <Content Remove="wwwroot\logs\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DailyPlanner.Application\DailyPlanner.Application.csproj" />
     <ProjectReference Include="..\DailyPlanner.Domain\DailyPlanner.Domain.csproj" />
     <ProjectReference Include="..\DailyPlanner.Infrastructure\DailyPlanner.Infrastructure.csproj" />

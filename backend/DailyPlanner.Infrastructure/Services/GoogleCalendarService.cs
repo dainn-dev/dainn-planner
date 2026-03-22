@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +21,34 @@ public class GoogleCalendarService : IGoogleCalendarService
     private const string UserInfoUrl = "https://www.googleapis.com/oauth2/v2/userinfo";
     private const string PlanDailyPrivatePropertyKey = "planDailyEventId";
     private static readonly TimeSpan TokenExpiryMargin = TimeSpan.FromMinutes(5);
+
+    /// <summary>App picker hex (Calendar UI) → Google Calendar API event <c>colorId</c> (1–11).</summary>
+    private static readonly FrozenDictionary<string, string> AppHexToGoogleColorId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["1380ec"] = "9",
+        ["10b981"] = "10",
+        ["f59e0b"] = "6",
+        ["ef4444"] = "11",
+        ["8b5cf6"] = "3",
+        ["ec4899"] = "4",
+        ["06b6d4"] = "7",
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Google <c>colorId</c> → hex for API DTOs (picker swatches use the first seven).</summary>
+    private static readonly FrozenDictionary<string, string> GoogleColorIdToHex = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["1"] = "#a4bdfc",
+        ["2"] = "#7ae7bf",
+        ["3"] = "#8b5cf6",
+        ["4"] = "#ec4899",
+        ["5"] = "#fbd75b",
+        ["6"] = "#f59e0b",
+        ["7"] = "#06b6d4",
+        ["8"] = "#9e9e9e",
+        ["9"] = "#1380ec",
+        ["10"] = "#10b981",
+        ["11"] = "#ef4444",
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Google's JSON uses camelCase; default System.Text.Json matching is case-sensitive.</summary>
     private static readonly JsonSerializerOptions GoogleApiJsonOptions = new()
@@ -97,6 +126,7 @@ public class GoogleCalendarService : IGoogleCalendarService
                 StartDate = startDate,
                 EndDate = endDate,
                 Location = item.Location,
+                Color = MapGoogleColorIdToAppHex(item.ColorId),
                 IsAllDay = isAllDay,
                 CreatedAt = DateTime.UtcNow,
                 Source = "Google",
@@ -219,6 +249,7 @@ public class GoogleCalendarService : IGoogleCalendarService
             Summary = evt.Title,
             Description = evt.Description,
             Location = evt.Location,
+            ColorId = MapAppColorToGoogleColorId(evt.Color),
             Start = start,
             End = end,
             ExtendedProperties = new GoogleExtendedPropertiesWrite
@@ -226,6 +257,27 @@ public class GoogleCalendarService : IGoogleCalendarService
                 Private = new Dictionary<string, string> { [PlanDailyPrivatePropertyKey] = evt.Id.ToString() }
             }
         };
+    }
+
+    /// <summary>Maps stored app color (UI hex or literal Google id "1"–"11") to Google <c>colorId</c>.</summary>
+    private static string? MapAppColorToGoogleColorId(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+            return null;
+        var s = color.Trim();
+        if (s.Length <= 2 && int.TryParse(s, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) && n is >= 1 and <= 11)
+            return n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var hex = s.TrimStart('#').Trim();
+        if (hex.Length != 6)
+            return null;
+        return AppHexToGoogleColorId.TryGetValue(hex, out var id) ? id : null;
+    }
+
+    private static string? MapGoogleColorIdToAppHex(string? colorId)
+    {
+        if (string.IsNullOrWhiteSpace(colorId))
+            return null;
+        return GoogleColorIdToHex.TryGetValue(colorId.Trim(), out var hex) ? hex : null;
     }
 
     private static (GoogleEventDateTimeWrite Start, GoogleEventDateTimeWrite End) BuildWhen(CalendarEvent evt)
@@ -333,6 +385,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         public string? Summary { get; set; }
         public string? Description { get; set; }
         public string? Location { get; set; }
+        public string? ColorId { get; set; }
         public GoogleEventDateTime? Start { get; set; }
         public GoogleEventDateTime? End { get; set; }
         public GoogleExtendedPropertiesRead? ExtendedProperties { get; set; }
@@ -354,6 +407,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         public string Summary { get; set; } = "";
         public string? Description { get; set; }
         public string? Location { get; set; }
+        public string? ColorId { get; set; }
         public GoogleEventDateTimeWrite? Start { get; set; }
         public GoogleEventDateTimeWrite? End { get; set; }
         public GoogleExtendedPropertiesWrite? ExtendedProperties { get; set; }

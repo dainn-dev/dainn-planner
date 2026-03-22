@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
-import { tasksAPI, notificationsAPI, eventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { tasksAPI, notificationsAPI, eventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatTime, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
@@ -46,6 +46,16 @@ const getPlansTrackingMethod = () => {
     return value === 'time' ? 'time' : 'tasks';
   } catch {
     return 'tasks';
+  }
+};
+
+const getTodoistConnectedFromStorage = () => {
+  try {
+    const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+    if (!raw) return false;
+    return JSON.parse(raw)?.plans?.todoistConnected === true;
+  } catch {
+    return false;
   }
 };
 
@@ -101,9 +111,8 @@ const DailyPage = () => {
   const [taskTagFilter, setTaskTagFilter] = useState(''); // '' or tag string
   const [taskSortOrder, setTaskSortOrder] = useState('desc'); // 'desc' | 'asc'
   const [filterExpanded, setFilterExpanded] = useState(false);
-  const [taskIdInProgress, setTaskIdInProgress] = useState(null); // task id showing 3s progress before toggle
-  const [togglePayloadInProgress, setTogglePayloadInProgress] = useState(null);
-  const [toggleProgressPercent, setToggleProgressPercent] = useState(0); // 0..100 for inline progress bar
+  const [togglingTaskId, setTogglingTaskId] = useState(null);
+  const [todoistTasks, setTodoistTasks] = useState([]);
   const [, setTimeProgressTick] = useState(0); // tick every minute to refresh time-based progress
   const [notifications, setNotifications] = useState([
     {
@@ -178,6 +187,48 @@ const DailyPage = () => {
         setTaskCompletedCount(0);
       }
 
+      // Todoist: show active tasks from Todoist API only (not saved in planner DB)
+      try {
+        const token = typeof window !== 'undefined' && localStorage.getItem('token');
+        if (token && getTodoistConnectedFromStorage()) {
+          const td = await integrationsAPI.getTodoistTasks();
+          const items = Array.isArray(td) ? td : [];
+          const mapped = items
+            .filter((x) => {
+              const due = x.dueDate ? formatLocalDateIso(new Date(x.dueDate)) : today;
+              return due === today;
+            })
+            .map((x) => {
+              const dateObj = x.dueDate ? new Date(x.dueDate) : new Date();
+              return {
+                id: `todoist:${x.id}`,
+                todoistId: x.id,
+                source: 'todoist',
+                text: x.title,
+                title: x.title,
+                description: x.description ?? '',
+                date: x.dueDate,
+                completed: false,
+                isCompleted: false,
+                dateObj,
+                completedDateObj: null,
+                priority: typeof x.priority === 'number' ? x.priority : 0,
+                recurrence: 0,
+                reminderTime: '',
+                tags: Array.isArray(x.tags) ? x.tags : [],
+                goalMilestoneId: null,
+                goalId: null,
+              };
+            });
+          setTodoistTasks(mapped);
+        } else {
+          setTodoistTasks([]);
+        }
+      } catch (e) {
+        console.warn('Todoist tasks load failed:', e);
+        setTodoistTasks([]);
+      }
+
       // Load events for today
       try {
         const todayStr = today;
@@ -212,30 +263,6 @@ const DailyPage = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // When a task is in "progress" (user checked checkbox): animate bar for 3s then call toggle API and refresh
-  useEffect(() => {
-    if (taskIdInProgress == null) return;
-    const startProgress = requestAnimationFrame(() => setToggleProgressPercent(100));
-    const finishTimer = setTimeout(async () => {
-      try {
-        if (togglePayloadInProgress != null) {
-          await tasksAPI.upsertTaskInstance(togglePayloadInProgress);
-        }
-        await loadData();
-      } catch (err) {
-        console.error('Failed to toggle task:', err);
-      } finally {
-        setTaskIdInProgress(null);
-        setTogglePayloadInProgress(null);
-        setToggleProgressPercent(0);
-      }
-    }, 3000);
-    return () => {
-      cancelAnimationFrame(startProgress);
-      clearTimeout(finishTimer);
-    };
-  }, [taskIdInProgress, togglePayloadInProgress, loadData]);
 
   // Refresh every minute when showing time-based progress so % updates
   useEffect(() => {
@@ -285,20 +312,40 @@ const DailyPage = () => {
   const taskProgressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const progressPercentage = trackingMethod === 'time' ? getTodayTimeProgressPercent() : taskProgressPercent;
 
-  const handleTaskCheckboxChange = (task) => {
+  const handleTaskCheckboxChange = async (task) => {
+    if (task.source === 'todoist' && task.todoistId) {
+      setTogglingTaskId(task.id);
+      try {
+        await integrationsAPI.closeTodoistTask(task.todoistId);
+        await loadData();
+      } catch (err) {
+        console.error('Failed to complete Todoist task:', err);
+      } finally {
+        setTogglingTaskId(null);
+      }
+      return;
+    }
+
     const currentCompleted = task.completed ?? task.isCompleted;
     const willBeCompleted = !currentCompleted;
-    setTogglePayloadInProgress({
-      taskId: task.id,
-      date: task.date,
-      description: task.description ?? null,
-      isCompleted: willBeCompleted,
-    });
-    setTaskIdInProgress(task.id);
-    setToggleProgressPercent(0);
+    setTogglingTaskId(task.id);
+    try {
+      await tasksAPI.upsertTaskInstance({
+        taskId: task.id,
+        date: task.date,
+        description: task.description ?? null,
+        isCompleted: willBeCompleted,
+      });
+      await loadData();
+    } catch (err) {
+      console.error('Failed to toggle task:', err);
+    } finally {
+      setTogglingTaskId(null);
+    }
   };
 
   const handleDeleteTask = async (id) => {
+    if (typeof id === 'string' && id.startsWith('todoist:')) return;
     try {
       await tasksAPI.deleteTask(id);
       await loadData();
@@ -308,6 +355,7 @@ const DailyPage = () => {
   };
 
   const handleOpenEditTask = (task) => {
+    if (task.source === 'todoist') return;
     setAddTaskGoalContext({
       goalMilestoneId: task.goalMilestoneId ?? null,
       goalId: task.goalId ?? null
@@ -700,8 +748,8 @@ const DailyPage = () => {
                   )}
                 </div>
 
-                {/* Tasks List */}
-                {tasks.length === 0 ? (
+                {/* Tasks List (planner DB) + Todoist (live API, not stored locally) */}
+                {tasks.length === 0 && todoistTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 px-4 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
                     <span className="material-symbols-outlined text-gray-300 dark:text-slate-500 text-5xl mb-3">task_alt</span>
                     <p className="text-gray-500 dark:text-slate-400 text-sm font-medium text-center">{t('daily.noTasks')}</p>
@@ -722,7 +770,7 @@ const DailyPage = () => {
                                 className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-slate-600 bg-transparent dark:bg-slate-700/50 checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait"
                                 type="checkbox"
                                 onChange={() => handleTaskCheckboxChange(task)}
-                                disabled={taskIdInProgress === task.id}
+                                disabled={togglingTaskId === task.id}
                                 aria-label={t('daily.markTaskComplete', { title: task.text || task.title })}
                               />
                               <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity pt-1">
@@ -777,16 +825,74 @@ const DailyPage = () => {
                             </button>
                           </div>
                         </div>
-                        {taskIdInProgress === task.id && (
-                          <div className="h-1.5 w-full bg-gray-100 dark:bg-slate-700 rounded-b-lg overflow-hidden" role="progressbar" aria-valuenow={toggleProgressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={t('daily.updating')}>
-                            <div
-                              className="h-full bg-primary rounded-b-lg transition-[width] duration-[3000ms] ease-linear"
-                              style={{ width: `${toggleProgressPercent}%` }}
-                            />
-                          </div>
-                        )}
                       </div>
                     ))}
+                    {todoistTasks.length > 0 && (
+                      <>
+                        <p className="pt-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+                          {t('daily.todoistHeading')}
+                        </p>
+                        {todoistTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex flex-col rounded-lg border border-red-100 dark:border-red-900/40 bg-white dark:bg-slate-800 overflow-hidden transition-all hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                          >
+                            <div className="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4">
+                              <div className="flex items-start gap-4 flex-1">
+                                <div className="relative flex items-center pt-1">
+                                  <input
+                                    checked={false}
+                                    className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-slate-600 bg-transparent dark:bg-slate-700/50 checked:border-primary checked:bg-primary transition-all hover:border-primary/50 disabled:opacity-60 disabled:cursor-wait"
+                                    type="checkbox"
+                                    onChange={() => handleTaskCheckboxChange(task)}
+                                    disabled={togglingTaskId === task.id}
+                                    aria-label={t('daily.markTaskComplete', { title: task.text || task.title })}
+                                  />
+                                  <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity pt-1">
+                                    <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                  <p className="text-sm sm:text-base font-medium leading-tight text-[#111418] dark:text-white">
+                                    {task.priority !== undefined && task.priority !== null && (
+                                      <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
+                                        {getPriorityLabel(task.priority)}
+                                      </span>
+                                    )}
+                                    {task.text || task.title}
+                                  </p>
+                                  {formatDeadline(task.date) && (
+                                    <p className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-500">
+                                      <span className="material-symbols-outlined text-[12px] sm:text-[14px]">event</span>
+                                      <span>{t('daily.dueLabel')} {formatDeadline(task.date)}</span>
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                    {task.tags && task.tags.map((tag, idx) => (
+                                      <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 dark:bg-slate-700 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-slate-300">
+                                        {getTagLabel(tag)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {togglingTaskId === task.id && (
+                                    <p
+                                      className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-500 dark:text-slate-400 mt-0.5"
+                                      role="status"
+                                      aria-live="polite"
+                                    >
+                                      <span className="material-symbols-outlined animate-spin text-[14px] sm:text-[16px] text-primary shrink-0" aria-hidden>
+                                        progress_activity
+                                      </span>
+                                      <span>{t('daily.todoistCompletingTask')}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
                 {/* Pagination below task list on mobile */}

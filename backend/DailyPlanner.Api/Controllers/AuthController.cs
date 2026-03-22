@@ -27,12 +27,15 @@ public class AuthController : ControllerBase
 {
     private const string GoogleStateCachePrefix = "google_oauth_state:";
     private static readonly TimeSpan GoogleStateExpiration = TimeSpan.FromMinutes(10);
+    private const string TodoistStateCachePrefix = "todoist_oauth_state:";
+    private static readonly TimeSpan TodoistStateExpiration = TimeSpan.FromMinutes(10);
 
     private readonly IAuthService _authService;
     private readonly ApplicationDbContext _context;
     private readonly IMemoryCache _cache;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly GoogleCalendarOptions _googleOptions;
+    private readonly TodoistOptions _todoistOptions;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
     private readonly IGoogleRecaptchaService _recaptchaService;
@@ -43,6 +46,7 @@ public class AuthController : ControllerBase
         IMemoryCache cache,
         IHttpClientFactory httpClientFactory,
         IOptions<GoogleCalendarOptions> googleOptions,
+        IOptions<TodoistOptions> todoistOptions,
         IConfiguration configuration,
         ILogger<AuthController> logger,
         IGoogleRecaptchaService recaptchaService)
@@ -52,6 +56,7 @@ public class AuthController : ControllerBase
         _cache = cache;
         _httpClientFactory = httpClientFactory;
         _googleOptions = googleOptions.Value;
+        _todoistOptions = todoistOptions.Value;
         _configuration = configuration;
         _logger = logger;
         _recaptchaService = recaptchaService;
@@ -200,6 +205,51 @@ public class AuthController : ControllerBase
         await SetGoogleCalendarConnectedAsync(userId, true, ct);
 
         return Redirect(frontendBaseUrl.TrimEnd('/') + "/settings/goals?google=connected");
+    }
+
+    /// <summary>Todoist OAuth callback: state maps to user id from cache; saves token and sets todoistConnected.</summary>
+    [HttpGet("todoist/callback")]
+    [AllowAnonymous]
+    public async Task<IActionResult> TodoistCallback(
+        [FromQuery] string? code,
+        [FromQuery] string? state,
+        [FromQuery] string? error,
+        CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(error))
+            return BadRequest($"Todoist authorization failed: {error}");
+
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
+            return BadRequest("Missing code or state.");
+
+        if (!_cache.TryGetValue(TodoistStateCachePrefix + state, out TodoistOAuthStatePayload? oauthState)
+            || oauthState is null
+            || string.IsNullOrEmpty(oauthState.UserId))
+            return BadRequest("Invalid or expired state.");
+
+        _cache.Remove(TodoistStateCachePrefix + state);
+
+        var (tokenResponse, exchangeError) = await ExchangeTodoistCodeAsync(code, ct);
+        if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+        {
+            _logger.LogWarning("Todoist token exchange failed: {Error}", exchangeError);
+            return new ContentResult
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+                Content = exchangeError ?? "Failed to exchange code for Todoist token.",
+                ContentType = "text/plain; charset=utf-8",
+            };
+        }
+
+        var scopesToPersist = !string.IsNullOrWhiteSpace(tokenResponse.Scope)
+            ? tokenResponse.Scope.Trim()
+            : oauthState.RequestedScopes.Trim();
+
+        await SaveTodoistTokensAsync(oauthState.UserId, tokenResponse.AccessToken, string.IsNullOrEmpty(scopesToPersist) ? null : scopesToPersist, ct);
+        await SetTodoistConnectedAsync(oauthState.UserId, true, ct);
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        return Redirect(frontendBaseUrl.TrimEnd('/') + "/settings/goals?todoist=connected");
     }
 
     [HttpPost("logout")]
@@ -362,6 +412,100 @@ public class AuthController : ControllerBase
         }
     }
 
+    private async Task<(TodoistTokenResponse? Response, string? Error)> ExchangeTodoistCodeAsync(string code, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(_todoistOptions.ClientId) || string.IsNullOrWhiteSpace(_todoistOptions.ClientSecret))
+        {
+            _logger.LogWarning("Todoist OAuth token exchange skipped: ClientId or ClientSecret is empty.");
+            return (null, "Todoist integration is not configured (Integrations:Todoist ClientId / ClientSecret).");
+        }
+
+        var redirectUri = TodoistOAuthRedirectUriHelper.Resolve(Request, _todoistOptions);
+        using var http = _httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.todoist.com/oauth/access_token");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        var form = new Dictionary<string, string>
+        {
+            ["client_id"] = _todoistOptions.ClientId,
+            ["client_secret"] = _todoistOptions.ClientSecret,
+            ["code"] = code,
+            ["redirect_uri"] = redirectUri
+        };
+        request.Content = new FormUrlEncodedContent(form);
+        var response = await http.SendAsync(request, ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Todoist token exchange failed ({Status}): {Body}", (int)response.StatusCode,
+                json.Length > 400 ? json[..400] + "…" : json);
+            return (null, TryFormatTodoistTokenError(json) ?? "Todoist token exchange failed.");
+        }
+
+        var tokenResponse = JsonSerializer.Deserialize<TodoistTokenResponse>(json);
+        return (tokenResponse, null);
+    }
+
+    private static string? TryFormatTodoistTokenError(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("error", out var errEl))
+                return null;
+            return errEl.ValueKind == JsonValueKind.String ? errEl.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task SaveTodoistTokensAsync(string userId, string accessToken, string? oauthScopes, CancellationToken ct)
+    {
+        var integration = await _context.UserTodoistIntegrations.FindAsync(new object[] { userId }, ct);
+        if (integration == null)
+        {
+            integration = new UserTodoistIntegration
+            {
+                UserId = userId,
+                AccessToken = accessToken,
+                OAuthScopes = oauthScopes,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+            _context.UserTodoistIntegrations.Add(integration);
+        }
+        else
+        {
+            integration.AccessToken = accessToken;
+            integration.OAuthScopes = oauthScopes;
+            integration.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync(ct);
+    }
+
+    private async Task SetTodoistConnectedAsync(string userId, bool connected, CancellationToken ct)
+    {
+        var settings = await _context.UserSettings.FirstOrDefaultAsync(s => s.UserId == userId, ct);
+        if (settings == null)
+        {
+            settings = new UserSettings { UserId = userId, Data = DefaultUserSettings.Json, UpdatedAt = DateTime.UtcNow };
+            _context.UserSettings.Add(settings);
+            await _context.SaveChangesAsync(ct);
+        }
+
+        var node = JsonNode.Parse(settings.Data) as JsonObject;
+        if (node != null && node["plans"] is JsonObject plans)
+        {
+            plans["todoistConnected"] = connected;
+            settings.Data = node.ToJsonString();
+            settings.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+
     private string GetFrontendBaseUrl()
     {
         var origins = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -407,6 +551,16 @@ public class AuthController : ControllerBase
         public string? RefreshToken { get; set; }
         [System.Text.Json.Serialization.JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
+    }
+
+    private sealed class TodoistTokenResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("access_token")]
+        public string AccessToken { get; set; } = string.Empty;
+
+        /// <summary>Granted scopes when Todoist includes them in the token response.</summary>
+        [System.Text.Json.Serialization.JsonPropertyName("scope")]
+        public string? Scope { get; set; }
     }
 }
 
