@@ -20,9 +20,12 @@ import AdminUsersPage from './pages/AdminUsersPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import AdminLogsPage from './pages/AdminLogsPage';
 import AdminLogDetailPage from './pages/AdminLogDetailPage';
+import AdminCvSitesPage from './pages/AdminCvSitesPage';
+import MyCvPage from './pages/MyCvPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import CvPlatformAdminRoute from './components/CvPlatformAdminRoute';
 
 function applyDarkModeFromStorage() {
   try {
@@ -131,6 +134,16 @@ function App() {
           <AdminRoute>
             <AdminLogDetailPage />
           </AdminRoute>
+        } />
+        <Route path="/admin/cv-sites" element={
+          <CvPlatformAdminRoute>
+            <AdminCvSitesPage />
+          </CvPlatformAdminRoute>
+        } />
+        <Route path="/cv" element={
+          <ProtectedRoute>
+            <MyCvPage />
+          </ProtectedRoute>
         } />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
