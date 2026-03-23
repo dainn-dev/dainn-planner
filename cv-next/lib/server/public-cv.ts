@@ -36,6 +36,7 @@ export async function getPublicCvPayload(): Promise<PublicCvPayload> {
   try {
     const h = await headers()
     const tenantHeader = h.get("x-tenant-slug") ?? slug
+    console.log("[cv-next] X-Tenant-Slug (site fetch):", tenantHeader)
     const res = await fetch(cvUrl(cvApi.site), {
       cache: "no-store",
       headers: {

@@ -160,14 +160,14 @@ const MyCvPage = () => {
             <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-slate-500 text-[20px]" aria-hidden>
               link
             </span>
-            <input
-              type="text"
-              value={slugInput}
-              onChange={(e) => { setSlugInput(e.target.value.toLowerCase()); setSlugError(null); }}
-              placeholder={t('myCv.slugPlaceholder')}
+          <input
+            type="text"
+            value={slugInput}
+            onChange={(e) => { setSlugInput(e.target.value.toLowerCase()); setSlugError(null); }}
+            placeholder={t('myCv.slugPlaceholder')}
               autoComplete="off"
               className={`${CV_INPUT} pl-10`}
-            />
+          />
           </div>
           <button
             type="button"
@@ -256,13 +256,13 @@ const MyCvPage = () => {
       approved: (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium">
-              <span className="material-symbols-outlined text-base">check_circle</span>
-              {t('myCv.statusApproved')}
-            </span>
-            <span className="text-sm text-gray-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium">
+            <span className="material-symbols-outlined text-base">check_circle</span>
+            {t('myCv.statusApproved')}
+          </span>
+          <span className="text-sm text-gray-500 dark:text-slate-400">
               {t('myCv.visitSite')}: <span className="font-mono">{slugDisplay}</span>
-            </span>
+          </span>
           </div>
           {renderDetailsGrid()}
         </div>
@@ -285,9 +285,9 @@ const MyCvPage = () => {
       suspended: (
         <div className="flex flex-col gap-0">
           <span className="inline-flex w-fit items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 text-sm font-medium">
-            <span className="material-symbols-outlined text-base">block</span>
-            {t('myCv.statusSuspended')}
-          </span>
+          <span className="material-symbols-outlined text-base">block</span>
+          {t('myCv.statusSuspended')}
+        </span>
           {renderDetailsGrid()}
         </div>
       ),
@@ -875,7 +875,7 @@ const MyCvPage = () => {
     const certificatesParsed = isCertificatesSection ? getParsedSectionDraft('certificates') : null;
     const certificateItems = isCertificatesSection && Array.isArray(certificatesParsed) ? certificatesParsed : [];
 
-    return (
+        return (
       <div className="flex flex-col gap-5 md:gap-8">
         <div className="max-w-3xl w-full">
         {isProfileSection ? (
@@ -932,7 +932,7 @@ const MyCvPage = () => {
                             ) : (
                               <span className="material-symbols-outlined text-2xl text-zinc-400 dark:text-slate-500">
                                 person
-                              </span>
+              </span>
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -951,7 +951,7 @@ const MyCvPage = () => {
                             >
                               <span className="material-symbols-outlined text-sm">upload</span>
                               {uploadingCvAvatar ? t('settings.uploading') : t('myCv.uploadAvatar')}
-                            </button>
+            </button>
                             {rawImg ? (
                               <button
                                 type="button"
@@ -1741,14 +1741,14 @@ const MyCvPage = () => {
             </div>
           </div>
         ) : (
-          <textarea
-            value={sectionDraft[section] ?? '{}'}
-            onChange={(e) => {
-              setSectionDraft((d) => ({ ...d, [section]: e.target.value }));
-              setSectionErrors((err) => ({ ...err, [section]: null }));
-            }}
+                <textarea
+                  value={sectionDraft[section] ?? '{}'}
+                  onChange={(e) => {
+                    setSectionDraft((d) => ({ ...d, [section]: e.target.value }));
+                    setSectionErrors((err) => ({ ...err, [section]: null }));
+                  }}
             rows={14}
-            spellCheck={false}
+                  spellCheck={false}
             className="w-full min-h-[280px] px-3.5 py-3 font-mono text-xs rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-zinc-50 dark:bg-slate-950 text-zinc-900 dark:text-slate-100 shadow-inner focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/80 resize-y"
           />
         )}
@@ -1765,17 +1765,17 @@ const MyCvPage = () => {
               {t('myCv.saveStickyHint')}
             </p>
           )}
-          <button
+                  <button
             type="button"
-            onClick={() => handleSaveSection(section)}
-            disabled={savingSection[section]}
+                    onClick={() => handleSaveSection(section)}
+                    disabled={savingSection[section]}
             className={`${CV_BTN_SAVE} w-full sm:w-auto min-w-[148px]`}
-          >
+                  >
             <span className="material-symbols-outlined text-[20px]" aria-hidden>save</span>
-            {savingSection[section] ? t('common.processing') : t('myCv.saveSection')}
-          </button>
+                    {savingSection[section] ? t('common.processing') : t('myCv.saveSection')}
+                  </button>
         </footer>
-      </div>
+                </div>
     );
   };
 
@@ -1787,7 +1787,7 @@ const MyCvPage = () => {
         <p className="text-xs sm:text-sm text-zinc-500 dark:text-slate-400 mt-1 leading-relaxed max-w-2xl">
           {t('myCv.contentNavSubtitle')}
         </p>
-      </div>
+              </div>
       {/* Mobile — horizontal scroll + snap */}
       <div className="md:hidden flex border-b border-zinc-100 dark:border-slate-700 bg-zinc-50/50 dark:bg-slate-900/80 overflow-x-auto overflow-y-hidden shrink-0 scroll-smooth snap-x snap-mandatory">
         <nav className="flex flex-nowrap items-stretch gap-1 px-2 py-1 min-w-min" aria-label={t('myCv.content')}>
@@ -1809,7 +1809,7 @@ const MyCvPage = () => {
             );
           })}
         </nav>
-      </div>
+          </div>
       <div className="flex flex-col md:flex-row gap-0 md:gap-0">
         <aside className="hidden md:flex w-[220px] lg:w-64 shrink-0 flex-col border-r border-zinc-100 dark:border-slate-700/80 p-3 bg-zinc-50/40 dark:bg-slate-900/30">
           <nav className="flex flex-col gap-1" aria-label={t('myCv.content')}>
@@ -1828,8 +1828,8 @@ const MyCvPage = () => {
                   <span className={`material-symbols-outlined text-[22px] shrink-0 ${isActive ? '' : 'opacity-85'}`}>{CV_SECTION_ICONS[id]}</span>
                   <span className="text-sm leading-tight">{t(`myCv.sections.${id}`)}</span>
                 </button>
-              );
-            })}
+        );
+      })}
           </nav>
         </aside>
         <div className="flex-1 min-w-0 p-4 md:p-6 md:pl-8 bg-white dark:bg-slate-800/40">
@@ -2033,7 +2033,7 @@ const MyCvPage = () => {
               <div className="h-8 w-48 rounded-lg bg-zinc-200/80 dark:bg-slate-700" />
               <div className="h-36 rounded-2xl bg-zinc-200/60 dark:bg-slate-700/80" />
               <div className="h-72 rounded-2xl bg-zinc-200/50 dark:bg-slate-700/60" />
-            </div>
+      </div>
           </div>
         </div>
       </main>
@@ -2052,7 +2052,7 @@ const MyCvPage = () => {
         />
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
           <div className="w-full max-w-[1024px] mx-auto px-4 sm:px-6 md:px-10 py-6 md:py-10 flex flex-col gap-4">
-            <p className="text-red-500">{t('myCv.loadError')}</p>
+          <p className="text-red-500">{t('myCv.loadError')}</p>
             <button
               type="button"
               onClick={load}
@@ -2061,7 +2061,7 @@ const MyCvPage = () => {
               <span className="material-symbols-outlined text-[20px]" aria-hidden>refresh</span>
               {t('myCv.retry')}
             </button>
-          </div>
+      </div>
         </div>
       </main>
       {renderMobileSidebar()}
@@ -2108,8 +2108,8 @@ const MyCvPage = () => {
               {renderCvContentNav()}
             </section>
           </div>
-        </div>
-      </main>
+          </div>
+        </main>
       {renderMobileSidebar()}
     </div>
   );

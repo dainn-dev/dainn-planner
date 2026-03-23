@@ -30,6 +30,7 @@ export default function PortfolioDetails({ params }: { params: Promise<{ id: str
     const fetchData = async () => {
       try {
         const slug = parseTenantSlugFromHost(window.location.host)
+        console.log("[cv-next] X-Tenant-Slug:", slug ?? "(none)")
         const headers: HeadersInit = {}
         if (slug) headers["X-Tenant-Slug"] = slug
         const res = await fetch(cvUrl(cvApi.portfolio(id)), { headers })

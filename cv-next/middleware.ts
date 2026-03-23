@@ -8,6 +8,7 @@ export function middleware(request: NextRequest) {
   const slug = parseTenantSlugFromHost(request.headers.get("host"))
   if (slug) {
     requestHeaders.set("x-tenant-slug", slug)
+    console.log("[cv-next] X-Tenant-Slug:", slug)
   }
   return NextResponse.next({ request: { headers: requestHeaders } })
 }
