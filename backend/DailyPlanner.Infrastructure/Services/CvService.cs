@@ -49,8 +49,12 @@ public class CvService : ICvService
 
     public async Task<CvEnvelope<object?>> GetPublicSiteAsync(string? tenantSlug, CancellationToken ct = default)
     {
+        _logger.LogInformation("Getting public site for slug: {Slug}", tenantSlug);
         if (string.IsNullOrEmpty(tenantSlug))
+        {
+            _logger.LogInformation("No slug found in request");
             return NotFound();
+        }
 
         var site = await _db.CvSites.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Slug == tenantSlug && s.Status == "approved", ct);
