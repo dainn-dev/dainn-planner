@@ -8,6 +8,7 @@ import GoalBreakdown from '../components/GoalBreakdown';
 import FocusMode from '../components/FocusMode';
 import AdditionalFeatures from '../components/AdditionalFeatures';
 import Footer from '../components/Footer';
+import { getPostLoginPath } from '../utils/auth';
 
 // Optional: set REACT_APP_DEMO_VIDEO_URL to a YouTube embed URL (e.g. https://www.youtube.com/embed/VIDEO_ID)
 const DEMO_VIDEO_URL = process.env.REACT_APP_DEMO_VIDEO_URL || '';
@@ -26,8 +27,8 @@ const HomePage = () => {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : null;
 
-        if (user && user.role === 'Admin') {
-          navigate('/admin/dashboard', { replace: true });
+        if (user) {
+          navigate(getPostLoginPath(user), { replace: true });
         } else {
           navigate('/daily', { replace: true });
         }

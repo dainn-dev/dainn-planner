@@ -2,6 +2,7 @@ using DailyPlanner.Application.Mappings;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using AutoMapper;
 using System.Linq.Expressions;
@@ -14,6 +15,7 @@ public static class TestHelpers
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: dbName ?? Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         return new ApplicationDbContext(options);

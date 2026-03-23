@@ -1,4 +1,5 @@
 using DailyPlanner.Application.DTOs;
+using DailyPlanner.Application.DTOs.Cv;
 using DailyPlanner.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,11 +12,13 @@ public class ContactController : ControllerBase
 {
     private readonly IContactService _contactService;
     private readonly IGoogleRecaptchaService _recaptchaService;
+    private readonly ICvService _cvService;
 
-    public ContactController(IContactService contactService, IGoogleRecaptchaService recaptchaService)
+    public ContactController(IContactService contactService, IGoogleRecaptchaService recaptchaService, ICvService cvService)
     {
         _contactService = contactService;
         _recaptchaService = recaptchaService;
+        _cvService = cvService;
     }
 
     [HttpPost]
@@ -54,5 +57,15 @@ public class ContactController : ControllerBase
             return BadRequest(result);
 
         return Ok(result);
+    }
+
+    [HttpPost("/api/v1/cv/contact")]
+    [Tags("CV — public")]
+    public async Task<IActionResult> SubmitCvContact([FromBody] CvContactRequest body, CancellationToken cancellationToken)
+    {
+        if (body == null)
+            return BadRequest(new { success = false, error = "Invalid body" });
+        var r = await _cvService.SubmitContactAsync(body, cancellationToken);
+        return StatusCode(r.StatusCode, r.Body);
     }
 }

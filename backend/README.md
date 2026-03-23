@@ -198,6 +198,15 @@ CORS is configured to allow requests from:
 
 Update `Program.cs` to add your frontend URLs.
 
+### CV hosting (`api/v1/cv`)
+
+- **Tables**: `Sites`, `Documents` for CV data; CV moderation notifications are stored in `Notifications` (see EF migrations `AddCvHostingTables` and `CvConsolidateCvTablesAndNotifications`).
+- **SMTP (all CV mail)**: configure `Email` in `appsettings.json` (or environment variables `Email__*`): `SmtpHost`, `SmtpPort`, `From`, `User`, `Password`, `EnableSsl`. Implemented by `SmtpEmailSender` (`IEmailSender`).
+- **CV-specific** (`Cv`): `RootDomain` (tenant host), `DashboardBaseUrl` (links in approval/reject/suspend emails), `ContactToEmail` (recipient for `POST /api/v1/cv/contact` public form). If `ContactToEmail` is empty, contact mail falls back to `Email:AdminTo`.
+- **Roles**: Identity role `platform_admin` for CV admin endpoints; seeded admin user receives it alongside `Admin`.
+- **Next.js (`cv-next`)**: set `API_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL` to this API origin; no `DATABASE_URL` or SMTP env vars for CV — the contact form calls the API, which sends email via SMTP here.
+- **Forward** `X-Tenant-Slug` or use `{slug}.{Cv:RootDomain}` on requests to `GET /api/v1/cv/site` and portfolio routes.
+
 ## 📚 API Documentation
 
 ### Swagger UI

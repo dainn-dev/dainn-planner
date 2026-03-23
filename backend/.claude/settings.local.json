@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/**)",
+      "Read(//c/Users/Dainn/**)",
+      "Read(//e/Projects/dainn-planner/frontend/**)",
+      "Read(//e/Projects/dainn-planner/cv-next/**)",
+      "Read(//e/Projects/dainn-planner/prod/**)",
+      "Bash(dotnet build:*)"
+    ]
+  }
+}

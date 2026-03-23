@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build:*)",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''src/locales/vi.json'',''utf8''\\)\\); console.log\\(''vi OK''\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''src/locales/en.json'',''utf8''\\)\\); console.log\\(''en OK''\\)\")",
+      "Bash(python3:*)"
+    ]
+  }
+}

@@ -513,59 +513,6 @@ public class DailyTaskService : IDailyTaskService
         };
     }
 
-    public async Task<ApiResponse<MainDailyGoalDto?>> GetMainGoalAsync(string userId, DateTime date)
-    {
-        var dateUtc = ToUtc(date);
-        var goal = await _context.MainDailyGoals
-            .FirstOrDefaultAsync(g => g.UserId == userId && g.Date.Date == dateUtc);
-
-        return new ApiResponse<MainDailyGoalDto?>
-        {
-            Success = true,
-            Data = goal != null ? _mapper.Map<MainDailyGoalDto>(goal) : null
-        };
-    }
-
-    public async Task<ApiResponse<MainDailyGoalDto>> UpsertMainGoalAsync(string userId, DateTime date, UpdateMainDailyGoalRequest request)
-    {
-        var dateUtc = ToUtc(date);
-        var goal = await _context.MainDailyGoals
-            .FirstOrDefaultAsync(g => g.UserId == userId && g.Date.Date == dateUtc);
-
-        if (goal == null)
-        {
-            goal = new MainDailyGoal
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Date = dateUtc,
-                Title = request.Title ?? string.Empty,
-                Description = request.Description,
-                IsCompleted = request.IsCompleted ?? false
-            };
-            _context.MainDailyGoals.Add(goal);
-        }
-        else
-        {
-            if (!string.IsNullOrEmpty(request.Title))
-                goal.Title = request.Title;
-            if (request.Description != null)
-                goal.Description = request.Description;
-            if (request.IsCompleted.HasValue)
-                goal.IsCompleted = request.IsCompleted.Value;
-            goal.UpdatedAt = DateTime.UtcNow;
-        }
-
-        await _context.SaveChangesAsync();
-
-        return new ApiResponse<MainDailyGoalDto>
-        {
-            Success = true,
-            Message = "Main goal saved successfully",
-            Data = _mapper.Map<MainDailyGoalDto>(goal)
-        };
-    }
-
     public async Task<ApiResponse<TagsWithUsageResult>> GetTagsWithUsageAsync(string userId, DateTime? dateFrom = null, DateTime? dateTo = null)
     {
         var query = _context.DailyTasks.Where(t => t.UserId == userId);

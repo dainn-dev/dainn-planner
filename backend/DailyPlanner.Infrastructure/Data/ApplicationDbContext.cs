@@ -14,7 +14,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<DailyTask> DailyTasks { get; set; }
     public DbSet<TaskInstance> TaskInstances { get; set; }
-    public DbSet<MainDailyGoal> MainDailyGoals { get; set; }
     public DbSet<LongTermGoal> LongTermGoals { get; set; }
     public DbSet<GoalMilestone> GoalMilestones { get; set; }
     public DbSet<GoalTask> GoalTasks { get; set; }
@@ -28,6 +27,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserStatistics> UserStatistics { get; set; }
     public DbSet<UserGoogleIntegration> UserGoogleIntegrations { get; set; }
     public DbSet<UserTodoistIntegration> UserTodoistIntegrations { get; set; }
+    public DbSet<CvSite> CvSites { get; set; }
+    public DbSet<CvDocument> CvDocuments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -92,18 +93,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configure MainDailyGoal
-        builder.Entity<MainDailyGoal>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-            entity.HasIndex(e => new { e.UserId, e.Date }).IsUnique();
-            entity.HasOne(e => e.User)
-                .WithMany(u => u.MainDailyGoals)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
         // Configure LongTermGoal
         builder.Entity<LongTermGoal>(entity =>
         {
@@ -157,10 +146,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(500);
             entity.Property(e => e.ReferenceId);
+            entity.Property(e => e.PayloadJson).HasColumnType("jsonb");
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(200);
             entity.HasIndex(e => new { e.UserId, e.IsRead });
             entity.HasIndex(e => new { e.Type, e.ReferenceId });
+            entity.HasIndex(e => new { e.UserId, e.ReadAt, e.CreatedAt });
+            entity.HasIndex(e => e.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL");
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(e => e.UserId)
@@ -270,6 +265,53 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey<UserTodoistIntegration>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        builder.Entity<CvSite>(entity =>
+        {
+            entity.ToTable("Sites");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OwnerUserId).IsRequired().HasMaxLength(450);
+            entity.Property(e => e.Slug).IsRequired().HasMaxLength(63);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.RejectionReason).HasMaxLength(2000);
+            entity.Property(e => e.ReviewedByUserId).HasMaxLength(450);
+            entity.Property(e => e.ThemePresetKey).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.ThemeOverridesJson).HasColumnType("jsonb");
+            entity.HasIndex(e => e.OwnerUserId).IsUnique();
+            entity.HasIndex(e => e.Slug)
+                .IsUnique()
+                .HasFilter("\"Status\" <> 'rejected'");
+            entity.HasIndex(e => e.Status);
+            entity.HasOne(e => e.Owner)
+                .WithOne(u => u.CvOwnedSite)
+                .HasForeignKey<CvSite>(e => e.OwnerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(e => e.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<CvDocument>(entity =>
+        {
+            entity.ToTable("Documents");
+            entity.HasKey(e => e.UserId);
+            entity.Property(e => e.UserId).HasMaxLength(450);
+            entity.Property(e => e.ProfileJson).HasColumnType("jsonb");
+            entity.Property(e => e.PortfolioJson).HasColumnType("jsonb");
+            entity.Property(e => e.SkillsJson).HasColumnType("jsonb");
+            entity.Property(e => e.TestimonialsJson).HasColumnType("jsonb");
+            entity.Property(e => e.FactsJson).HasColumnType("jsonb");
+            entity.Property(e => e.ServicesJson).HasColumnType("jsonb");
+            entity.Property(e => e.EducationJson).HasColumnType("jsonb");
+            entity.Property(e => e.ExperienceJson).HasColumnType("jsonb");
+            entity.Property(e => e.CertificatesJson).HasColumnType("jsonb");
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.CvDocument)
+                .HasForeignKey<CvDocument>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
     }
 }
 

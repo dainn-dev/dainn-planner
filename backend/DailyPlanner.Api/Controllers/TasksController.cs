@@ -94,27 +94,5 @@ public class TasksController : ControllerBase
         var result = await _taskService.ToggleTaskAsync(userId, id);
         return result.Success ? Ok(result) : NotFound(result);
     }
-
-    [HttpGet("main-goal")]
-    public async Task<ActionResult<ApiResponse<MainDailyGoalDto?>>> GetMainGoal([FromQuery] DateTime date)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var result = await _taskService.GetMainGoalAsync(userId, date);
-        return Ok(result);
-    }
-
-    [HttpPut("main-goal")]
-    public async Task<ActionResult<ApiResponse<MainDailyGoalDto>>> UpsertMainGoal([FromQuery] DateTime date, [FromBody] UpdateMainDailyGoalRequest request)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        var result = await _taskService.UpsertMainGoalAsync(userId, date, request);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
 }
 

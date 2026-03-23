@@ -211,6 +211,109 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.ToTable("ContactMessages");
                 });
 
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.CvDocument", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("CertificatesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("EducationJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ExperienceJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("FactsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("PortfolioJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ProfileJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ServicesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("SkillsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("TestimonialsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("Documents", (string)null);
+                });
+
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.CvSite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ThemeOverridesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ThemePresetKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId")
+                        .IsUnique();
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasFilter("\"Status\" <> 'rejected'");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Sites", (string)null);
+                });
+
             modelBuilder.Entity("DailyPlanner.Domain.Entities.DailyTask", b =>
                 {
                     b.Property<Guid>("Id")
@@ -248,12 +351,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
-                    b.Property<string>("RepeatRule")
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("date");
-
                     b.Property<string[]>("Tags")
                         .HasColumnType("text[]");
 
@@ -261,6 +358,10 @@ namespace DailyPlanner.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TodoistTaskId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -276,6 +377,10 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.HasIndex("GoalMilestoneId");
 
                     b.HasIndex("UserId", "Date");
+
+                    b.HasIndex("UserId", "TodoistTaskId")
+                        .IsUnique()
+                        .HasFilter("\"TodoistTaskId\" IS NOT NULL");
 
                     b.ToTable("DailyTasks");
                 });
@@ -410,44 +515,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.ToTable("LongTermGoals");
                 });
 
-            modelBuilder.Entity("DailyPlanner.Domain.Entities.MainDailyGoal", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsCompleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Date")
-                        .IsUnique();
-
-                    b.ToTable("MainDailyGoals");
-                });
-
             modelBuilder.Entity("DailyPlanner.Domain.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -466,17 +533,27 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("ReferenceId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -489,9 +566,15 @@ namespace DailyPlanner.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+
                     b.HasIndex("Type", "ReferenceId");
 
                     b.HasIndex("UserId", "IsRead");
+
+                    b.HasIndex("UserId", "ReadAt", "CreatedAt");
 
                     b.ToTable("Notifications");
                 });
@@ -535,17 +618,17 @@ namespace DailyPlanner.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("CompletedDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime>("InstanceDate")
-                        .HasColumnType("date");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsOverride")
                         .HasColumnType("boolean");
@@ -678,31 +761,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.ToTable("UserGoogleIntegrations");
                 });
 
-            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserTodoistIntegration", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AccessToken")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("OAuthScopes")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("UserTodoistIntegrations");
-                });
-
             modelBuilder.Entity("DailyPlanner.Domain.Entities.UserSettings", b =>
                 {
                     b.Property<string>("UserId")
@@ -756,6 +814,31 @@ namespace DailyPlanner.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserStatistics");
+                });
+
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserTodoistIntegration", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("OAuthScopes")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserTodoistIntegrations");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -911,6 +994,35 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.CvDocument", b =>
+                {
+                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("CvDocument")
+                        .HasForeignKey("DailyPlanner.Domain.Entities.CvDocument", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.CvSite", b =>
+                {
+                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "Owner")
+                        .WithOne("CvOwnedSite")
+                        .HasForeignKey("DailyPlanner.Domain.Entities.CvSite", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Owner");
+
+                    b.Navigation("ReviewedBy");
+                });
+
             modelBuilder.Entity("DailyPlanner.Domain.Entities.DailyTask", b =>
                 {
                     b.HasOne("DailyPlanner.Domain.Entities.LongTermGoal", "Goal")
@@ -962,17 +1074,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                 {
                     b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
                         .WithMany("LongTermGoals")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DailyPlanner.Domain.Entities.MainDailyGoal", b =>
-                {
-                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
-                        .WithMany("MainDailyGoals")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1046,17 +1147,6 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserTodoistIntegration", b =>
-                {
-                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
-                        .WithOne("TodoistIntegration")
-                        .HasForeignKey("DailyPlanner.Domain.Entities.UserTodoistIntegration", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("DailyPlanner.Domain.Entities.UserSettings", b =>
                 {
                     b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
@@ -1073,6 +1163,17 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DailyPlanner.Domain.Entities.UserTodoistIntegration", b =>
+                {
+                    b.HasOne("DailyPlanner.Domain.Entities.ApplicationUser", "User")
+                        .WithOne("TodoistIntegration")
+                        .HasForeignKey("DailyPlanner.Domain.Entities.UserTodoistIntegration", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1134,19 +1235,21 @@ namespace DailyPlanner.Infrastructure.Migrations
                 {
                     b.Navigation("CalendarEvents");
 
+                    b.Navigation("CvDocument");
+
+                    b.Navigation("CvOwnedSite");
+
                     b.Navigation("DailyTasks");
 
                     b.Navigation("GoogleIntegration");
 
-                    b.Navigation("TodoistIntegration");
-
                     b.Navigation("LongTermGoals");
-
-                    b.Navigation("MainDailyGoals");
 
                     b.Navigation("Notifications");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("TodoistIntegration");
 
                     b.Navigation("UserActivities");
 

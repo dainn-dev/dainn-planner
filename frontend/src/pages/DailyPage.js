@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI, notificationsAPI, eventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import LogoutButton from '../components/LogoutButton';
-import { isStoredAdmin } from '../utils/auth';
+import { isStoredAdmin, isStoredCvPlatformStaff } from '../utils/auth';
 import { formatDate, formatTime, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 import AddTaskModal from '../components/AddTaskModal';
 
@@ -90,10 +90,10 @@ const mapTaskFromApi = (t) => {
 const DailyPage = () => {
   const { t } = useTranslation();
   const isAdmin = isStoredAdmin();
+  const isCvStaff = isStoredCvPlatformStaff();
   const getPriorityLabel = (p) => (p === 2 ? t('daily.priorityHigh') : p === 1 ? t('daily.priorityMedium') : t('daily.priorityLow'));
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
-  const [mainGoal, setMainGoal] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
   const [addTaskReturnTo, setAddTaskReturnTo] = useState(null);
@@ -243,10 +243,6 @@ const DailyPage = () => {
         setEvents([]);
       }
 
-      // Main goal is not loaded here - it should only be loaded on the Goals page
-      // Keeping mainGoal state null for DailyPage
-      setMainGoal(null);
-
       // Load notifications
       try {
         const notificationsData = await notificationsAPI.getNotifications({ limit: 20 });
@@ -259,7 +255,7 @@ const DailyPage = () => {
     }
   }, [taskPage, taskPageSize, taskStatusFilter, taskPriorityFilter, taskTagFilter, taskSortOrder]);
 
-  // Load tasks and main goal on mount and when pagination or filter changes
+  // Load tasks on mount and when pagination or filter changes
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -456,47 +452,6 @@ const DailyPage = () => {
                 </div>
               </div>
             </div>
-
-            {/* Main Goal Card */}
-            {mainGoal && (
-              <div className="w-full">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 rounded-xl border border-blue-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-lg shadow-blue-50 dark:shadow-none relative overflow-hidden group">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                  <div className="flex flex-col gap-1 z-10 pl-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="material-symbols-outlined text-primary dark:text-blue-400 text-sm">flag</span>
-                      <p className="text-primary dark:text-blue-400 text-xs font-bold uppercase tracking-wider">{t('daily.mainGoal')}</p>
-                    </div>
-                    <p className={`text-[#111418] dark:text-white text-xl font-bold leading-tight group-hover:text-primary dark:group-hover:text-blue-400 transition-colors ${mainGoal.completed ? 'line-through text-gray-400 dark:text-slate-500' : ''}`}>
-                      {mainGoal.text}
-                    </p>
-                  </div>
-                  <label className="relative flex cursor-pointer items-center gap-3 z-10">
-                    <span className="text-gray-500 dark:text-slate-400 text-sm hidden sm:block">{t('daily.markComplete')}</span>
-                    <div className={`relative flex h-[31px] w-[51px] items-center rounded-full border-none p-0.5 transition-colors ${mainGoal.completed ? 'bg-[#1380ec]' : 'bg-gray-200 dark:bg-slate-600'}`}>
-                      <div
-                        className={`h-[27px] w-[27px] rounded-full bg-white dark:bg-slate-200 shadow-md transition-transform ${mainGoal.completed ? 'translate-x-[20px]' : 'translate-x-0'}`}
-                      />
-                      <input
-                        className="peer sr-only"
-                        type="checkbox"
-                        checked={mainGoal.completed || false}
-                        onChange={async (e) => {
-                          try {
-                            // updateMainGoal API endpoint not available in .NET backend
-                            // Update local state only for now
-                            setMainGoal({ ...mainGoal, completed: e.target.checked });
-                          } catch (error) {
-                            console.error('Failed to update main goal:', error);
-                          }
-                        }}
-                        aria-label={t('daily.markMainGoalComplete')}
-                      />
-                    </div>
-                  </label>
-                </div>
-              </div>
-            )}
 
             {/* Schedule and Tasks Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
@@ -957,6 +912,20 @@ const DailyPage = () => {
           </button>
         </div>
         <div className="flex flex-col gap-2 p-4 flex-1">
+          {isCvStaff && (
+            <>
+              <Link
+                to="/admin/cv-sites"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="material-symbols-outlined">language</span>
+                <span>{t('sidebar.cvSites')}</span>
+              </Link>
+              {isAdmin && <div className="my-2 border-t border-gray-100 dark:border-slate-700" />}
+              {!isAdmin && isCvStaff && <div className="my-2 border-t border-gray-100 dark:border-slate-700" />}
+            </>
+          )}
           {isAdmin && (
             <>
               <Link

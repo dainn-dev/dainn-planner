@@ -5,6 +5,7 @@ using DailyPlanner.Infrastructure.Data;
 using Hangfire;
 using Hangfire.PostgreSql;
 using DailyPlanner.Api.Jobs;
+using DailyPlanner.Api.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -70,7 +71,7 @@ builder.Services.AddSwaggerGen(c =>
     { 
         Title = "Daily Planner API", 
         Version = "v1",
-        Description = "Daily Planner Backend API - A comprehensive task and goal management system"
+        Description = "Daily Planner and CV hosting API. CV surface: `api/v1/cv/*` (public site/themes/portfolio/contact; owner `me/*` with JWT; admin `admin/*` with role `platform_admin`). Tenant resolution: `Host` (`{slug}.ROOT_DOMAIN`) or `X-Tenant-Slug` (trusted from your reverse proxy / Next.js server)."
     });
     
     // Include XML comments if available
@@ -107,6 +108,7 @@ builder.Services.AddSwaggerGen(c =>
     
     // Ensure all controllers are discovered
     c.CustomSchemaIds(type => type.FullName);
+    c.OperationFilter<CvTenantHeaderOperationFilter>();
 });
 
 // Add CORS

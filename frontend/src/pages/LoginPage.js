@@ -5,6 +5,7 @@ import PublicHeader from '../components/PublicHeader';
 import PasswordInput from '../components/PasswordInput';
 import ErrorMessage from '../components/ErrorMessage';
 import { validateEmail, validatePassword } from '../utils/formValidation';
+import { getPostLoginPath } from '../utils/auth';
 import { authAPI, userAPI, getGoogleLoginAuthorizeUrl } from '../services/api';
 import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
 
@@ -38,9 +39,13 @@ const LoginPage = () => {
         if (user?.id) localStorage.setItem('user', JSON.stringify(user));
         userAPI.getSettings().catch(() => {});
         window.history.replaceState(null, '', window.location.pathname || '/login');
-        const role = user?.role ?? (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').role; } catch { return null; } })();
-        if (role === 'Admin') navigate('/admin/dashboard', { replace: true });
-        else navigate('/daily', { replace: true });
+        let storedUser = null;
+        try {
+          storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+        } catch {
+          storedUser = null;
+        }
+        navigate(getPostLoginPath(user ?? storedUser), { replace: true });
       } catch (_) {
         window.history.replaceState(null, '', window.location.pathname || '/login');
       }
@@ -57,7 +62,7 @@ const LoginPage = () => {
       try {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : null;
-        if (user && user.role === 'Admin') navigate('/admin/dashboard', { replace: true });
+        if (user) navigate(getPostLoginPath(user), { replace: true });
         else navigate('/daily', { replace: true });
       } catch (error) {
         navigate('/daily', { replace: true });
@@ -95,11 +100,7 @@ const LoginPage = () => {
         return {};
       }
     })();
-    if (user?.role === 'Admin') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/daily');
-    }
+    navigate(getPostLoginPath(user));
   };
 
   const handleGoogleClick = () => {
@@ -183,13 +184,7 @@ const LoginPage = () => {
         } catch (_) {}
 
         const user = response.user || JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.role === 'Admin') {
-          navigate('/admin/dashboard');
-        } else if (user.role === 'User' || !user.role) {
-          navigate('/daily');
-        } else {
-          navigate('/daily');
-        }
+        navigate(getPostLoginPath(user));
       } else {
         setErrors({ submit: response.message || t('auth.loginFail') });
         resetRecaptcha();
@@ -224,11 +219,7 @@ const LoginPage = () => {
           await userAPI.getSettings();
         } catch (_) {}
         const user = response.user || JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.role === 'Admin') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/daily');
-        }
+        navigate(getPostLoginPath(user));
       } else {
         setTwoFactorError(response.message || t('auth.twoFactorInvalidCode'));
       }

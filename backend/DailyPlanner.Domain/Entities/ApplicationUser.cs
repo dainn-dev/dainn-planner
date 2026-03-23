@@ -15,7 +15,6 @@ public class ApplicationUser : IdentityUser
 
     // Navigation properties
     public ICollection<DailyTask> DailyTasks { get; set; } = new List<DailyTask>();
-    public ICollection<MainDailyGoal> MainDailyGoals { get; set; } = new List<MainDailyGoal>();
     public ICollection<LongTermGoal> LongTermGoals { get; set; } = new List<LongTermGoal>();
     public ICollection<CalendarEvent> CalendarEvents { get; set; } = new List<CalendarEvent>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
@@ -25,5 +24,8 @@ public class ApplicationUser : IdentityUser
     public UserGoogleIntegration? GoogleIntegration { get; set; }
     public UserTodoistIntegration? TodoistIntegration { get; set; }
     public ICollection<UserActivity> UserActivities { get; set; } = new List<UserActivity>();
+
+    public CvSite? CvOwnedSite { get; set; }
+    public CvDocument? CvDocument { get; set; }
 }
 

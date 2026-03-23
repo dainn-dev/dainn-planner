@@ -14,6 +14,7 @@ public static class DatabaseSeeder
         // Ensure roles exist
         await EnsureRoleExistsAsync(roleManager, "Admin");
         await EnsureRoleExistsAsync(roleManager, "User");
+        await EnsureRoleExistsAsync(roleManager, "platform_admin");
 
         // Seed admin user
         await SeedAdminUserAsync(userManager);
@@ -53,6 +54,7 @@ public static class DatabaseSeeder
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(adminUser, "Admin");
+                await userManager.AddToRoleAsync(adminUser, "platform_admin");
             }
         }
         else
@@ -62,6 +64,11 @@ public static class DatabaseSeeder
             if (!roles.Contains("Admin"))
             {
                 await userManager.AddToRoleAsync(adminUser, "Admin");
+            }
+
+            if (!roles.Contains("platform_admin"))
+            {
+                await userManager.AddToRoleAsync(adminUser, "platform_admin");
             }
         }
     }

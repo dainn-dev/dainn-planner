@@ -9,8 +9,6 @@ public interface IDailyTaskService
     Task<ApiResponse<DailyTaskDto>> UpdateTaskAsync(string userId, Guid taskId, UpdateDailyTaskRequest request);
     Task<ApiResponse<object>> DeleteTaskAsync(string userId, Guid taskId);
     Task<ApiResponse<DailyTaskDto>> ToggleTaskAsync(string userId, Guid taskId);
-    Task<ApiResponse<MainDailyGoalDto?>> GetMainGoalAsync(string userId, DateTime date);
-    Task<ApiResponse<MainDailyGoalDto>> UpsertMainGoalAsync(string userId, DateTime date, UpdateMainDailyGoalRequest request);
     Task<ApiResponse<TagsWithUsageResult>> GetTagsWithUsageAsync(string userId, DateTime? dateFrom = null, DateTime? dateTo = null);
 
     // Per-day instance workflow (FE)

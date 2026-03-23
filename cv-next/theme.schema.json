@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CVThemeTokens",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "colorBg",
+    "colorSurface",
+    "colorAccent",
+    "colorText",
+    "colorTextMuted",
+    "fontHeading",
+    "fontBody",
+    "radiusMd",
+    "shadowCard"
+  ],
+  "properties": {
+    "colorBg": { "type": "string" },
+    "colorSurface": { "type": "string" },
+    "colorAccent": { "type": "string" },
+    "colorText": { "type": "string" },
+    "colorTextMuted": { "type": "string" },
+    "fontHeading": { "type": "string" },
+    "fontBody": { "type": "string" },
+    "radiusMd": { "type": "string" },
+    "shadowCard": { "type": "string" }
+  }
+}

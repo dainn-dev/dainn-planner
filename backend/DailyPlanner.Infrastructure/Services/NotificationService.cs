@@ -54,6 +54,7 @@ public class NotificationService : INotificationService
         }
 
         notification.IsRead = true;
+        notification.ReadAt ??= DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return new ApiResponse<object>
@@ -69,9 +70,11 @@ public class NotificationService : INotificationService
             .Where(n => n.UserId == userId && !n.IsRead)
             .ToListAsync();
 
+        var now = DateTime.UtcNow;
         foreach (var notification in notifications)
         {
             notification.IsRead = true;
+            notification.ReadAt ??= now;
         }
 
         await _context.SaveChangesAsync();

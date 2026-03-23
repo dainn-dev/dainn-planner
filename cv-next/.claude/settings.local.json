@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls:*)",
+      "Bash(cat /e/Projects/dainn-planner/cv-next/.env*)",
+      "Bash(grep -rl \"next-auth\\\\|nextauth\\\\|AUTH_SECRET\\\\|useSession\\\\|signIn\\\\|signOut\\\\|SessionProvider\\\\|accessToken\" /e/Projects/dainn-planner/cv-next --include=*.ts --include=*.tsx)",
+      "Bash(grep -rn \"APP_URL\\\\|API_BASE_URL\\\\|NEXTAUTH_URL\" /e/Projects/dainn-planner/cv-next --include=*.ts --include=*.tsx --include=*.mjs)",
+      "Bash(ls -la /app/)",
+      "Bash(ls -la /components/)",
+      "Bash(ls -la /lib/)",
+      "Bash(ls -la /drizzle/)",
+      "Read(//e/Projects/dainn-planner/prod/**)",
+      "Read(//e/Projects/dainn-planner/**)"
+    ]
+  }
+}

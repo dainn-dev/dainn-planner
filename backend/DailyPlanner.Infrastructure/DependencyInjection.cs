@@ -1,4 +1,5 @@
 using DailyPlanner.Application.Interfaces;
+using DailyPlanner.Application.Options;
 using DailyPlanner.Infrastructure.Data;
 using DailyPlanner.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -47,6 +48,10 @@ public static class DependencyInjection
         services.AddScoped<IOldDailyTaskCleanupService, OldDailyTaskCleanupService>();
         services.AddScoped<IOldUserActivityCleanupService, OldUserActivityCleanupService>();
         services.AddScoped<IContactService, ContactService>();
+        services.Configure<CvOptions>(configuration.GetSection(CvOptions.SectionName));
+        services.AddScoped<CvTenantResolver>();
+        services.AddScoped<ICvService, CvService>();
+        services.AddScoped<IFirestoreCvImportService, FirestoreCvImportService>();
         services.AddScoped<LegacyDailyTaskToTaskInstancesMigrationService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddHttpClient();
