@@ -904,3 +904,45 @@ export const adminAPI = {
   },
 };
 
+/** CV multi-tenant hosting: staff with JWT role `platform_admin` (same API base as planner). */
+export const cvPlatformAPI = {
+  listCvSites: async ({ status, q } = {}) => {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') params.set('status', status);
+    if (q && String(q).trim()) params.set('q', String(q).trim());
+    const qs = params.toString();
+    return apiRequest(`/v1/cv/admin/sites${qs ? `?${qs}` : ''}`);
+  },
+  approveCvSite: (id) =>
+    apiRequest(`/v1/cv/admin/sites/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
+  rejectCvSite: (id, reason) =>
+    apiRequest(`/v1/cv/admin/sites/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  suspendCvSite: (id) =>
+    apiRequest(`/v1/cv/admin/sites/${encodeURIComponent(id)}/suspend`, { method: 'POST' }),
+};
+
+/** CV owner API — any authenticated user can manage their own CV site. */
+export const cvMeAPI = {
+  getMySite: () => apiRequest('/v1/cv/me/site'),
+
+  requestSite: (slug) =>
+    apiRequest('/v1/cv/me/site/request', {
+      method: 'POST',
+      body: JSON.stringify({ slug }),
+    }),
+
+  putContent: (section, value) =>
+    apiRequest('/v1/cv/me/site/content', {
+      method: 'PUT',
+      body: JSON.stringify({ [section]: value }),
+    }),
+
+  patchTheme: (presetKey) =>
+    apiRequest('/v1/cv/me/site/theme', {
+      method: 'PATCH',
+      body: JSON.stringify({ presetKey }),
+    }),
+};
