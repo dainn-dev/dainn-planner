@@ -12,6 +12,7 @@ import Footer from "@/components/footer"
 import BackToTop from "@/components/back-to-top"
 import { CvContentProvider } from "@/components/cv-content-context"
 import { CvThemeShell } from "@/components/cv-theme-shell"
+import { TenantSlugConsole } from "@/components/tenant-slug-console"
 import type { CvContentDocument } from "@/lib/cv-content"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
@@ -27,6 +28,7 @@ export default function CvPublicPage({
   return (
     <CvThemeShell presetKey={presetKey} tokens={tokens}>
       <CvContentProvider content={content}>
+        <TenantSlugConsole />
         <div className="flex flex-col md:flex-row">
           <Sidebar />
           <main className="w-full md:ml-72">
