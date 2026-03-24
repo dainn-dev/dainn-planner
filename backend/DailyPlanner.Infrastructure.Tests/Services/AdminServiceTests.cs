@@ -28,7 +28,7 @@ public class AdminServiceTests : IDisposable
         _mapper = TestHelpers.CreateMapper();
         
         var userStore = new Mock<IUserStore<ApplicationUser>>();
-        _userManagerMock = new Mock<UserManager<ApplicationUser>>(userStore.Object, null, null, null, null, null, null, null, null);
+        _userManagerMock = new Mock<UserManager<ApplicationUser>>(userStore.Object, null!, null!, null!, null!, null!, null!, null!, null!);
         _userManagerMock.Setup(x => x.Users).Returns(new List<ApplicationUser>().AsQueryable().BuildMock());
 
         var roleStore = new Mock<IRoleStore<IdentityRole>>();
