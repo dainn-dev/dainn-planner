@@ -12,10 +12,7 @@
 
 services:
   dailyplanner-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: dailyplanner-api:latest
+    image: dainndev/dailyplanner-api:latest
     container_name: dailyplanner-api
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
