@@ -2,8 +2,27 @@
  * API Service - Handles all backend API calls
  */
 import { toast } from '../utils/toast';
+import { parseTenantSlugFromHost } from '../utils/tenantHost';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+
+/**
+ * X-Tenant-Slug: hostname/subdomain first (production `{slug}.root` or dev `{slug}.localhost`),
+ * then REACT_APP_TENANT_SLUG for plain localhost (see backend CvTenantResolver).
+ */
+function resolveTenantSlugForBrowser() {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const fromHost = parseTenantSlugFromHost(window.location.hostname);
+    if (fromHost) return fromHost;
+  }
+  const fromEnv = (process.env.REACT_APP_TENANT_SLUG || '').trim();
+  return fromEnv || null;
+}
+
+function tenantHeadersFromBrowser() {
+  const slug = resolveTenantSlugForBrowser();
+  return slug ? { 'X-Tenant-Slug': slug } : {};
+}
 
 /** Base URL for API server (no /api suffix), for static assets like avatars */
 export const getAvatarFullUrl = (path) => {
@@ -110,12 +129,15 @@ const removeAuthToken = () => {
 const apiRequest = async (endpoint, options = {}) => {
   const token = getAuthToken();
   const url = `${API_BASE_URL}${endpoint}`;
+  const tenantSlug = resolveTenantSlugForBrowser();
+  const tenantHdr = tenantSlug ? { 'X-Tenant-Slug': tenantSlug } : {};
 
   const config = {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'ngrok-skip-browser-warning': 'true',
+      ...tenantHdr,
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
@@ -129,7 +151,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
   const method = String(config.method || 'GET').toUpperCase();
   const inflightKey = method === 'GET' && config.body == null
-    ? `${url}::${config.headers?.Authorization || ''}`
+    ? `${url}::${config.headers?.Authorization || ''}::${tenantSlug || ''}`
     : null;
 
   const doRequest = async () => {
@@ -792,6 +814,7 @@ export const adminAPI = {
       method: 'GET',
       headers: {
         'ngrok-skip-browser-warning': 'true',
+        ...tenantHeadersFromBrowser(),
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
@@ -861,6 +884,7 @@ export const adminAPI = {
           headers: {
             Accept: 'text/event-stream',
             'ngrok-skip-browser-warning': 'true',
+            ...tenantHeadersFromBrowser(),
             ...(token && { Authorization: `Bearer ${token}` })
           },
           credentials: 'include',

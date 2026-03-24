@@ -105,13 +105,19 @@ export default function Testimonials() {
                 <div className="absolute left-1/2 -bottom-5 -translate-x-1/2 w-0 h-0 border-l-12 border-l-transparent border-r-12 border-r-transparent border-t-12 border-t-white" style={{borderLeftWidth: 24, borderRightWidth: 24, borderTopWidth: 20}} />
               </div>
               {/* User info */}
-              <Image
-                src={testimonial.imageUrl}
-                alt={testimonial.name}
-                width={96}
-                height={96}
-                className="rounded-full border-4 border-white shadow-md object-cover mb-2"
-              />
+              {testimonial.imageUrl ? (
+                <Image
+                  src={testimonial.imageUrl}
+                  alt={testimonial.name}
+                  width={96}
+                  height={96}
+                  className="rounded-full border-4 border-white shadow-md object-cover mb-2"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full border-4 border-white shadow-md mb-2 bg-gray-200 flex items-center justify-center text-gray-400 text-2xl font-bold">
+                  {testimonial.name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <h3 className="text-xl font-bold text-[#173b6c] mt-2">{testimonial.name}</h3>
               <h4 className="text-gray-500 text-base mt-1">{testimonial.position}</h4>
             </div>
