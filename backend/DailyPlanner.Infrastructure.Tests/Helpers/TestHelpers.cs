@@ -36,7 +36,8 @@ public static class TestHelpers
         {
             { "Jwt:Key", "TestKeyThatIsAtLeast32CharactersLongForJWT!" },
             { "Jwt:Issuer", "TestIssuer" },
-            { "Jwt:Audience", "TestAudience" }
+            { "Jwt:Audience", "TestAudience" },
+            { "Cors:AllowedOrigins:0", "http://localhost:3005" }
         };
 
         return new ConfigurationBuilder()
@@ -54,7 +55,8 @@ public static class TestHelpers
             FullName = "Test User",
             Timezone = "Asia/Ho_Chi_Minh",
             Language = "vi",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmed = true
         };
     }
 }

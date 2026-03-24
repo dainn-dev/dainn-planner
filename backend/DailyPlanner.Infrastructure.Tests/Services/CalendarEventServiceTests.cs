@@ -24,6 +24,9 @@ public class CalendarEventServiceTests : IDisposable
         _context = TestHelpers.CreateInMemoryDbContext();
         _mapper = TestHelpers.CreateMapper();
         _googleCalendar
+            .Setup(g => g.GetEventsAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<CalendarEventDto>)new List<CalendarEventDto>());
+        _googleCalendar
             .Setup(g => g.PushCalendarEventToGoogleAsync(It.IsAny<string>(), It.IsAny<CalendarEvent>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
         _googleCalendar

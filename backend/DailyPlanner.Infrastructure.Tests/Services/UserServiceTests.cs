@@ -33,7 +33,9 @@ public class UserServiceTests : IDisposable
         
         _environmentMock = new Mock<IWebHostEnvironment>();
         _environmentMock.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
-        _environmentMock.Setup(e => e.WebRootPath).Returns(null!);
+        _environmentMock.Setup(e => e.WebRootPath).Returns(string.Empty);
+
+        _userManagerMock.Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(new List<string>());
 
         var userActivityServiceMock = new Mock<IUserActivityService>();
 

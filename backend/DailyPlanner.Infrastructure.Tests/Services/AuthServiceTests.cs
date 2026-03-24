@@ -23,17 +23,14 @@ public class AuthServiceTests : IDisposable
     private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
     private readonly Mock<IJwtService> _jwtServiceMock;
     private readonly IMapper _mapper;
-    private readonly Mock<IConfiguration> _configurationMock;
+    private readonly IConfiguration _configuration;
     private readonly AuthService _service;
 
     public AuthServiceTests()
     {
         _context = TestHelpers.CreateInMemoryDbContext();
         _mapper = TestHelpers.CreateMapper();
-        _configurationMock = new Mock<IConfiguration>();
-        _configurationMock.Setup(c => c["Jwt:Key"]).Returns("TestKeyThatIsAtLeast32CharactersLongForJWT!");
-        _configurationMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
-        _configurationMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
+        _configuration = TestHelpers.CreateConfiguration();
 
         var store = new Mock<IUserStore<ApplicationUser>>();
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
@@ -47,6 +44,8 @@ public class AuthServiceTests : IDisposable
             contextAccessor.Object,
             claimsFactory.Object,
             null, null, null, null);
+
+        _userManagerMock.Setup(x => x.GenerateEmailConfirmationTokenAsync(It.IsAny<ApplicationUser>())).ReturnsAsync("confirm-token");
 
         _jwtServiceMock = new Mock<IJwtService>();
         _jwtServiceMock.Setup(x => x.GenerateToken(It.IsAny<ApplicationUser>())).Returns("test-token");
@@ -62,7 +61,7 @@ public class AuthServiceTests : IDisposable
             _jwtServiceMock.Object,
             _mapper,
             _context,
-            _configurationMock.Object,
+            _configuration,
             userActivityServiceMock.Object,
             contextAccessor.Object,
             emailSenderMock.Object);
@@ -80,12 +79,10 @@ public class AuthServiceTests : IDisposable
         // Act
         var result = await _service.RegisterAsync(request);
 
-        // Assert
+        // Assert — registration now requires email confirmation before token is issued
         result.Success.Should().BeTrue();
-        result.Data.Should().NotBeNull();
-        result.Data!.Token.Should().NotBeNullOrEmpty();
+        result.Message.Should().Contain("email");
         _userManagerMock.Verify(x => x.CreateAsync(It.IsAny<ApplicationUser>(), request.Password), Times.Once);
-        _jwtServiceMock.Verify(x => x.SaveRefreshTokenAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
