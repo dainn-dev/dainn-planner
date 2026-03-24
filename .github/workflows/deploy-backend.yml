@@ -37,7 +37,7 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Test
-        run: dotnet test --no-restore --no-build -c Release --logger "github" --verbosity minimal
+        run: dotnet test --no-restore --no-build -c Release --logger "GitHubActions" --verbosity minimal
 
   build-push:
     name: Build & Push Docker Image
