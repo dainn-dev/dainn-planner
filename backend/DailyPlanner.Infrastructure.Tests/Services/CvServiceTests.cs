@@ -42,7 +42,8 @@ public class CvServiceTests : IDisposable
         var resolver = new CvTenantResolver(opts);
         var logger = Mock.Of<ILogger<CvService>>();
         var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
-        return new CvService(_context, um.Object, email.Object, opts, resolver, config, logger);
+        var env = Mock.Of<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+        return new CvService(_context, um.Object, email.Object, opts, resolver, config, logger, env);
     }
 
     [Fact]

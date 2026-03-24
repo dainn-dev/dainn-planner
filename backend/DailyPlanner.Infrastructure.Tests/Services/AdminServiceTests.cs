@@ -8,6 +8,7 @@ using DailyPlanner.Infrastructure.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using AutoMapper;
 
@@ -35,7 +36,9 @@ public class AdminServiceTests : IDisposable
 
         var userActivityServiceMock = new Mock<IUserActivityService>();
 
-        _service = new AdminService(_context, _userManagerMock.Object, _roleManagerMock.Object, _mapper, userActivityServiceMock.Object);
+        var emailSender = new Mock<IEmailSender>();
+        var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        _service = new AdminService(_context, _userManagerMock.Object, _roleManagerMock.Object, _mapper, userActivityServiceMock.Object, emailSender.Object, config);
     }
 
     [Fact]
