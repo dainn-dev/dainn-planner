@@ -121,7 +121,7 @@ function Toolbar() {
   );
 }
 
-function InnerEditor({ initialValue, onChange, placeholder }) {
+function InnerEditor({ initialValue, onChange, placeholder, contentEditableClassName }) {
   const { editor, commands } = useEditor();
   const didInitRef = useRef(false);
 
@@ -164,7 +164,7 @@ function InnerEditor({ initialValue, onChange, placeholder }) {
         <RichTextPlugin
           contentEditable={
             <ContentEditable
-              className="w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 dark:text-slate-200 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-slate-500"
+              className={`w-full min-h-[90px] max-h-[180px] overflow-y-auto px-4 py-3 text-sm text-gray-900 dark:text-slate-200 leading-relaxed focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-slate-500${contentEditableClassName ? ` ${contentEditableClassName}` : ''}`}
               aria-placeholder={placeholder}
             />
           }
@@ -176,7 +176,13 @@ function InnerEditor({ initialValue, onChange, placeholder }) {
   );
 }
 
-export default function TaskDescriptionEditor({ value, onChange, placeholder }) {
+export default function TaskDescriptionEditor({
+  value,
+  onChange,
+  placeholder,
+  contentEditableClassName,
+  wrapperClassName,
+}) {
   const initialValueRef = useRef(value || '');
 
   const initialConfig = useMemo(
@@ -186,10 +192,17 @@ export default function TaskDescriptionEditor({ value, onChange, placeholder }) 
     []
   );
 
-  return (
+  const inner = (
     <Provider extensions={extensions} config={initialConfig}>
-      <InnerEditor initialValue={initialValueRef.current} onChange={onChange} placeholder={placeholder} />
+      <InnerEditor
+        initialValue={initialValueRef.current}
+        onChange={onChange}
+        placeholder={placeholder}
+        contentEditableClassName={contentEditableClassName}
+      />
     </Provider>
   );
+
+  return wrapperClassName ? <div className={wrapperClassName}>{inner}</div> : inner;
 }
 

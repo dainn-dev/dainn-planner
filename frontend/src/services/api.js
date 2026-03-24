@@ -6,6 +6,47 @@ import { parseTenantSlugFromHost } from '../utils/tenantHost';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
+// Module-level flag to avoid spamming events on every request
+let _backendDown = false;
+
+/** Dispatch backendUnavailable once when first 5xx is detected */
+function _notifyBackendDown(status) {
+  if (!_backendDown) {
+    _backendDown = true;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('backendUnavailable', { detail: { status } }));
+    }
+  }
+}
+
+/** Dispatch backendAvailable once when backend recovers */
+function _notifyBackendUp() {
+  if (_backendDown) {
+    _backendDown = false;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('backendAvailable'));
+    }
+  }
+}
+
+/**
+ * Ping the backend to check if it's available.
+ * Resolves true if backend responds with non-5xx, false otherwise.
+ */
+export const checkApiHealth = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      method: 'GET',
+      headers: { 'ngrok-skip-browser-warning': 'true' },
+    });
+    if (response.status >= 500) return false;
+    _notifyBackendUp();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * X-Tenant-Slug: hostname/subdomain first (production `{slug}.root` or dev `{slug}.localhost`),
  * then REACT_APP_TENANT_SLUG for plain localhost (see backend CvTenantResolver).
@@ -223,6 +264,12 @@ const apiRequest = async (endpoint, options = {}) => {
       }
     }
 
+    // 5xx → backend down
+    if (response.status >= 500) {
+      _notifyBackendDown(response.status);
+      throw new Error(data?.message || data?.error || `Server error (${response.status})`);
+    }
+
     if (!response.ok) {
       // Handle specific status codes
       if (response.status === 401) {
@@ -245,6 +292,9 @@ const apiRequest = async (endpoint, options = {}) => {
       }
       throw new Error(data.message || data.error || 'An error occurred');
     }
+
+    // Backend recovered
+    _notifyBackendUp();
 
     // Automatically unwrap response.data if present, otherwise return the full response
     return { _raw: data, result: data.data != null ? data.data : data };
@@ -761,6 +811,13 @@ export const adminAPI = {
     return await apiRequest('/admin/users/stats');
   },
 
+  createUser: async (data) => {
+    return await apiRequest('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   getStats: async (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     const endpoint = `/admin/dashboard/stats${queryParams ? `?${queryParams}` : ''}`;
@@ -937,6 +994,11 @@ export const cvPlatformAPI = {
     const qs = params.toString();
     return apiRequest(`/v1/cv/admin/sites${qs ? `?${qs}` : ''}`);
   },
+  createCvSiteForUser: ({ slug, userEmail }) =>
+    apiRequest('/v1/cv/admin/sites', {
+      method: 'POST',
+      body: JSON.stringify({ slug, userEmail }),
+    }),
   approveCvSite: (id) =>
     apiRequest(`/v1/cv/admin/sites/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
   rejectCvSite: (id, reason) =>
@@ -969,4 +1031,13 @@ export const cvMeAPI = {
       method: 'PATCH',
       body: JSON.stringify({ presetKey }),
     }),
+
+  uploadImage: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return await apiRequest('/v1/cv/me/site/upload-image', {
+      method: 'POST',
+      body: form,
+    });
+  },
 };

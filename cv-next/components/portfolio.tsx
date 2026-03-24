@@ -64,7 +64,7 @@ export default function Portfolio() {
     <section id="portfolio" className="py-16 bg-[#f5f8fd]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
-          <h2>{intro.title}</h2>
+          <h2>Portfolio</h2>
           <p className="text-gray-600">{intro.description}</p>
         </div>
 

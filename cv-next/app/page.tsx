@@ -1,6 +1,7 @@
 import { getPublicCvPayload } from "@/lib/server/public-cv"
 import MarketingHome from "@/components/marketing-home"
 import SiteUnavailable from "@/components/site-unavailable"
+import MaintenancePage from "@/components/maintenance-page"
 import CvPublicPage from "@/components/cv-public-page"
 
 export default async function Home() {
@@ -8,6 +9,10 @@ export default async function Home() {
 
   if (payload.kind === "marketing") {
     return <MarketingHome />
+  }
+
+  if (payload.kind === "maintenance") {
+    return <MaintenancePage slug={payload.slug} />
   }
 
   if (payload.kind === "unavailable") {

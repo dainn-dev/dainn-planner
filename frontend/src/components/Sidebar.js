@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LogoutButton from './LogoutButton';
+import { USER_SETTINGS_STORAGE_KEY } from '../services/api';
 
 const Sidebar = ({ className = '' }) => {
   const { t } = useTranslation();
@@ -17,6 +18,25 @@ const Sidebar = ({ className = '' }) => {
     }
   };
 
+  const [showMyCvInMenu, setShowMyCvInMenu] = useState(false);
+
+  useEffect(() => {
+    const readMenuPref = () => {
+      try {
+        const raw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        setShowMyCvInMenu(parsed?.showMyCvInMenu === true);
+      } catch {
+        setShowMyCvInMenu(false);
+      }
+    };
+
+    readMenuPref();
+    const onUpdated = () => readMenuPref();
+    window.addEventListener('userSettingsUpdated', onUpdated);
+    return () => window.removeEventListener('userSettingsUpdated', onUpdated);
+  }, []);
+
   const user = getUser();
   const isAdmin = user?.role === 'Admin';
   const isCvStaff = user?.role === 'platform_admin' || isAdmin;
@@ -27,11 +47,12 @@ const Sidebar = ({ className = '' }) => {
 
   // Base menu items for all users
   const baseMenuItems = [
+    { path: '/dashboard', labelKey: 'sidebar.userDashboard', icon: 'bar_chart', fillWhenActive: false },
     { path: '/daily', labelKey: 'sidebar.dailyPlan', icon: 'today', fillWhenActive: true },
     { path: '/goals', labelKey: 'sidebar.goals', icon: 'target', fillWhenActive: false },
     { path: '/calendar', labelKey: 'sidebar.calendar', icon: 'calendar_month', fillWhenActive: false },
+    ...(showMyCvInMenu ? [{ path: '/cv', labelKey: 'sidebar.myCv', icon: 'badge', fillWhenActive: false }] : []),
     { path: '/settings', labelKey: 'sidebar.settings', icon: 'settings', fillWhenActive: false },
-    { path: '/cv', labelKey: 'sidebar.myCv', icon: 'badge', fillWhenActive: false },
   ];
 
   // Admin menu items

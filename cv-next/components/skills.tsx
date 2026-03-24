@@ -72,7 +72,7 @@ export default function Skills() {
     <section id="skills" className="py-16 bg-[#f5f8fd]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
-          <h2>{data.intro.title}</h2>
+          <h2>Skills</h2>
           <p className="text-gray-600">{data.intro.description}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">

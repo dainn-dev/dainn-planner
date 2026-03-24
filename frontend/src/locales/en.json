@@ -23,7 +23,10 @@
     "viewAllNotifications": "View all notifications",
     "userProfile": "User profile",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "remove": "Remove",
+    "email": "Email",
+    "password": "Password"
   },
   "notifications": {
     "milestoneCompletedTitle": "Congratulations",
@@ -117,6 +120,7 @@
     "registerFree": "Sign up free"
   },
   "sidebar": {
+    "userDashboard": "Overview",
     "dailyPlan": "Today's plan",
     "goals": "Goals",
     "calendar": "Calendar",
@@ -133,6 +137,9 @@
     "pageSubtitle": "Manage your public CV site and the content visitors see.",
     "contentNavSubtitle": "Pick a section to edit — each tab saves separately when you click Save.",
     "saveStickyHint": "Click Save to persist changes for this section.",
+    "dateTextPlaceholder": "e.g. Present",
+    "dateUseTextLink": "Enter as text instead (e.g. Present)",
+    "dateUsePickerLink": "Use calendar picker",
     "loadError": "Failed to load CV. Retry?",
     "retry": "Retry",
     "siteStatus": "Site Status",
@@ -155,6 +162,10 @@
     "content": "CV Content",
     "saveSection": "Save",
     "saveSuccess": "Saved",
+    "iconPicker": {
+      "searchPlaceholder": "Search icons…",
+      "legacyBadge": "Saved"
+    },
     "invalidJson": "Invalid JSON",
     "uploadAvatar": "Upload",
     "removeAvatar": "Remove",
@@ -171,24 +182,20 @@
       "email": "Email",
       "website": "Website",
       "image": "Upload avatar",
+      "profilePhotoSection": "Profile photo",
       "avatarHint": "JPG, PNG or GIF, max 5 MB. The file is saved on the server; your CV will use this image.",
       "degree": "Degree",
-      "location": "Location",
-      "aboutTop": "Short intro",
+      "location": "Address",
       "about": "Main intro",
-      "aboutBottom": "Additional intro",
-      "resumeIntro": "Resume section intro",
-      "contactIntro": "Contact section intro",
       "socials": "Social links",
       "addSocial": "Add social link",
       "noSocials": "No social links yet.",
       "socialPlatform": "Platform",
+      "socialPlatformPlaceholder": "Select platform…",
       "socialUrl": "URL"
     },
     "portfolioFields": {
-      "intro": "Portfolio intro",
-      "introTitle": "Title",
-      "introDescription": "Description",
+      "introDescription": "Intro",
       "items": "Project items",
       "addItem": "Add project",
       "noItems": "No projects yet.",
@@ -200,14 +207,13 @@
       "client": "Client",
       "date": "Date",
       "url": "Website",
-      "description": "Project description",
-      "images": "Image list",
-      "imagesHint": "One image URL per line"
+      "description": "Description (HTML)",
+      "descriptionPlaceholder": "Project details — rich text or pasted HTML (shown on your public CV).",
+      "images": "Project images",
+      "uploadImages": "Upload images"
     },
     "skillsFields": {
-      "intro": "Skills intro",
-      "introTitle": "Title",
-      "introDescription": "Description",
+      "introDescription": "Intro",
       "technicalSkills": "Technical skills",
       "addTechnicalSkill": "Add technical skill",
       "noTechnicalSkills": "No technical skills yet.",
@@ -218,14 +224,13 @@
       "noSoftSkills": "No soft skills yet."
     },
     "servicesFields": {
-      "intro": "Services intro",
-      "introTitle": "Title",
-      "introDescription": "Description",
+      "introDescription": "Intro",
       "items": "Service list",
       "addItem": "Add service",
       "noItems": "No services yet.",
       "itemTitle": "Service {{index}}",
-      "icon": "Icon (name)",
+      "icon": "Icon",
+      "iconPlaceholder": "Select icon…",
       "title": "Service title",
       "description": "Service description"
     },
@@ -237,12 +242,13 @@
       "id": "Id",
       "degree": "Degree / institution",
       "school": "Program / major",
-      "startYear": "Start year",
-      "endYear": "End year",
+      "startYear": "Start date",
+      "endYear": "End date",
       "location": "Location",
       "description": "Description"
     },
     "experienceFields": {
+      "introDescription": "Intro",
       "items": "Work experience",
       "addItem": "Add role",
       "noItems": "No experience entries yet.",
@@ -250,10 +256,11 @@
       "id": "Id",
       "title": "Job title",
       "company": "Company",
-      "startYear": "Start year",
-      "endYear": "End year",
+      "startYear": "Start date",
+      "endYear": "End date",
       "location": "Location",
-      "description": "Description (HTML)"
+      "description": "Description (HTML)",
+      "descriptionPlaceholder": "Role summary and achievements — rich text or pasted HTML (shown on your public CV)."
     },
     "certificatesFields": {
       "items": "Certificates",
@@ -264,25 +271,23 @@
       "title": "Certificate title",
       "issuer": "Issuer",
       "date": "Date",
-      "description": "Description"
+      "description": "Description (HTML)",
+      "descriptionPlaceholder": "Certificate details — rich text or pasted HTML (shown on your public CV)."
     },
     "factsFields": {
-      "intro": "Facts intro",
-      "introTitle": "Title",
-      "introDescription": "Description",
+      "introDescription": "Intro",
       "items": "Fact items",
       "addItem": "Add fact",
       "noItems": "No facts yet.",
       "itemTitle": "Fact {{index}}",
-      "icon": "Icon (name)",
+      "icon": "Icon",
+      "iconPlaceholder": "Select icon…",
       "count": "Count",
       "title": "Item title",
       "description": "Description"
     },
     "testimonialsFields": {
-      "intro": "Testimonials intro",
-      "introTitle": "Title",
-      "introDescription": "Description",
+      "introDescription": "Intro",
       "items": "Testimonials list",
       "addItem": "Add testimonial",
       "noItems": "No testimonials yet.",
@@ -399,6 +404,8 @@
     "displayOptions": "Display options",
     "darkMode": "Dark mode",
     "darkModeDesc": "Use dark interface for the app.",
+    "showMyCvInMenu": "Show My CV in menu",
+    "showMyCvInMenuDesc": "Display or hide the My CV item in the left sidebar menu.",
     "weekStartDay": "Week start day",
     "weekStartDayDesc": "Choose the first day of your calendar week.",
     "monday": "Monday",
@@ -645,7 +652,7 @@
     "addTaskDesc": "Create a new task for your plan.",
     "taskName": "Task name",
     "taskNamePlaceholder": "Enter task name...",
-    "description": "Description",
+    "description": "Description (HTML)",
     "bold": "Bold",
     "italic": "Italic",
     "underline": "Underline",
@@ -654,7 +661,7 @@
     "numberedList": "Numbered list",
     "insertLink": "Insert link",
     "removeFormat": "Remove format",
-    "descriptionPlaceholder": "Add details about this task...",
+    "descriptionPlaceholder": "Rich text: toolbar formatting, links, lists, tables, or paste HTML…",
     "dueDate": "Due date",
     "dueDateAria": "Due date and time",
     "reminderTime": "Reminder time",
@@ -858,6 +865,24 @@
     "description": "Description",
     "update": "Update"
   },
+  "userDashboard": {
+    "title": "Overview",
+    "subtitle": "See a summary of your activity for the selected period.",
+    "totalTasks": "Total tasks",
+    "completedTasks": "Completed tasks",
+    "completionRate": "Completion rate",
+    "upcomingEvents": "Upcoming events",
+    "taskCompletionTrend": "Task completion trend",
+    "dailyCompletions": "Tasks completed per day",
+    "goalsOverview": "Goal progress",
+    "activeGoalsCount": "{{count}} active goals",
+    "viewAll": "View all",
+    "noGoals": "No active goals yet.",
+    "noData": "No data for this period.",
+    "noEvents": "No upcoming events.",
+    "loading": "Loading...",
+    "upcomingEventsList": "Upcoming events"
+  },
   "admin": {
     "dashboard": "Dashboard",
     "users": "Users",
@@ -920,6 +945,12 @@
     "cvSitesSuspend": "Suspend",
     "cvSitesRejectTitle": "Reject site",
     "cvSitesRejectPlaceholder": "Reason (shown to the user)",
+    "cvSitesAddSite": "Add site",
+    "cvSitesAddSiteTitle": "Create site for user",
+    "cvSitesAddSiteUserEmail": "User email",
+    "cvSitesAddSiteUserEmailPlaceholder": "owner@example.com",
+    "cvSitesAddSiteSlugPlaceholder": "e.g. yourname",
+    "cvSitesAddSiteSubmit": "Create",
     "downloadFail": "Download failed",
     "totalFiles": "Total files",
     "storageCapacity": "Storage capacity",
@@ -948,6 +979,13 @@
     "cardSubtitleTotalGoals": "Total goals",
     "cardSubtitleCalendarEvents": "Calendar events",
     "addNewUser": "Add New User",
+    "createUserTitle": "Create new user",
+    "createUserDesc": "Create an account directly from the admin panel.",
+    "createUserButton": "Create user",
+    "createUserFailed": "Failed to create user.",
+    "createUserRequiredFields": "Full name, email, and password are required.",
+    "createUserEmailConfirmed": "Mark email as confirmed",
+    "fullNamePlaceholder": "Enter full name",
     "userManagementSubtitle": "View, manage, and edit user accounts and permissions.",
     "export": "Export",
     "filter": "Filter",
@@ -1025,6 +1063,7 @@
       "taskUncompleted": "Task uncompleted",
       "goalCreated": "Goal created",
       "updatedProfile": "Updated profile",
+      "accountCreatedByAdmin": "Account created by admin",
       "updatedAvatar": "Updated avatar",
       "profileUpdatedByAdmin": "Profile updated by admin",
       "accountDeactivatedByAdmin": "Account deactivated by admin"
@@ -1150,5 +1189,12 @@
   },
   "footer": {
     "copyright": "© 2024 PlanDaily. All rights reserved."
+  },
+  "maintenance": {
+    "title": "System Under Maintenance",
+    "description": "The backend is temporarily unavailable. Please try again in a few minutes.",
+    "retry": "Try Again",
+    "checking": "Checking...",
+    "autoRetry": "Auto-retrying in {{seconds}}s"
   }
 }

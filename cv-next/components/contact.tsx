@@ -7,6 +7,9 @@ import { MapPin, Mail, Phone } from "lucide-react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
 import { cvApi, cvUrl } from "@/lib/api/cv"
 
+const CONTACT_SECTION_INTRO =
+  "Feel free to reach out to me for any project or collaboration. I am always open to discussing new opportunities and creative ideas."
+
 export default function Contact() {
   const apiCv = useCvContentFromApi()
   const [formData, setFormData] = useState({
@@ -25,13 +28,17 @@ export default function Contact() {
     email: "info@example.com",
     phone: "+1 5589 55488 55s",
     location: "A108 Adam Street, New York, NY 535022",
-    contactIntro: "",
   })
 
   useEffect(() => {
     const p = apiCv?.content?.profile as Record<string, unknown> | null | undefined
     if (p && typeof p === "object") {
-      setProfile((prev) => ({ ...prev, ...p }))
+      setProfile((prev) => ({
+        ...prev,
+        email: typeof p.email === "string" ? p.email : prev.email,
+        phone: typeof p.phone === "string" ? p.phone : prev.phone,
+        location: typeof p.location === "string" ? p.location : prev.location,
+      }))
     }
   }, [apiCv])
 
@@ -83,15 +90,7 @@ export default function Contact() {
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Contact</h2>
-          {profile.contactIntro ? (
-            <p className="text-gray-600">{profile.contactIntro}</p>
-          ) : (
-            <p className="text-gray-600">
-              Magnam dolores commodi suscipit. Necessitatibus eius consequatur ex aliquid fuga eum quidem. Sit sint
-              consectetur velit. Quisquam quos quisquam cupiditate. Et nemo qui impedit suscipit alias ea. Quia fugiat sit
-              in iste officiis commodi quidem hic quas.
-            </p>
-          )}
+          <p className="text-gray-600">{CONTACT_SECTION_INTRO}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" data-aos="fade-in">

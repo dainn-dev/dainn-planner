@@ -102,7 +102,7 @@ const SettingsPage = () => {
     if (data.notifications && typeof data.notifications === 'object') {
       setNotificationSettings(prev => ({ ...prev, ...data.notifications }));
     }
-    const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
+    const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile', 'showMyCvInMenu'];
     const hasDisplay = displayKeys.some(k => data[k] !== undefined);
     if (hasDisplay) {
       setSettings(prev => {
@@ -303,6 +303,7 @@ const SettingsPage = () => {
             weekStartDay: settings.weekStartDay,
             darkMode: settings.darkMode,
             publicProfile: settings.publicProfile,
+            showMyCvInMenu: settings.showMyCvInMenu,
           };
           localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(updated));
           if (typeof window !== 'undefined') {
@@ -745,6 +746,14 @@ const SettingsPage = () => {
                       description={t('settings.darkModeDesc')}
                       checked={settings.darkMode}
                       onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
+                      className="pb-4 border-b border-zinc-100 dark:border-slate-700"
+                    />
+                    <Toggle
+                      id="showMyCvInMenu"
+                      label={t('settings.showMyCvInMenu')}
+                      description={t('settings.showMyCvInMenuDesc')}
+                      checked={settings.showMyCvInMenu}
+                      onChange={(e) => handleSettingChange('showMyCvInMenu', e.target.checked)}
                       className="pb-4 border-b border-zinc-100 dark:border-slate-700"
                     />
                     <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-slate-700">

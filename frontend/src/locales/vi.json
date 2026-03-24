@@ -23,7 +23,10 @@
     "viewAllNotifications": "Xem tất cả thông báo",
     "userProfile": "Hồ sơ người dùng",
     "today": "Hôm nay",
-    "yesterday": "Hôm qua"
+    "yesterday": "Hôm qua",
+    "remove": "Xóa",
+    "email": "Email",
+    "password": "Mật khẩu"
   },
   "notifications": {
     "milestoneCompletedTitle": "Chúc mừng",
@@ -117,6 +120,7 @@
     "registerFree": "Đăng ký miễn phí"
   },
   "sidebar": {
+    "userDashboard": "Tổng quan",
     "dailyPlan": "Kế hoạch hôm nay",
     "goals": "Quản lý mục tiêu",
     "calendar": "Lịch biểu",
@@ -133,6 +137,9 @@
     "pageSubtitle": "Quản lý site công khai và chỉnh nội dung hiển thị trên CV.",
     "contentNavSubtitle": "Chọn phần để chỉnh sửa — mỗi tab lưu riêng khi bạn bấm Lưu.",
     "saveStickyHint": "Nhấn Lưu để ghi thay đổi cho phần này.",
+    "dateTextPlaceholder": "vd. Hiện tại",
+    "dateUseTextLink": "Nhập dạng chữ (vd. Hiện tại)",
+    "dateUsePickerLink": "Chọn ngày trên lịch",
     "loadError": "Không thể tải CV. Thử lại?",
     "retry": "Thử lại",
     "siteStatus": "Trạng thái site",
@@ -155,6 +162,10 @@
     "content": "Nội dung CV",
     "saveSection": "Lưu",
     "saveSuccess": "Đã lưu",
+    "iconPicker": {
+      "searchPlaceholder": "Tìm icon…",
+      "legacyBadge": "Đã lưu"
+    },
     "invalidJson": "JSON không hợp lệ",
     "uploadAvatar": "Tải ảnh lên",
     "removeAvatar": "Xóa ảnh",
@@ -171,24 +182,20 @@
       "email": "Email",
       "website": "Website",
       "image": "Tải ảnh đại diện",
+      "profilePhotoSection": "Ảnh hồ sơ",
       "avatarHint": "JPG, PNG hoặc GIF, tối đa 5 MB. Ảnh được lưu trên máy chủ; CV sẽ dùng ảnh này.",
       "degree": "Bằng cấp",
       "location": "Địa chỉ",
-      "aboutTop": "Giới thiệu ngắn",
       "about": "Giới thiệu chính",
-      "aboutBottom": "Giới thiệu bổ sung",
-      "resumeIntro": "Mở đầu phần kinh nghiệm",
-      "contactIntro": "Mở đầu phần liên hệ",
       "socials": "Mạng xã hội",
       "addSocial": "Thêm mạng xã hội",
       "noSocials": "Chưa có liên kết mạng xã hội.",
       "socialPlatform": "Nền tảng",
+      "socialPlatformPlaceholder": "Chọn nền tảng…",
       "socialUrl": "Liên kết"
     },
     "portfolioFields": {
-      "intro": "Giới thiệu Portfolio",
-      "introTitle": "Tiêu đề",
-      "introDescription": "Mô tả",
+      "introDescription": "Giới thiệu",
       "items": "Danh sách dự án",
       "addItem": "Thêm dự án",
       "noItems": "Chưa có dự án nào.",
@@ -200,14 +207,13 @@
       "client": "Khách hàng",
       "date": "Thời gian",
       "url": "Website",
-      "description": "Mô tả dự án",
-      "images": "Danh sách ảnh",
-      "imagesHint": "Mỗi dòng là 1 URL ảnh"
+      "description": "Mô tả (HTML)",
+      "descriptionPlaceholder": "Mô tả chi tiết dự án — văn bản định dạng hoặc HTML (hiển thị trên CV công khai).",
+      "images": "Ảnh dự án",
+      "uploadImages": "Tải lên ảnh"
     },
     "skillsFields": {
-      "intro": "Giới thiệu kỹ năng",
-      "introTitle": "Tiêu đề",
-      "introDescription": "Mô tả",
+      "introDescription": "Giới thiệu",
       "technicalSkills": "Kỹ năng chuyên môn",
       "addTechnicalSkill": "Thêm kỹ năng chuyên môn",
       "noTechnicalSkills": "Chưa có kỹ năng chuyên môn.",
@@ -218,14 +224,13 @@
       "noSoftSkills": "Chưa có kỹ năng mềm."
     },
     "servicesFields": {
-      "intro": "Giới thiệu dịch vụ",
-      "introTitle": "Tiêu đề",
-      "introDescription": "Mô tả",
+      "introDescription": "Giới thiệu",
       "items": "Danh sách dịch vụ",
       "addItem": "Thêm dịch vụ",
       "noItems": "Chưa có dịch vụ nào.",
       "itemTitle": "Dịch vụ {{index}}",
-      "icon": "Icon (tên)",
+      "icon": "Icon",
+      "iconPlaceholder": "Chọn icon…",
       "title": "Tên dịch vụ",
       "description": "Mô tả dịch vụ"
     },
@@ -237,12 +242,13 @@
       "id": "Mã (id)",
       "degree": "Trường / bằng cấp (degree)",
       "school": "Chương trình / ngành (school)",
-      "startYear": "Năm bắt đầu",
-      "endYear": "Năm kết thúc",
+      "startYear": "Ngày bắt đầu",
+      "endYear": "Ngày kết thúc",
       "location": "Địa điểm",
       "description": "Mô tả"
     },
     "experienceFields": {
+      "introDescription": "Giới thiệu",
       "items": "Kinh nghiệm làm việc",
       "addItem": "Thêm vị trí",
       "noItems": "Chưa có kinh nghiệm nào.",
@@ -250,10 +256,11 @@
       "id": "Mã (id)",
       "title": "Chức danh",
       "company": "Công ty",
-      "startYear": "Năm bắt đầu",
-      "endYear": "Năm kết thúc",
+      "startYear": "Ngày bắt đầu",
+      "endYear": "Ngày kết thúc",
       "location": "Địa điểm",
-      "description": "Mô tả (HTML)"
+      "description": "Mô tả (HTML)",
+      "descriptionPlaceholder": "Tóm tắt vai trò và thành tựu — văn bản định dạng hoặc HTML (hiển thị trên CV công khai)."
     },
     "certificatesFields": {
       "items": "Chứng chỉ",
@@ -264,25 +271,23 @@
       "title": "Tên chứng chỉ",
       "issuer": "Tổ chức cấp",
       "date": "Thời gian",
-      "description": "Mô tả"
+      "description": "Mô tả (HTML)",
+      "descriptionPlaceholder": "Chi tiết chứng chỉ — văn bản định dạng hoặc HTML (hiển thị trên CV công khai)."
     },
     "factsFields": {
-      "intro": "Giới thiệu Facts",
-      "introTitle": "Tiêu đề",
-      "introDescription": "Mô tả",
+      "introDescription": "Giới thiệu",
       "items": "Danh sách số liệu",
       "addItem": "Thêm mục",
       "noItems": "Chưa có mục nào.",
       "itemTitle": "Mục {{index}}",
-      "icon": "Icon (tên)",
+      "icon": "Icon",
+      "iconPlaceholder": "Chọn icon…",
       "count": "Số",
       "title": "Tiêu đề mục",
       "description": "Mô tả"
     },
     "testimonialsFields": {
-      "intro": "Giới thiệu nhận xét",
-      "introTitle": "Tiêu đề",
-      "introDescription": "Mô tả",
+      "introDescription": "Giới thiệu",
       "items": "Danh sách nhận xét",
       "addItem": "Thêm nhận xét",
       "noItems": "Chưa có nhận xét nào.",
@@ -399,6 +404,8 @@
     "displayOptions": "Tùy chọn hiển thị",
     "darkMode": "Chế độ tối",
     "darkModeDesc": "Sử dụng giao diện tối cho ứng dụng.",
+    "showMyCvInMenu": "Hiển thị My CV trên menu",
+    "showMyCvInMenuDesc": "Hiển thị hoặc ẩn mục My CV ở menu bên trái.",
     "weekStartDay": "Ngày bắt đầu tuần",
     "weekStartDayDesc": "Chọn ngày bắt đầu lịch của bạn.",
     "monday": "Thứ Hai",
@@ -645,7 +652,7 @@
     "addTaskDesc": "Tạo một mục tiêu mới cho kế hoạch của bạn.",
     "taskName": "Tên nhiệm vụ",
     "taskNamePlaceholder": "Nhập tên nhiệm vụ...",
-    "description": "Mô tả",
+    "description": "Mô tả (HTML)",
     "bold": "Đậm",
     "italic": "Nghiêng",
     "underline": "Gạch chân",
@@ -654,7 +661,7 @@
     "numberedList": "Danh sách đánh số",
     "insertLink": "Chèn liên kết",
     "removeFormat": "Xóa định dạng",
-    "descriptionPlaceholder": "Thêm chi tiết về nhiệm vụ này...",
+    "descriptionPlaceholder": "Văn bản định dạng: thanh công cụ, liên kết, danh sách, bảng, hoặc dán HTML…",
     "dueDate": "Ngày đến hạn",
     "dueDateAria": "Ngày và giờ đến hạn",
     "reminderTime": "Giờ nhắc",
@@ -858,6 +865,24 @@
     "description": "Mô tả",
     "update": "Cập nhật"
   },
+  "userDashboard": {
+    "title": "Tổng quan",
+    "subtitle": "Xem tổng quan hoạt động của bạn trong kỳ đã chọn.",
+    "totalTasks": "Tổng task",
+    "completedTasks": "Task hoàn thành",
+    "completionRate": "Tỷ lệ hoàn thành",
+    "upcomingEvents": "Sự kiện sắp tới",
+    "taskCompletionTrend": "Xu hướng hoàn thành task",
+    "dailyCompletions": "Số task hoàn thành mỗi ngày",
+    "goalsOverview": "Tiến độ mục tiêu",
+    "activeGoalsCount": "{{count}} mục tiêu đang thực hiện",
+    "viewAll": "Xem tất cả",
+    "noGoals": "Chưa có mục tiêu nào đang thực hiện.",
+    "noData": "Không có dữ liệu trong kỳ này.",
+    "noEvents": "Không có sự kiện nào sắp tới.",
+    "loading": "Đang tải...",
+    "upcomingEventsList": "Sự kiện sắp diễn ra"
+  },
   "admin": {
     "dashboard": "Tổng quan",
     "users": "Người dùng",
@@ -920,6 +945,12 @@
     "cvSitesSuspend": "Tạm ngưng",
     "cvSitesRejectTitle": "Từ chối site",
     "cvSitesRejectPlaceholder": "Lý do (hiển thị cho người dùng)",
+    "cvSitesAddSite": "Thêm site",
+    "cvSitesAddSiteTitle": "Tạo site cho người dùng",
+    "cvSitesAddSiteUserEmail": "Email người dùng",
+    "cvSitesAddSiteUserEmailPlaceholder": "owner@example.com",
+    "cvSitesAddSiteSlugPlaceholder": "vd. yourname",
+    "cvSitesAddSiteSubmit": "Tạo",
     "downloadFail": "Tải xuống thất bại",
     "totalFiles": "Tổng số tệp",
     "storageCapacity": "Dung lượng lưu trữ",
@@ -948,6 +979,13 @@
     "cardSubtitleTotalGoals": "Tổng mục tiêu",
     "cardSubtitleCalendarEvents": "Sự kiện lịch",
     "addNewUser": "Thêm người dùng",
+    "createUserTitle": "Tạo người dùng mới",
+    "createUserDesc": "Tạo tài khoản trực tiếp từ trang quản trị.",
+    "createUserButton": "Tạo người dùng",
+    "createUserFailed": "Không thể tạo người dùng.",
+    "createUserRequiredFields": "Họ tên, email và mật khẩu là bắt buộc.",
+    "createUserEmailConfirmed": "Đánh dấu email đã xác minh",
+    "fullNamePlaceholder": "Nhập họ và tên",
     "userManagementSubtitle": "Xem, quản lý và chỉnh sửa tài khoản cùng quyền hạn.",
     "export": "Xuất",
     "filter": "Lọc",
@@ -1025,6 +1063,7 @@
       "taskUncompleted": "Đã bỏ hoàn thành nhiệm vụ",
       "goalCreated": "Đã tạo mục tiêu",
       "updatedProfile": "Đã cập nhật hồ sơ",
+      "accountCreatedByAdmin": "Tài khoản được tạo bởi quản trị viên",
       "updatedAvatar": "Đã cập nhật ảnh đại diện",
       "profileUpdatedByAdmin": "Quản trị viên đã cập nhật hồ sơ",
       "accountDeactivatedByAdmin": "Tài khoản bị vô hiệu hóa bởi quản trị viên"
@@ -1150,5 +1189,12 @@
   },
   "footer": {
     "copyright": "© 2024 PlanDaily. All rights reserved."
+  },
+  "maintenance": {
+    "title": "Hệ thống đang bảo trì",
+    "description": "Backend tạm thời không khả dụng. Vui lòng thử lại sau ít phút.",
+    "retry": "Thử lại",
+    "checking": "Đang kiểm tra...",
+    "autoRetry": "Tự động kiểm tra lại sau {{seconds}}s"
   }
 }

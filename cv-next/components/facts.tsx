@@ -122,7 +122,7 @@ export default function Facts() {
     <section id="facts" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
-          <h2>{data.intro.title}</h2>
+          <h2>Facts</h2>
           <p className="text-gray-600">{data.intro.description}</p>
         </div>
 

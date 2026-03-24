@@ -33,6 +33,16 @@ const AdminUsersPage = () => {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createForm, setCreateForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    role: 'User',
+    emailConfirmed: true,
+  });
   const [filters, setFilters] = useState({
     status: '',
     role: '',
@@ -221,6 +231,60 @@ const AdminUsersPage = () => {
     }
   };
 
+  const handleCreateUserClick = () => {
+    setCreateError('');
+    setCreateForm({
+      fullName: '',
+      email: '',
+      password: '',
+      role: 'User',
+      emailConfirmed: true,
+    });
+    setCreateModalOpen(true);
+  };
+
+  const handleCreateUserCancel = () => {
+    if (creatingUser) return;
+    setCreateModalOpen(false);
+    setCreateError('');
+  };
+
+  const handleCreateUserSubmit = async () => {
+    if (creatingUser) return;
+    if (!createForm.fullName.trim() || !createForm.email.trim() || !createForm.password.trim()) {
+      setCreateError(t('admin.createUserRequiredFields'));
+      return;
+    }
+    if (createForm.password.trim().length < 6) {
+      setCreateError(t('admin.passwordMinLength'));
+      return;
+    }
+
+    try {
+      setCreatingUser(true);
+      setCreateError('');
+      const response = await adminAPI.createUser({
+        fullName: createForm.fullName.trim(),
+        email: createForm.email.trim(),
+        password: createForm.password,
+        role: createForm.role,
+        emailConfirmed: createForm.emailConfirmed,
+      });
+      const created = response?.data;
+      if (created) {
+        setUsers((prev) => [mapUserFromApi(created), ...prev]);
+        setTotalCount((c) => c + 1);
+      } else {
+        await loadUsers();
+      }
+      setCreateModalOpen(false);
+    } catch (error) {
+      setCreateError(error.message || t('admin.createUserFailed'));
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({
       ...prev,
@@ -277,7 +341,7 @@ const AdminUsersPage = () => {
           actionButton={{
             text: t('admin.addNewUser'),
             icon: 'add',
-            onClick: () => console.log('Add new user clicked')
+            onClick: handleCreateUserClick
           }}
           notifications={notifications}
           onNotificationsChange={setNotifications}
@@ -312,7 +376,7 @@ const AdminUsersPage = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => console.log('Add new user clicked')}
+                  onClick={handleCreateUserClick}
                   className="flex sm:hidden items-center justify-center rounded-lg h-9 px-3 bg-[#1380ec] text-white text-xs font-bold hover:bg-blue-600 transition-colors gap-2 shadow-sm"
                 >
                   <span className="material-symbols-outlined text-[20px]">add</span>
@@ -834,6 +898,112 @@ const AdminUsersPage = () => {
           </div>
         </div>
       </nav>
+
+      {/* Delete Confirmation Modal */}
+      {createModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/50 dark:bg-black/60 backdrop-blur-sm transition-all duration-300"
+          onClick={handleCreateUserCancel}
+        >
+          <div
+            className="w-full max-w-md flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden animate-fadeInScale"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center justify-center size-12 rounded-full bg-blue-100 dark:bg-blue-900/40">
+                  <span className="material-symbols-outlined text-primary dark:text-blue-400 text-3xl">person_add</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-[#111418] dark:text-white">{t('admin.createUserTitle')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{t('admin.createUserDesc')}</p>
+                </div>
+                <button
+                  onClick={handleCreateUserCancel}
+                  className="p-1 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-md"
+                >
+                  <span className="material-symbols-outlined text-[24px]">close</span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('admin.fullName')}</label>
+                  <input
+                    value={createForm.fullName}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                    className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
+                    placeholder={t('admin.fullNamePlaceholder')}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('common.email')}</label>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+                    className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
+                    placeholder={t('auth.emailPlaceholder')}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('common.password')}</label>
+                  <input
+                    type="password"
+                    value={createForm.password}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, password: e.target.value }))}
+                    className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
+                    placeholder={t('auth.passwordPlaceholder')}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('admin.role')}</label>
+                    <select
+                      value={createForm.role}
+                      onChange={(e) => setCreateForm((prev) => ({ ...prev, role: e.target.value }))}
+                      className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
+                    >
+                      <option value="User">{t('admin.roleUser')}</option>
+                      <option value="Admin">{t('admin.roleAdmin')}</option>
+                    </select>
+                  </div>
+                  <label className="flex items-end pb-2 gap-2 text-sm text-[#111418] dark:text-white">
+                    <input
+                      type="checkbox"
+                      checked={createForm.emailConfirmed}
+                      onChange={(e) => setCreateForm((prev) => ({ ...prev, emailConfirmed: e.target.checked }))}
+                      className="rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-primary focus:ring-primary"
+                    />
+                    <span>{t('admin.createUserEmailConfirmed')}</span>
+                  </label>
+                </div>
+              </div>
+              {createError && (
+                <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{createError}</p>
+              )}
+            </div>
+            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-700/30 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-700">
+              <button
+                type="button"
+                disabled={creatingUser}
+                onClick={handleCreateUserCancel}
+                className="px-4 py-2 rounded-lg text-gray-700 dark:text-slate-200 font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors text-sm disabled:opacity-50"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={creatingUser}
+                onClick={() => void handleCreateUserSubmit()}
+                className="px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
+              >
+                {creatingUser ? t('common.processing') : t('admin.createUserButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && userToDelete && (

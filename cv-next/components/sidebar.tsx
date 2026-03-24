@@ -6,9 +6,14 @@ import Link from "next/link"
 import {
   Home,
   User,
-  FileText,
+  Info,
+  Sparkles,
+  Building2,
+  GraduationCap,
+  Award,
   Briefcase,
   Server,
+  MessageSquare,
   Mail,
   Menu,
 } from "lucide-react"
@@ -151,22 +156,62 @@ export default function Sidebar() {
               </li>
               <li>
                 <a
-                  href="#about"
-                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "about" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  href="#profile"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "profile" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
                   onClick={() => setIsOpen(false)}
                 >
                   <User className="h-5 w-5 mr-3" />
-                  <span>About</span>
+                  <span>Profile</span>
                 </a>
               </li>
               <li>
                 <a
-                  href="#resume"
-                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "resume" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  href="#facts"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "facts" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <FileText className="h-5 w-5 mr-3" />
-                  <span>Resume</span>
+                  <Info className="h-5 w-5 mr-3" />
+                  <span>Facts</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#skills"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "skills" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Sparkles className="h-5 w-5 mr-3" />
+                  <span>Skills</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#experience"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "experience" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Building2 className="h-5 w-5 mr-3" />
+                  <span>Experience</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#education"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "education" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <GraduationCap className="h-5 w-5 mr-3" />
+                  <span>Education</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#certificates"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "certificates" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Award className="h-5 w-5 mr-3" />
+                  <span>Certificates</span>
                 </a>
               </li>
               <li>
@@ -187,6 +232,16 @@ export default function Sidebar() {
                 >
                   <Server className="h-5 w-5 mr-3" />
                   <span>Services</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#testimonials"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "testimonials" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <MessageSquare className="h-5 w-5 mr-3" />
+                  <span>Testimonials</span>
                 </a>
               </li>
               <li>

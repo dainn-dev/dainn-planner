@@ -57,6 +57,15 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("users")]
+    public async Task<ActionResult<ApiResponse<AdminUserDto>>> CreateUser([FromBody] AdminCreateUserRequest request)
+    {
+        var result = await _adminService.CreateUserAsync(request ?? new AdminCreateUserRequest());
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpGet("users/export")]
     public async Task<IActionResult> ExportUsers(
         [FromQuery] string format,

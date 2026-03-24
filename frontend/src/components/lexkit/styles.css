@@ -387,3 +387,9 @@
   cursor: not-allowed;
   pointer-events: none;
 }
+
+/* My CV — HTML description fields (work experience, certificates, …) */
+.lexkit-editor-wrapper.cv-lexkit-html-field .lexkit-editor {
+  min-height: 168px;
+  max-height: min(420px, 55vh);
+}

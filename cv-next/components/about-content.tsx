@@ -11,8 +11,6 @@ export default function AboutContent() {
     name: "Your Name",
     title: "UI/UX Designer & Web Developer",
     about: "Magnam dolores commodi suscipit. Necessitatibus eius consequatur ex aliquid fuga eum quidem.",
-    aboutTop: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    aboutBottom: "Officiis eligendi itaque labore et dolorum mollitia officiis optio vero. Quisquam sunt adipisci omnis et ut. Nulla accusantium dolor incidunt officia tempore. Et eius omnis. Cupiditate ut dicta maxime officiis quidem quia. Sed et consectetur qui quia repellendus itaque neque. Aliquid amet quidem ut quaerat cupiditate. Ab et eum qui repellendus omnis culpa magni laudantium dolores.",
     email: "email@example.com",
     phone: "+123 456 7890",
     location: "New York, USA",
@@ -77,9 +75,8 @@ export default function AboutContent() {
           />
         </div>
         <div className="lg:col-span-8 pt-4 lg:pt-0" data-aos="fade-left">
-          <h3 className="text-2xl font-bold text-[#173b6c] mb-4">{profileData.title}</h3>
-          <p className="italic text-gray-600 mb-4">
-            {profileData.aboutTop}
+          <p className="text-lg font-semibold text-[#173b6c] mb-4">
+            Professional Profile & Contact Details:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
             <div>
@@ -139,9 +136,6 @@ export default function AboutContent() {
               </ul>
             </div>
           </div>
-          <p className="mt-6 text-gray-600">
-            {profileData.aboutBottom}
-          </p>
         </div>
       </div>
     </>

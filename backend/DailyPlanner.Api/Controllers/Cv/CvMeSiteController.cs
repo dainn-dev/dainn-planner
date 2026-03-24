@@ -49,6 +49,19 @@ public class CvMeSiteController : ControllerBase
         return StatusCode(r.StatusCode, r.Body);
     }
 
+    [HttpPost("upload-image")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "No file uploaded" });
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { error = "File too large (max 5 MB)" });
+        using var stream = file.OpenReadStream();
+        var r = await _cv.UploadCvImageAsync(UserId, stream, file.FileName, ct);
+        return StatusCode(r.StatusCode, r.Body);
+    }
+
     [HttpPatch("theme")]
     public async Task<IActionResult> PatchTheme([FromBody] CvThemePatchRequest body, CancellationToken ct)
     {

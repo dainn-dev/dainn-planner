@@ -4,6 +4,7 @@ using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Application.Options;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +29,7 @@ public class CvService : ICvService
     private readonly CvTenantResolver _tenantResolver;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CvService> _logger;
+    private readonly IWebHostEnvironment _environment;
 
     public CvService(
         ApplicationDbContext db,
@@ -36,7 +38,8 @@ public class CvService : ICvService
         IOptions<CvOptions> cvOptions,
         CvTenantResolver tenantResolver,
         IConfiguration configuration,
-        ILogger<CvService> logger)
+        ILogger<CvService> logger,
+        IWebHostEnvironment environment)
     {
         _db = db;
         _userManager = userManager;
@@ -45,6 +48,7 @@ public class CvService : ICvService
         _tenantResolver = tenantResolver;
         _configuration = configuration;
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task<CvEnvelope<object?>> GetPublicSiteAsync(string? tenantSlug, CancellationToken ct = default)
@@ -679,6 +683,25 @@ public class CvService : ICvService
         }
 
         return null;
+    }
+
+    public async Task<CvEnvelope<object?>> UploadCvImageAsync(string userId, Stream fileStream, string fileName, CancellationToken ct = default)
+    {
+        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var ext = Path.GetExtension(fileName);
+        if (!allowedExtensions.Contains(ext))
+            return BadRequest(new { error = "Invalid file type. Allowed: jpg, png, gif, webp" });
+
+        var folder = Path.Combine(_environment.WebRootPath ?? _environment.ContentRootPath, "uploads", "cv-images");
+        Directory.CreateDirectory(folder);
+
+        var newFileName = $"{userId}_{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(folder, newFileName);
+
+        await using var outStream = new FileStream(filePath, FileMode.Create);
+        await fileStream.CopyToAsync(outStream, ct);
+
+        return Ok(new { url = $"/uploads/cv-images/{newFileName}" });
     }
 
     private static CvEnvelope<object?> Ok(object body) => new() { StatusCode = 200, Body = body };

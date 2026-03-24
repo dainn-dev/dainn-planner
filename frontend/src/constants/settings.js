@@ -11,6 +11,7 @@ export const INITIAL_SETTINGS = {
   darkMode: false,
   weekStartDay: 'monday',
   publicProfile: false,
+  showMyCvInMenu: false,
 };
 
 export const INITIAL_GENERAL_SETTINGS = {

@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import MaintenancePage from './pages/MaintenancePage';
 import ToastContainer from './components/ToastContainer';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -15,6 +16,7 @@ import GoalsPage from './pages/GoalsPage';
 import GoalDetailPage from './pages/GoalDetailPage';
 import CalendarPage from './pages/CalendarPage';
 import SettingsPage from './pages/SettingsPage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
@@ -42,12 +44,27 @@ function applyDarkModeFromStorage() {
 }
 
 function App() {
+  const [isBackendDown, setIsBackendDown] = useState(false);
+
   useEffect(() => {
     applyDarkModeFromStorage();
-    const handler = () => applyDarkModeFromStorage();
-    window.addEventListener('userSettingsUpdated', handler);
-    return () => window.removeEventListener('userSettingsUpdated', handler);
+    const settingsHandler = () => applyDarkModeFromStorage();
+    const downHandler = () => setIsBackendDown(true);
+    const upHandler = () => setIsBackendDown(false);
+
+    window.addEventListener('userSettingsUpdated', settingsHandler);
+    window.addEventListener('backendUnavailable', downHandler);
+    window.addEventListener('backendAvailable', upHandler);
+    return () => {
+      window.removeEventListener('userSettingsUpdated', settingsHandler);
+      window.removeEventListener('backendUnavailable', downHandler);
+      window.removeEventListener('backendAvailable', upHandler);
+    };
   }, []);
+
+  if (isBackendDown) {
+    return <MaintenancePage onRecovered={() => setIsBackendDown(false)} />;
+  }
 
   return (
     <Router>
@@ -109,6 +126,12 @@ function App() {
           </ProtectedRoute>
         } />
         
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <UserDashboardPage />
+          </ProtectedRoute>
+        } />
+
         {/* Admin Routes - Require Admin Role */}
         <Route path="/admin/dashboard" element={
           <AdminRoute>

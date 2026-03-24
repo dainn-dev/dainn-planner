@@ -22,6 +22,10 @@ const AdminCvSitesPage = () => {
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createSlug, setCreateSlug] = useState('');
+  const [createUserEmail, setCreateUserEmail] = useState('');
+  const [creating, setCreating] = useState(false);
   const [rejectId, setRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const qRef = useRef(q);
@@ -78,6 +82,24 @@ const AdminCvSitesPage = () => {
     }
   };
 
+  const submitCreate = async () => {
+    const slug = createSlug.trim().toLowerCase();
+    const userEmail = createUserEmail.trim();
+    if (!slug || !userEmail) return;
+    setCreating(true);
+    try {
+      await cvPlatformAPI.createCvSiteForUser({ slug, userEmail });
+      setCreateOpen(false);
+      setCreateSlug('');
+      setCreateUserEmail('');
+      void load();
+    } catch {
+      /* toast from api */
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#0d141b] dark:text-white font-display overflow-x-hidden min-h-screen flex flex-row">
       <Sidebar />
@@ -109,14 +131,24 @@ const AdminCvSitesPage = () => {
                 </h1>
                 <p className="text-[#4c739a] dark:text-slate-400 text-base font-normal">{t('admin.cvSitesSubtitle')}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => void load()}
-                className="flex items-center gap-2 bg-white dark:bg-[#15202b] border border-[#cfdbe7] dark:border-slate-700 text-[#0d141b] dark:text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors self-start"
-              >
-                <span className="material-symbols-outlined text-[20px]">refresh</span>
-                {t('admin.refresh')}
-              </button>
+              <div className="flex items-center gap-2 self-start">
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(true)}
+                  className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">add</span>
+                  {t('admin.cvSitesAddSite')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className="flex items-center gap-2 bg-white dark:bg-[#15202b] border border-[#cfdbe7] dark:border-slate-700 text-[#0d141b] dark:text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">refresh</span>
+                  {t('admin.refresh')}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -250,6 +282,55 @@ const AdminCvSitesPage = () => {
                 className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium disabled:opacity-50"
               >
                 {t('admin.cvSitesReject')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {createOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-slate-700">
+            <h2 className="text-lg font-bold text-[#111418] dark:text-white mb-4">{t('admin.cvSitesAddSiteTitle')}</h2>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('admin.cvSitesAddSiteUserEmail')}</label>
+                <input
+                  className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
+                  value={createUserEmail}
+                  onChange={(e) => setCreateUserEmail(e.target.value)}
+                  placeholder={t('admin.cvSitesAddSiteUserEmailPlaceholder')}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('admin.cvSitesColSlug')}</label>
+                <input
+                  className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
+                  value={createSlug}
+                  onChange={(e) => setCreateSlug(e.target.value.toLowerCase())}
+                  placeholder={t('admin.cvSitesAddSiteSlugPlaceholder')}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (creating) return;
+                  setCreateOpen(false);
+                  setCreateSlug('');
+                  setCreateUserEmail('');
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-sm font-medium"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitCreate()}
+                disabled={creating || !createSlug.trim() || !createUserEmail.trim()}
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50"
+              >
+                {creating ? t('common.processing') : t('admin.cvSitesAddSiteSubmit')}
               </button>
             </div>
           </div>

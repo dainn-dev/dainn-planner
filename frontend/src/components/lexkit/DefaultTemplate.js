@@ -232,14 +232,19 @@ function Toolbar({ commands, activeStates, hasExtension }) {
   );
 }
 
-function EditorContent({ placeholder, onReady }) {
+function EditorContent({ placeholder, onReady, onHtmlChange, enableHtmlSync }) {
   const { commands, hasExtension, activeStates, lexical: editor } = useEditor();
   const commandsRef = useRef(commands);
   const readyRef = useRef(false);
+  const onHtmlChangeRef = useRef(onHtmlChange);
 
   useEffect(() => {
     commandsRef.current = commands;
   }, [commands]);
+
+  useEffect(() => {
+    onHtmlChangeRef.current = onHtmlChange;
+  }, [onHtmlChange]);
 
   const methods = useMemo(
     () => ({
@@ -272,6 +277,29 @@ function EditorContent({ placeholder, onReady }) {
     }
   }, [editor, commands, onReady, methods]);
 
+  /** Keep controlled consumers (e.g. My CV) in sync; defer briefly so parent `injectHTML` runs first */
+  useEffect(() => {
+    if (!editor || !enableHtmlSync) return undefined;
+    let allowEmit = false;
+    const tid = window.setTimeout(() => {
+      allowEmit = true;
+    }, 220);
+    const unregister = editor.registerUpdateListener(() => {
+      if (!allowEmit) return;
+      const cb = onHtmlChangeRef.current;
+      if (!cb) return;
+      try {
+        cb(commandsRef.current.exportToHTML());
+      } catch {
+        // ignore
+      }
+    });
+    return () => {
+      window.clearTimeout(tid);
+      unregister();
+    };
+  }, [editor, enableHtmlSync]);
+
   return (
     <>
       <Toolbar
@@ -292,7 +320,7 @@ function EditorContent({ placeholder, onReady }) {
   );
 }
 
-const DefaultTemplate = forwardRef(({ className, placeholder, onReady }, ref) => {
+const DefaultTemplate = forwardRef(({ className, placeholder, onReady, onHtmlChange }, ref) => {
   const [editorTheme, setEditorTheme] = useState('light');
   const [methods, setMethods] = useState(null);
 
@@ -325,7 +353,12 @@ const DefaultTemplate = forwardRef(({ className, placeholder, onReady }, ref) =>
       data-editor-theme={editorTheme}
     >
       <Provider extensions={extensions} config={{ theme: defaultTheme }}>
-        <EditorContent placeholder={placeholder} onReady={handleReady} />
+        <EditorContent
+          placeholder={placeholder}
+          onReady={handleReady}
+          onHtmlChange={onHtmlChange}
+          enableHtmlSync={typeof onHtmlChange === 'function'}
+        />
       </Provider>
     </div>
   );

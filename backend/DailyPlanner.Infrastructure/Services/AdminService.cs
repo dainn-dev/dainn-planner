@@ -7,6 +7,7 @@ using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -20,19 +21,25 @@ public class AdminService : IAdminService
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IMapper _mapper;
     private readonly IUserActivityService _userActivityService;
+    private readonly IEmailSender _emailSender;
+    private readonly IConfiguration _configuration;
 
     public AdminService(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IMapper mapper,
-        IUserActivityService userActivityService)
+        IUserActivityService userActivityService,
+        IEmailSender emailSender,
+        IConfiguration configuration)
     {
         _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
         _mapper = mapper;
         _userActivityService = userActivityService;
+        _emailSender = emailSender;
+        _configuration = configuration;
     }
 
     public async Task<ApiResponse<AdminDashboardStatsDto>> GetDashboardStatsAsync()
@@ -221,6 +228,86 @@ public class AdminService : IAdminService
                 Items = userDtos,
                 TotalCount = totalCount
             }
+        };
+    }
+
+    public async Task<ApiResponse<AdminUserDto>> CreateUserAsync(AdminCreateUserRequest request)
+    {
+        var email = (request.Email ?? string.Empty).Trim();
+        var fullName = (request.FullName ?? string.Empty).Trim();
+        var password = request.Password ?? string.Empty;
+        var roleName = string.IsNullOrWhiteSpace(request.Role) ? "User" : request.Role.Trim();
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(fullName))
+        {
+            return new ApiResponse<AdminUserDto>
+            {
+                Success = false,
+                Message = "Email, full name, and password are required."
+            };
+        }
+
+        var existing = await _userManager.FindByEmailAsync(email);
+        if (existing != null)
+        {
+            return new ApiResponse<AdminUserDto>
+            {
+                Success = false,
+                Message = "Email already exists."
+            };
+        }
+
+        var user = new ApplicationUser
+        {
+            Email = email,
+            UserName = email,
+            FullName = fullName,
+            EmailConfirmed = request.EmailConfirmed,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var createResult = await _userManager.CreateAsync(user, password);
+        if (!createResult.Succeeded)
+        {
+            return new ApiResponse<AdminUserDto>
+            {
+                Success = false,
+                Message = string.Join(" ", createResult.Errors.Select(e => e.Description))
+            };
+        }
+
+        if (!await _roleManager.RoleExistsAsync(roleName))
+            await _roleManager.CreateAsync(new IdentityRole(roleName));
+
+        await _userManager.AddToRoleAsync(user, roleName);
+        await _userActivityService.RecordAsync(user.Id, "account", "admin.activity.accountCreatedByAdmin");
+
+        if (!request.EmailConfirmed)
+            await SendConfirmationEmailAsync(user);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var userDto = new AdminUserDto
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            FullName = user.FullName ?? string.Empty,
+            Phone = user.Phone,
+            Location = user.Location,
+            AvatarUrl = user.AvatarUrl,
+            Timezone = user.Timezone ?? string.Empty,
+            Language = user.Language ?? string.Empty,
+            EmailConfirmed = user.EmailConfirmed,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+            Roles = roles.ToList()
+        };
+
+        return new ApiResponse<AdminUserDto>
+        {
+            Success = true,
+            Message = "User created successfully",
+            Data = userDto
         };
     }
 
@@ -504,6 +591,36 @@ public class AdminService : IAdminService
             Success = true,
             Message = "User deleted successfully"
         };
+    }
+
+    private async Task SendConfirmationEmailAsync(ApplicationUser user)
+    {
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var frontendUrl = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()?.FirstOrDefault()
+                          ?? "http://localhost:3005";
+        var encodedToken = Uri.EscapeDataString(token);
+        var encodedEmail = Uri.EscapeDataString(user.Email!);
+        var verifyLink = $"{frontendUrl}/verify-email?token={encodedToken}&email={encodedEmail}";
+
+        var subject = "Verify your email - DailyPlanner";
+        var body = $@"
+<html>
+<body style=""font-family: Arial, sans-serif; line-height: 1.6; color: #333;"">
+  <div style=""max-width: 480px; margin: 0 auto; padding: 32px 24px;"">
+    <h2 style=""margin: 0 0 16px;"">Welcome to DailyPlanner!</h2>
+    <p>An account has been created for you. Please verify your email address to activate your account.</p>
+    <p style=""text-align: center; margin: 28px 0;"">
+      <a href=""{verifyLink}""
+         style=""display: inline-block; padding: 12px 28px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;"">
+        Verify Email
+      </a>
+    </p>
+    <p style=""font-size: 13px; color: #888;"">If you did not expect this email, you can safely ignore it.</p>
+  </div>
+</body>
+</html>";
+
+        await _emailSender.SendAsync(user.Email!, subject, body);
     }
 
     private const int MaxExportCount = 50_000;

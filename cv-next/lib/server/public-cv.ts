@@ -8,6 +8,7 @@ import { cvApi, cvUrl } from "@/lib/api/cv"
 export type PublicCvPayload =
   | { kind: "marketing" }
   | { kind: "unavailable"; slug: string }
+  | { kind: "maintenance"; slug: string; status: number }
   | {
       kind: "cv"
       slug: string
@@ -52,6 +53,10 @@ export async function getPublicCvPayload(): Promise<PublicCvPayload> {
       return { kind: "unavailable", slug }
     }
 
+    if (res.status >= 500) {
+      return { kind: "maintenance", slug, status: res.status }
+    }
+
     if (!res.ok) {
       return { kind: "unavailable", slug }
     }
@@ -90,6 +95,6 @@ export async function getPublicCvPayload(): Promise<PublicCvPayload> {
       updatedAt: data.updatedAt ?? null,
     }
   } catch {
-    return { kind: "unavailable", slug }
+    return { kind: "maintenance", slug, status: 0 }
   }
 }
