@@ -41,6 +41,7 @@ export async function getPublicCvPayload(): Promise<PublicCvPayload> {
       cache: "no-store",
       headers: {
         "X-Tenant-Slug": tenantHeader,
+        "ngrok-skip-browser-warning": "true",
       },
     })
 
