@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { parseTenantSlugFromHost } from "@/lib/tenant"
+import { parseTenantSlugFromHost } from "./lib/tenant"
 
 /** Edge-safe: tenant slug only. Auth for /admin and /dashboard runs in route layouts (Node). */
 export function middleware(request: NextRequest) {
