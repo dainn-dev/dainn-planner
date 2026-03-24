@@ -3,15 +3,16 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { cvMeAPI, userAPI, getAvatarFullUrl } from '../services/api';
 import { toast } from '../utils/toast';
 import { formatDateTime } from '../utils/dateFormat';
-import LogoutButton from '../components/LogoutButton';
 import CvIconPicker from '../components/CvIconPicker';
 import CvSocialPlatformPicker from '../components/CvSocialPlatformPicker';
 import { DefaultTemplate } from '../components/lexkit/DefaultTemplate';
 import CvDdMmDateField from '../components/CvDdMmDateField';
 import { isStoredAdmin } from '../utils/auth';
+import { getCvRootDomain } from '../utils/tenantHost';
 
 const SECTIONS = [
   'profile',
@@ -184,6 +185,8 @@ const MyCvPage = () => {
   };
 
   const renderSiteStatus = () => {
+    const cvBaseDomain = getCvRootDomain();
+
     const inputRow = (labelKey, onSubmit) => (
       <div className={CV_SECTION_BLOCK}>
         <p className="text-sm text-zinc-600 dark:text-slate-400 mb-3 leading-relaxed">{t(labelKey)}</p>
@@ -210,6 +213,12 @@ const MyCvPage = () => {
             {requestingSlug ? t('common.processing') : t(site?.status === 'rejected' ? 'myCv.reRequest' : 'myCv.requestSite')}
           </button>
         </div>
+        {slugInput.trim() && cvBaseDomain && (
+          <p className="text-xs text-zinc-400 dark:text-slate-500 mt-2 flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm shrink-0">globe</span>
+            <span className="font-mono">{slugInput.trim()}.{cvBaseDomain}</span>
+          </p>
+        )}
         {slugError && (
           <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1" role="alert">
             <span className="material-symbols-outlined text-sm shrink-0">error</span>
@@ -233,9 +242,10 @@ const MyCvPage = () => {
           // ignore
         }
       }
-      return null;
+      return getCvRootDomain();
     })();
-    const slugDisplay = siteDomain ? `${site.slug}.${siteDomain}` : site.slug;
+    const slugDisplay = `${site.slug}.${siteDomain}`;
+    const siteHref = site.url || `https://${slugDisplay}`;
 
     const renderDetailsGrid = () => (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-4 mt-1 border-t border-gray-100 dark:border-slate-700 text-sm">
@@ -294,18 +304,14 @@ const MyCvPage = () => {
             </span>
             <span className="text-sm text-gray-500 dark:text-slate-400">
               {t('myCv.visitSite')}:{" "}
-              {site.url ? (
-                <a
-                  href={site.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-primary dark:text-blue-300 hover:underline"
-                >
-                  {slugDisplay}
-                </a>
-              ) : (
-                <span className="font-mono">{slugDisplay}</span>
-              )}
+              <a
+                href={siteHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-primary dark:text-blue-300 hover:underline"
+              >
+                {slugDisplay}
+              </a>
             </span>
           </div>
           {renderDetailsGrid()}
@@ -2342,184 +2348,6 @@ const MyCvPage = () => {
     </div>
   );
 
-  const renderMobileSidebar = () => (
-    <>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-background-light dark:bg-slate-900 border-r border-border-light dark:border-slate-700 z-[51] transform transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-      >
-        <div className="flex flex-col gap-6 p-6 h-full">
-          <div className="flex gap-4 items-center mb-2">
-            <div
-              className="bg-zinc-100 dark:bg-slate-700 rounded-full size-10 flex items-center justify-center border border-border-light shrink-0"
-              aria-label="User avatar"
-            >
-              <span className="material-symbols-outlined text-zinc-500 dark:text-slate-200" style={{ fontSize: '20px' }}>
-                person
-              </span>
-            </div>
-            <div className="flex flex-col overflow-hidden">
-              <h1 className="text-[#111418] dark:text-white text-xl sm:text-2xl md:text-3xl font-black leading-tight tracking-[-0.033em]">
-                {t('myCv.title')}
-              </h1>
-            </div>
-            <button
-              className="ml-auto p-1 rounded-md text-zinc-600 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800"
-              onClick={() => setSidebarOpen(false)}
-              aria-label={t('common.close')}
-            >
-              <span className="material-symbols-outlined">close</span>
-            </button>
-          </div>
-
-          <nav className="flex flex-col gap-1">
-            {isAdmin && (
-              <>
-                <Link
-                  to="/admin/dashboard"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                    style={{ fontSize: '20px' }}
-                  >
-                    dashboard
-                  </span>
-                  <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                    {t('admin.dashboard')}
-                  </p>
-                </Link>
-                <Link
-                  to="/admin/users"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                    style={{ fontSize: '20px' }}
-                  >
-                    people
-                  </span>
-                  <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                    {t('admin.users')}
-                  </p>
-                </Link>
-                <Link
-                  to="/admin/logs"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                    style={{ fontSize: '20px' }}
-                  >
-                    description
-                  </span>
-                  <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                    {t('admin.logs')}
-                  </p>
-                </Link>
-                <div className="my-2 border-t border-zinc-100 dark:border-slate-700" />
-              </>
-            )}
-
-            <Link
-              to="/daily"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span
-                className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                style={{ fontSize: '20px' }}
-              >
-                today
-              </span>
-              <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                {t('sidebar.dailyPlan')}
-              </p>
-            </Link>
-
-            <Link
-              to="/goals"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span
-                className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                style={{ fontSize: '20px' }}
-              >
-                track_changes
-              </span>
-              <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                {t('sidebar.goals')}
-              </p>
-            </Link>
-
-            <Link
-              to="/calendar"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span
-                className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                style={{ fontSize: '20px' }}
-              >
-                calendar_month
-              </span>
-              <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                {t('sidebar.calendar')}
-              </p>
-            </Link>
-
-            <Link
-              to="/settings"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors group"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span
-                className="material-symbols-outlined text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-                style={{ fontSize: '20px' }}
-              >
-                settings
-              </span>
-              <p className="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors">
-                {t('sidebar.settings')}
-              </p>
-            </Link>
-
-            <Link
-              to="/cv"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span className="material-symbols-outlined text-primary dark:text-blue-300" style={{ fontSize: '20px' }}>
-                badge
-              </span>
-              <p className="text-primary dark:text-blue-300 text-sm font-medium">{t('sidebar.myCv')}</p>
-            </Link>
-          </nav>
-
-          <div className="mt-auto flex flex-col gap-2">
-            <LogoutButton
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors text-left w-full group touch-manipulation min-h-[44px]"
-              iconClassName="text-zinc-400 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"
-              textClassName="text-zinc-500 dark:text-slate-400 group-hover:text-zinc-900 dark:group-hover:text-white text-sm font-medium transition-colors"
-              labelKey="sidebar.logout"
-            />
-          </div>
-        </div>
-      </aside>
-    </>
-  );
-
   if (loading) return (
     <div className="relative flex h-screen w-full overflow-hidden bg-background-subtle dark:bg-[#101922] text-zinc-900 dark:text-slate-100 antialiased selection:bg-zinc-200 dark:selection:bg-slate-600">
       <Sidebar />
@@ -2539,7 +2367,7 @@ const MyCvPage = () => {
           </div>
         </div>
       </main>
-      {renderMobileSidebar()}
+      <MobileSidebarDrawer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
 
@@ -2566,7 +2394,7 @@ const MyCvPage = () => {
           </div>
         </div>
       </main>
-      {renderMobileSidebar()}
+      <MobileSidebarDrawer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
 
@@ -2611,7 +2439,7 @@ const MyCvPage = () => {
           </div>
         </div>
       </main>
-      {renderMobileSidebar()}
+      <MobileSidebarDrawer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
 };

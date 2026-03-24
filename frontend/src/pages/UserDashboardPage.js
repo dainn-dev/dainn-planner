@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { tasksAPI, goalsAPI, eventsAPI } from '../services/api';
 import { formatDate, formatLocalDateIso } from '../utils/dateFormat';
 
@@ -10,6 +11,7 @@ const DAYS_OPTIONS = [7, 30, 90];
 
 const UserDashboardPage = () => {
   const { t } = useTranslation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [daysFilter, setDaysFilter] = useState(30);
   const [daysFilterOpen, setDaysFilterOpen] = useState(false);
   const daysFilterRef = useRef(null);
@@ -172,6 +174,7 @@ const UserDashboardPage = () => {
           icon="bar_chart"
           notifications={notifications}
           onNotificationsChange={setNotifications}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
 
         <div className="flex-1 flex justify-center py-6 px-4 md:px-8 overflow-y-auto">
@@ -426,6 +429,7 @@ const UserDashboardPage = () => {
           </div>
         </div>
       </div>
+      <MobileSidebarDrawer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
 };
