@@ -524,7 +524,7 @@ export const userAPI = {
     const settings = response?.data?.data ?? response?.data ?? response;
     if (settings && typeof settings === 'object') {
       try {
-        const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
+        const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile', 'showMyCvInMenu'];
         const existingRaw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
         const existing = existingRaw ? JSON.parse(existingRaw) : {};
         const merged = { ...settings };
@@ -549,7 +549,7 @@ export const userAPI = {
     const settings = response?.data?.data ?? response?.data ?? response;
     if (settings && typeof settings === 'object') {
       try {
-        const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile'];
+        const displayKeys = ['weekStartDay', 'darkMode', 'publicProfile', 'showMyCvInMenu'];
         const existingRaw = localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
         const existing = existingRaw ? JSON.parse(existingRaw) : {};
         const merged = { ...settings };

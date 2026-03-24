@@ -3,9 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI, notificationsAPI, eventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
-import LogoutButton from '../components/LogoutButton';
 import { isStoredAdmin, isStoredCvPlatformStaff } from '../utils/auth';
 import { formatDate, formatTime, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 import AddTaskModal from '../components/AddTaskModal';
@@ -890,108 +890,7 @@ const DailyPage = () => {
         goalContext={addTaskGoalContext}
       />
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      <nav className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 z-[51] transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
-          <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-            <span className="material-symbols-outlined text-xl">calendar_today</span>
-          </div>
-          <h1 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">PlanDaily</h1>
-          <button
-            className="ml-auto p-1 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <div className="flex flex-col gap-2 p-4 flex-1">
-          {isCvStaff && (
-            <>
-              <Link
-                to="/admin/cv-sites"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="material-symbols-outlined">language</span>
-                <span>{t('sidebar.cvSites')}</span>
-              </Link>
-              {isAdmin && <div className="my-2 border-t border-gray-100 dark:border-slate-700" />}
-              {!isAdmin && isCvStaff && <div className="my-2 border-t border-gray-100 dark:border-slate-700" />}
-            </>
-          )}
-          {isAdmin && (
-            <>
-              <Link
-                to="/admin/dashboard"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="material-symbols-outlined">dashboard</span>
-                <span>{t('admin.dashboard')}</span>
-              </Link>
-              <Link
-                to="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="material-symbols-outlined">people</span>
-                <span>{t('admin.users')}</span>
-              </Link>
-              <Link
-                to="/admin/logs"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="material-symbols-outlined">description</span>
-                <span>{t('admin.logs')}</span>
-              </Link>
-              <div className="my-2 border-t border-gray-100 dark:border-slate-700" />
-            </>
-          )}
-          <Link
-            to="/daily"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-slate-800 text-primary dark:text-blue-300 font-medium transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="material-symbols-outlined fill-1">today</span>
-            <span>{t('sidebar.dailyPlan')}</span>
-          </Link>
-          <Link
-            to="/goals"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="material-symbols-outlined">target</span>
-            <span>{t('sidebar.goals')}</span>
-          </Link>
-          <Link
-            to="/calendar"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="material-symbols-outlined">calendar_month</span>
-            <span>{t('sidebar.calendar')}</span>
-          </Link>
-          <Link
-            to="/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="material-symbols-outlined">settings</span>
-            <span>{t('sidebar.settings')}</span>
-          </Link>
-          <div className="mt-auto border-t border-gray-100 dark:border-slate-700 pt-4">
-            <LogoutButton labelKey="auth.logout" />
-          </div>
-        </div>
-      </nav>
+      <MobileSidebarDrawer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
 };
