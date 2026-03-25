@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Quote } from "lucide-react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
+import { getAssetFullUrl } from "@/lib/api/cv"
 
 interface Testimonial {
   name: string
@@ -107,7 +108,7 @@ export default function Testimonials() {
               {/* User info */}
               {testimonial.imageUrl ? (
                 <Image
-                  src={testimonial.imageUrl}
+                  src={getAssetFullUrl(testimonial.imageUrl)}
                   alt={testimonial.name}
                   width={96}
                   height={96}

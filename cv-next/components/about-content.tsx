@@ -4,6 +4,7 @@ import Image from "next/image"
 import { ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
+import { getAssetFullUrl } from "@/lib/api/cv"
 
 export default function AboutContent() {
   const apiCv = useCvContentFromApi()
@@ -67,7 +68,7 @@ export default function AboutContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4" data-aos="fade-right">
           <Image
-            src={profileData.image || "/background.jpg?height=600&width=600"}
+            src={getAssetFullUrl(profileData.image) || "/background.jpg?height=600&width=600"}
             alt="Profile"
             width={600}
             height={600}

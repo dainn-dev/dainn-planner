@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // React needed for React.Fragment in extraButtons
+import React, { useState, useEffect } from 'react'; // React needed for React.Fragment in extraButtons
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAvatarFullUrl, notificationsAPI } from '../services/api';
@@ -52,13 +52,26 @@ const Header = ({
     return { title: notification.title, message: notification.message };
   };
 
-  const storedUser = (() => {
+  const [storedUser, setStoredUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('user') || '{}');
     } catch {
       return {};
     }
-  })();
+  });
+
+  useEffect(() => {
+    const onUpdated = () => {
+      try {
+        setStoredUser(JSON.parse(localStorage.getItem('user') || '{}'));
+        setAvatarError(false);
+      } catch {
+        setStoredUser({});
+      }
+    };
+    window.addEventListener('userSettingsUpdated', onUpdated);
+    return () => window.removeEventListener('userSettingsUpdated', onUpdated);
+  }, []);
 
   const avatarUrl = getAvatarFullUrl(storedUser?.avatarUrl ?? storedUser?.avatar);
   const showAvatarFallback = !avatarUrl || avatarError;
