@@ -608,7 +608,7 @@ const MyCvPage = () => {
     setUploadingPortfolioImageIndex(index);
     try {
       const url = await cvMeAPI.uploadImage(file);
-      const path = typeof url === 'string' ? url : (url?.data ?? '');
+      const path = url?.url ?? '';
       if (path) handlePortfolioItemChange(index, 'imageUrl', path);
     } catch {
       // error toast auto-fired by apiRequest
@@ -734,7 +734,7 @@ const MyCvPage = () => {
     setUploadingTestimonialImageIndex(index);
     try {
       const url = await cvMeAPI.uploadImage(file);
-      const path = typeof url === 'string' ? url : (url?.data ?? '');
+      const path = url?.url ?? '';
       if (path) handleTestimonialChange(index, 'imageUrl', path);
     } catch {
       // error toast auto-fired by apiRequest
