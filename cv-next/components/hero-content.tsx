@@ -24,6 +24,7 @@ export default function HeroContent() {
         name: p.name || "Your Name",
         title: p.title || "UI/UX Designer & Web Developer",
         image: p.image || "",
+        backgroundImage: p.backgroundImage || "",
       })
     }
     setLoading(false)

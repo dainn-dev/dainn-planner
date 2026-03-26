@@ -48,7 +48,6 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-open-sans)"],
-        heading: ["var(--font-raleway)"],
       },
     },
   },

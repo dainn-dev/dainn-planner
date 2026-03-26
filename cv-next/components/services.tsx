@@ -82,12 +82,12 @@ export default function Services() {
                     <Icon className="h-10 w-10 text-[#149ddd]" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="title text-xl font-bold mb-2">
+                    <h5 className="title text-base font-bold mb-1">
                       <a href="#" className="text-[#173b6c] hover:text-[#149ddd]">
                         {service.title}
                       </a>
-                    </h4>
-                    <p className="description text-gray-600">{service.description}</p>
+                    </h5>
+                    <p className="description text-sm text-gray-600">{service.description}</p>
                   </div>
                 </div>
               </div>

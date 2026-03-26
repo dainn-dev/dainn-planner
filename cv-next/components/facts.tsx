@@ -100,7 +100,7 @@ export default function Facts() {
             <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex flex-col items-center" data-aos="fade-up">
                 <div className="flex justify-center items-center w-16 h-16 rounded-full bg-[#e8f7fb] mb-4">
@@ -126,17 +126,17 @@ export default function Facts() {
           <p className="text-gray-600">{data.intro.description}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {data.facts.map((fact, index) => (
             <div key={fact.id || index} className="flex flex-col items-center" data-aos="fade-up">
               <div className="flex justify-center items-center w-16 h-16 rounded-full bg-[#e8f7fb] mb-4">
                 {getIcon(fact.icon)}
               </div>
               <div className="text-center">
-                <span className="count-number text-4xl font-bold text-[#173b6c]" data-target={fact.count}>
+                <span className="count-number text-3xl font-bold text-[#173b6c]" data-target={fact.count}>
                   0
                 </span>
-                <p className="mt-2 text-gray-600">
+                <p className="mt-2 text-sm text-gray-600">
                   <strong>{fact.title}</strong> {fact.description}
                 </p>
               </div>

@@ -47,7 +47,7 @@ export default function Resume() {
               experience.map((exp, index) => (
                 <div key={exp.id || index} className="mb-6">
                   <h4 className="text-base font-bold text-[#173b6c]">{exp.title}</h4>
-                  <h5 className="text-[#149ddd] font-semibold mb-1">{exp.company}</h5>
+                  <h5 className="text-sm text-[#149ddd] font-semibold mb-1">{exp.company}</h5>
                   <p className="text-sm text-gray-500 mb-1">
                     {exp.startYear}{exp.endYear ? ` - ${exp.endYear}` : ""}
                   </p>
@@ -73,7 +73,7 @@ export default function Resume() {
               education.map((edu, index) => (
                 <div key={edu.id || index} className="mb-6">
                   <h4 className="text-base font-bold text-[#173b6c]">{edu.school}</h4>
-                  <h5 className="text-[#149ddd] font-semibold mb-1">{edu.degree}</h5>
+                  <h5 className="text-sm text-[#149ddd] font-semibold mb-1">{edu.degree}</h5>
                   {edu.location ? <p className="italic text-sm text-gray-500 mb-1">{edu.location}</p> : null}
                   {edu.description ? <p className="text-gray-600 text-sm">{edu.description}</p> : null}
                 </div>
@@ -97,7 +97,7 @@ export default function Resume() {
               certificates.map((cert, index) => (
                 <div key={cert.id || index} className="mb-6">
                   <h4 className="text-base font-bold text-[#173b6c]">{cert.title}</h4>
-                  <h5 className="text-[#149ddd] font-semibold mb-1">{cert.issuer}</h5>
+                  <h5 className="text-sm text-[#149ddd] font-semibold mb-1">{cert.issuer}</h5>
                   {cert.date ? <p className="italic text-sm text-gray-500 mb-1">{cert.date}</p> : null}
                   <div
                     className="text-gray-600 prose prose-sm max-w-none"

@@ -106,16 +106,16 @@ export default function Portfolio() {
           </ul>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-aos="fade-up" data-aos-delay="100">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-aos="fade-up" data-aos-delay="100">
           {filteredItems.map((item, idx) => (
             <div key={item.id ?? idx} className="portfolio-item cursor-pointer" onClick={() => handleItemClick(item.id)}>
               <div className="portfolio-wrap">
                 <Image
                   src={getAssetFullUrl(item.imageUrl) || "/background.jpg"}
                   alt={item.title}
-                  width={600}
-                  height={400}
-                  className="w-full h-64 object-cover"
+                  width={300}
+                  height={200}
+                  className="w-full h-40 object-cover"
                 />
                 <div className="portfolio-links">
                   <a href={item.imageUrl} title={item.title} className="text-white hover:text-gray-200" onClick={(e) => e.stopPropagation()}>
@@ -126,7 +126,7 @@ export default function Portfolio() {
                   </a>
                 </div>
               </div>
-              <div className="mt-2 text-center font-semibold text-[#173b6c]">{item.title}</div>
+              <div className="mt-1 text-center text-sm font-semibold text-[#173b6c]">{item.title}</div>
             </div>
           ))}
         </div>

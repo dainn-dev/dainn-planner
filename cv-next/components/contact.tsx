@@ -101,8 +101,8 @@ export default function Contact() {
                   <MapPin className="h-6 w-6 text-[#149ddd]" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-[#173b6c]">Location:</h4>
-                  <p className="text-gray-600">{profile.location}</p>
+                  <h4 className="text-base font-semibold text-[#173b6c]">Location:</h4>
+                  <p className="text-sm text-gray-600">{profile.location}</p>
                 </div>
               </div>
 
@@ -111,8 +111,8 @@ export default function Contact() {
                   <Mail className="h-6 w-6 text-[#149ddd]" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-[#173b6c]">Email:</h4>
-                  <p className="text-gray-600">{profile.email}</p>
+                  <h4 className="text-base font-semibold text-[#173b6c]">Email:</h4>
+                  <p className="text-sm text-gray-600">{profile.email}</p>
                 </div>
               </div>
 
@@ -121,8 +121,8 @@ export default function Contact() {
                   <Phone className="h-6 w-6 text-[#149ddd]" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-[#173b6c]">Call:</h4>
-                  <p className="text-gray-600">{profile.phone}</p>
+                  <h4 className="text-base font-semibold text-[#173b6c]">Call:</h4>
+                  <p className="text-sm text-gray-600">{profile.phone}</p>
                 </div>
               </div>
 
@@ -140,7 +140,7 @@ export default function Contact() {
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-sm">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label htmlFor="name" className="block text-gray-700 mb-2">
+                  <label htmlFor="name" className="block text-sm text-gray-700 mb-2">
                     Your Name
                   </label>
                   <input
@@ -154,7 +154,7 @@ export default function Contact() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm text-gray-700 mb-2">
                     Your Email
                   </label>
                   <input
@@ -169,7 +169,7 @@ export default function Contact() {
                 </div>
               </div>
               <div className="mb-4">
-                <label htmlFor="subject" className="block text-gray-700 mb-2">
+                <label htmlFor="subject" className="block text-sm text-gray-700 mb-2">
                   Subject
                 </label>
                 <input
@@ -183,7 +183,7 @@ export default function Contact() {
                 />
               </div>
               <div className="mb-4">
-                <label htmlFor="message" className="block text-gray-700 mb-2">
+                <label htmlFor="message" className="block text-sm text-gray-700 mb-2">
                   Message
                 </label>
                 <textarea

@@ -77,8 +77,8 @@ export default function Skills() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div>
-            <h3 className="text-2xl font-bold text-[#173b6c] mb-6">Technical Skills</h3>
-            <ul className="list-disc pl-6 space-y-2">
+            <h3 className="text-lg font-bold text-[#173b6c] mb-6">Technical Skills</h3>
+            <ul className="list-disc pl-6 space-y-2 text-sm">
               {data.technicalSkills.map((skill, idx) => (
                 <li key={idx}>
                   <span className="font-semibold">{skill.category}:</span> {skill.details}
@@ -87,8 +87,8 @@ export default function Skills() {
             </ul>
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-[#173b6c] mb-6">Soft Skills</h3>
-            <ul className="list-disc pl-6 space-y-2">
+            <h3 className="text-lg font-bold text-[#173b6c] mb-6">Soft Skills</h3>
+            <ul className="list-disc pl-6 space-y-2 text-sm">
               {data.softSkills.map((skill, idx) => (
                 <li key={idx}>{skill}</li>
               ))}

@@ -62,19 +62,19 @@ export default function AboutContent() {
 
   return (
     <>
-      <p className="text-gray-600 mb-8">{profileData.about}</p>
+      <p className="text-sm text-gray-600 mb-8">{profileData.about}</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-4" data-aos="fade-right">
+        <div className="hidden lg:block lg:col-span-4" data-aos="fade-right">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={getAssetFullUrl(profileData.image) || "/background.jpg"}
             alt="Profile"
-            className="w-full rounded-lg"
+            className="w-full rounded-lg h-48 object-cover object-top"
           />
         </div>
         <div className="lg:col-span-8 pt-4 lg:pt-0" data-aos="fade-left">
-          <p className="text-lg font-semibold text-[#173b6c] mb-4">
+          <p className="text-base font-semibold text-[#173b6c] mb-4">
             Professional Profile & Contact Details:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
@@ -82,25 +82,25 @@ export default function AboutContent() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Birthday:</span> {profileData.birthday}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Website:</span> {profileData.website}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Phone:</span> {profileData.phone}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">City:</span> {profileData.location}
                   </div>
                 </li>
@@ -110,25 +110,25 @@ export default function AboutContent() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Age:</span> 30
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Degree:</span> {profileData.degree}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Email:</span> {profileData.email}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div>
+                  <div className="text-sm">
                     <span className="font-medium">Freelance:</span> {profileData.freelance}
                   </div>
                 </li>
