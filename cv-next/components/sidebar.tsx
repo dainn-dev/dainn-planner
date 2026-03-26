@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
 import { SOCIAL_PLATFORMS, type SocialPlatformName } from "@/lib/constants/social-platforms"
+import { getAssetFullUrl } from "@/lib/api/cv"
 
 type Social = { platform: string; url: string; icon?: string }
 
@@ -94,7 +95,7 @@ export default function Sidebar() {
             ) : (
               <>
                 <Image
-                  src={profileData.image || "/background.jpg?height=120&width=120"}
+                  src={getAssetFullUrl(profileData.image) || "/background.jpg?height=120&width=120"}
                   alt="Profile"
                   width={120}
                   height={120}

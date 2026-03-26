@@ -561,6 +561,7 @@ const SettingsPage = () => {
         delete u.avatarUrl;
         delete u.avatar;
         localStorage.setItem('user', JSON.stringify(u));
+        window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
       }
     } catch {
       // ignore parse errors

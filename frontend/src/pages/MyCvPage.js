@@ -607,7 +607,7 @@ const MyCvPage = () => {
     }
     setUploadingPortfolioImageIndex(index);
     try {
-      const url = await userAPI.uploadAvatar(file);
+      const url = await cvMeAPI.uploadImage(file);
       const path = typeof url === 'string' ? url : (url?.data ?? '');
       if (path) handlePortfolioItemChange(index, 'imageUrl', path);
     } catch {
@@ -733,7 +733,7 @@ const MyCvPage = () => {
     }
     setUploadingTestimonialImageIndex(index);
     try {
-      const url = await userAPI.uploadAvatar(file);
+      const url = await cvMeAPI.uploadImage(file);
       const path = typeof url === 'string' ? url : (url?.data ?? '');
       if (path) handleTestimonialChange(index, 'imageUrl', path);
     } catch {

@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Plus, LinkIcon } from "lucide-react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
 import { useRouter } from "next/navigation"
+import { getAssetFullUrl } from "@/lib/api/cv"
 
 interface PortfolioItem {
   id: string
@@ -110,7 +111,7 @@ export default function Portfolio() {
             <div key={item.id ?? idx} className="portfolio-item cursor-pointer" onClick={() => handleItemClick(item.id)}>
               <div className="portfolio-wrap">
                 <Image
-                  src={item.imageUrl || "/background.jpg"}
+                  src={getAssetFullUrl(item.imageUrl) || "/background.jpg"}
                   alt={item.title}
                   width={600}
                   height={400}
