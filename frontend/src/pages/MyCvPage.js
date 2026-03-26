@@ -452,16 +452,20 @@ const MyCvPage = () => {
     }
     setUploadingCvAvatar(true);
     try {
-      const url = await userAPI.uploadAvatar(file);
-      const path = typeof url === 'string' ? url : (url?.data ?? '');
+      const result = await cvMeAPI.uploadImage(file);
+      const path = result?.url ?? '';
       if (path) {
         handleProfileFieldChange('image', path);
+        // Auto-save the profile section so the photo persists without a manual Save click
+        const currentRaw = typeof sectionDraft.profile === 'string' ? sectionDraft.profile : '{}';
+        let currentProfile = {};
+        try { currentProfile = JSON.parse(currentRaw); } catch { /* ignore */ }
+        const savedProfile = { ...currentProfile, image: path };
         try {
-          const u = JSON.parse(localStorage.getItem('user') || '{}');
-          u.avatarUrl = path;
-          localStorage.setItem('user', JSON.stringify(u));
+          await cvMeAPI.putContent('profile', savedProfile);
+          setContent((prev) => ({ ...prev, profile: savedProfile }));
         } catch {
-          // ignore
+          // error toast auto-fired by apiRequest; draft still updated so manual Save still works
         }
       }
     } catch {

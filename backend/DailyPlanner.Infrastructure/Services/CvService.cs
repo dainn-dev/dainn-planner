@@ -122,18 +122,23 @@ public class CvService : ICvService
         var site = await _db.CvSites.AsNoTracking()
             .FirstOrDefaultAsync(s => s.OwnerUserId == userId, ct);
 
+        var doc = await _db.CvDocuments.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.UserId == userId, ct);
+
         if (site == null)
         {
+            var noSiteContent = doc == null
+                ? CvContentJson.EmptyObject().ToAnonymousForJson()
+                : CvContentJson.RowToContent(doc.ProfileJson, doc.PortfolioJson, doc.SkillsJson, doc.TestimonialsJson,
+                    doc.FactsJson, doc.ServicesJson, doc.EducationJson, doc.ExperienceJson, doc.CertificatesJson)
+                    .ToAnonymousForJson();
             return Ok(new
             {
                 site = (object?)null,
-                content = CvContentJson.EmptyObject().ToAnonymousForJson(),
+                content = noSiteContent,
                 theme = (object?)null,
             });
         }
-
-        var doc = await _db.CvDocuments.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.UserId == userId, ct);
 
         var theme = CvThemeRegistry.ResolveThemeTokens(site.ThemePresetKey, site.ThemeOverridesJson);
         var content = doc == null

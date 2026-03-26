@@ -533,6 +533,7 @@ const SettingsPage = () => {
           const u = JSON.parse(localStorage.getItem('user') || '{}');
           u.avatarUrl = path;
           localStorage.setItem('user', JSON.stringify(u));
+          window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
         } catch (e) { /* ignore */ }
       }
       setUploadImageModalOpen(false);
