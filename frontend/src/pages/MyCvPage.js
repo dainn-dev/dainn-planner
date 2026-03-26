@@ -253,7 +253,7 @@ const MyCvPage = () => {
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-0.5">
             {t('myCv.slugLabel')}
           </p>
-          <p className="text-gray-800 dark:text-slate-200 font-mono break-all">{slugDisplay}</p>
+          <p className="text-gray-800 dark:text-slate-200 font-mono break-all">{site.slug}</p>
         </div>
         {site.requestedAt && (
           <div className="sm:text-right">

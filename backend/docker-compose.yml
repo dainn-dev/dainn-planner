@@ -67,7 +67,8 @@ services:
 
     volumes:
       - ./logs:/app/wwwroot/logs
-      - ./uploads:/app/wwwroot/uploads
+      - ./uploads/avatars:/app/wwwroot/uploads/avatars
+      - ./uploads/cv-images:/app/wwwroot/uploads/cv-images
 
     networks:
       - dailyplanner-network

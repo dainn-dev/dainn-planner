@@ -75,6 +75,10 @@ const Header = ({
   const avatarUrl = getAvatarFullUrl(storedUser?.avatarUrl ?? storedUser?.avatar);
   const showAvatarFallback = !avatarUrl || avatarError;
 
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatarUrl]);
+
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const handleMarkAllAsRead = async () => {

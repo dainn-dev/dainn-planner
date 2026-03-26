@@ -84,7 +84,7 @@ const Sidebar = ({ className = '' }) => {
 
   return (
     <nav className={`hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 h-screen sticky top-0 left-0 shrink-0 ${className}`}>
-      <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
+      <div className="px-6 py-3 flex items-center gap-3 border-b border-gray-100 dark:border-slate-700">
         <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
           <span className="material-symbols-outlined text-xl">calendar_today</span>
         </div>
