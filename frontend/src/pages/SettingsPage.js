@@ -132,6 +132,12 @@ const SettingsPage = () => {
           }));
           if (profileData.avatarUrl != null) {
             setAvatarUrl(profileData.avatarUrl);
+            try {
+              const u = JSON.parse(localStorage.getItem('user') || '{}');
+              u.avatarUrl = profileData.avatarUrl;
+              localStorage.setItem('user', JSON.stringify(u));
+              window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
+            } catch (_) { /* ignore */ }
           }
         }
         const notifList = Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []);
