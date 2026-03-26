@@ -26,7 +26,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
 # Create required directories inside wwwroot
-RUN mkdir -p /app/wwwroot/uploads/avatars /app/wwwroot/logs
+RUN mkdir -p /app/wwwroot/uploads/avatars /app/wwwroot/uploads/cv-images /app/wwwroot/logs
 
 # Copy the published application
 COPY --from=publish /app/publish .

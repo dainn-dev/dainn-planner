@@ -202,6 +202,7 @@ if (string.IsNullOrEmpty(env.WebRootPath))
     env.WebRootPath = Path.Combine(env.ContentRootPath, "wwwroot");
 }
 Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "avatars"));
+Directory.CreateDirectory(Path.Combine(env.WebRootPath, "uploads", "cv-images"));
 Directory.CreateDirectory(Path.Combine(env.WebRootPath, "logs"));
 
 // Configure the HTTP request pipeline
