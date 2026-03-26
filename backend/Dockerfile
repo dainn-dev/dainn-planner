@@ -25,11 +25,11 @@ RUN dotnet publish "DailyPlanner.Api.csproj" -c Release -o /app/publish /p:UseAp
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Create required directories inside wwwroot
-RUN mkdir -p /app/wwwroot/uploads/avatars /app/wwwroot/uploads/cv-images /app/wwwroot/logs
-
 # Copy the published application
 COPY --from=publish /app/publish .
+
+# Create required directories inside wwwroot (after COPY so overlay layers don't shadow them)
+RUN mkdir -p /app/wwwroot/uploads/avatars /app/wwwroot/uploads/cv-images /app/wwwroot/logs
 
 # Expose port 8080 (default for .NET 8 in containers)
 EXPOSE 8080

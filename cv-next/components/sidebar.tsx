@@ -8,9 +8,7 @@ import {
   User,
   Info,
   Sparkles,
-  Building2,
-  GraduationCap,
-  Award,
+  FileText,
   Briefcase,
   Server,
   MessageSquare,
@@ -94,13 +92,15 @@ export default function Sidebar() {
               </div>
             ) : (
               <>
-                <Image
-                  src={getAssetFullUrl(profileData.image) || "/background.jpg?height=120&width=120"}
-                  alt="Profile"
-                  width={120}
-                  height={120}
-                  className="mx-auto rounded-full border-8 border-[#2c2f3f]"
-                />
+                <div className="mx-auto w-[120px] h-[120px] rounded-full border-8 border-[#2c2f3f] overflow-hidden">
+                  <Image
+                    src={getAssetFullUrl(profileData.image) || "/background.jpg?height=120&width=120"}
+                    alt="Profile"
+                    width={120}
+                    height={120}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <h1 className="text-2xl font-semibold mt-4">
                   <Link href="/" className="text-white hover:text-[#149ddd]">
                     {profileData.name}
@@ -187,32 +187,12 @@ export default function Sidebar() {
               </li>
               <li>
                 <a
-                  href="#experience"
-                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "experience" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
+                  href="#resume"
+                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "resume" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <Building2 className="h-5 w-5 mr-3" />
-                  <span>Experience</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#education"
-                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "education" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <GraduationCap className="h-5 w-5 mr-3" />
-                  <span>Education</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#certificates"
-                  className={`flex items-center py-2 px-4 rounded-md transition-colors ${activeSection === "certificates" ? "text-white bg-[#149ddd]/20" : "text-[#a8a9b4] hover:text-white"}`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Award className="h-5 w-5 mr-3" />
-                  <span>Certificates</span>
+                  <FileText className="h-5 w-5 mr-3" />
+                  <span>Resume</span>
                 </a>
               </li>
               <li>
