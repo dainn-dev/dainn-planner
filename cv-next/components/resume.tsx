@@ -28,7 +28,7 @@ export default function Resume() {
   }, [apiCv])
 
   return (
-    <section id="resume" className="py-16">
+    <section id="resume" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Resume</h2>

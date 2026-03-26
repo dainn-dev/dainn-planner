@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import {
   Home,
@@ -80,7 +79,7 @@ export default function Sidebar() {
       </button>
 
       <header
-        className={`fixed top-0 left-0 bottom-0 w-72 bg-[#040b14] text-white transition-transform duration-300 ease-in-out z-40 
+        className={`fixed top-0 left-0 bottom-0 w-72 bg-[#040b14] text-white transition-transform duration-300 ease-in-out z-40
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <div className="flex flex-col h-full overflow-y-auto">
@@ -93,16 +92,15 @@ export default function Sidebar() {
             ) : (
               <>
                 <div className="mx-auto w-[120px] h-[120px] rounded-full border-8 border-[#2c2f3f] overflow-hidden">
-                  <Image
-                    src={getAssetFullUrl(profileData.image) || "/background.jpg?height=120&width=120"}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={getAssetFullUrl(profileData.image) || "/background.jpg"}
                     alt="Profile"
-                    width={120}
-                    height={120}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <h1 className="text-2xl font-semibold mt-4">
-                  <Link href="/" className="text-white hover:text-[#149ddd]">
+                  <Link href="/" className="text-white hover:text-[#149ddd] transition-colors">
                     {profileData.name}
                   </Link>
                 </h1>
@@ -143,8 +141,8 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <nav className="nav-menu mt-6 flex-1">
-            <ul className="space-y-2 px-4">
+          <nav className="nav-menu mt-4 flex-1">
+            <ul className="space-y-1 px-4">
               <li>
                 <a
                   href="#hero"

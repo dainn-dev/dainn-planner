@@ -40,7 +40,7 @@ export default function Services() {
 
   if (loading) {
     return (
-      <section id="services" className="py-16">
+      <section id="services" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="section-title mb-12">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
@@ -65,7 +65,7 @@ export default function Services() {
   }
 
   return (
-    <section id="services" className="py-16">
+    <section id="services" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Services</h2>

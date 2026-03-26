@@ -6,7 +6,7 @@
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 255, 255, 255;
   --primary-color: #149ddd;
-  --secondary-color: #173b6c;
+  --secondary-color: #2563a8;
 }
 
 body {
@@ -193,7 +193,7 @@ h6 {
   padding: 0 0 10px 60px;
   margin-bottom: 20px;
   font-size: 14px;
-  color: #173b6c;
+  color: #2563a8;
 }
 
 .contact .info .email:hover i,

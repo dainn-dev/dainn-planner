@@ -3,7 +3,7 @@ import AboutContent from "./about-content"
 
 export default function About() {
   return (
-    <section id="profile" className="py-16">
+    <section id="profile" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Profile</h2>

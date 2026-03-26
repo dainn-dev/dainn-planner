@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
@@ -67,11 +66,10 @@ export default function AboutContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4" data-aos="fade-right">
-          <Image
-            src={getAssetFullUrl(profileData.image) || "/background.jpg?height=600&width=600"}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getAssetFullUrl(profileData.image) || "/background.jpg"}
             alt="Profile"
-            width={600}
-            height={600}
             className="w-full rounded-lg"
           />
         </div>

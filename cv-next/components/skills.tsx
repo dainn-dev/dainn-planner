@@ -39,7 +39,7 @@ export default function Skills() {
 
   if (loading) {
     return (
-      <section id="skills" className="py-16 bg-[#f5f8fd]">
+      <section id="skills" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="section-title mb-12">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
@@ -69,7 +69,7 @@ export default function Skills() {
   }
 
   return (
-    <section id="skills" className="py-16 bg-[#f5f8fd]">
+    <section id="skills" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Skills</h2>

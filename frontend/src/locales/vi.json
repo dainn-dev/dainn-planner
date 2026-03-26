@@ -184,6 +184,8 @@
       "image": "Tải ảnh đại diện",
       "profilePhotoSection": "Ảnh hồ sơ",
       "avatarHint": "JPG, PNG hoặc GIF, tối đa 5 MB. Ảnh được lưu trên máy chủ; CV sẽ dùng ảnh này.",
+      "backgroundImageSection": "Ảnh nền Hero",
+      "backgroundImageHint": "Hiển thị làm background ở section Hero của CV. JPG, PNG tối đa 5 MB.",
       "degree": "Bằng cấp",
       "location": "Địa chỉ",
       "about": "Giới thiệu chính",

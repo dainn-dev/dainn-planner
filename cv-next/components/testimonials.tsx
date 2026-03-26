@@ -55,7 +55,7 @@ export default function Testimonials() {
 
   if (loading) {
     return (
-      <section id="testimonials" className="py-16 bg-[#f5f8fd]">
+      <section id="testimonials" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="section-title mb-12">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
@@ -86,7 +86,7 @@ export default function Testimonials() {
   const testimonialsToShow = data.testimonials.slice(startIdx, startIdx + TESTIMONIALS_PER_PAGE)
 
   return (
-    <section id="testimonials" className="py-16 bg-[#f5f8fd]">
+    <section id="testimonials" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12 text-center">
           <h2>Testimonials</h2>
@@ -97,8 +97,7 @@ export default function Testimonials() {
             <div key={startIdx + idx} className="flex flex-col items-center">
               {/* Testimonial Card with speech bubble */}
               <div
-                className="relative bg-white p-8 rounded-lg shadow-md w-full text-center mb-8 overflow-y-hidden hover:overflow-y-auto transition-all"
-                style={{ maxHeight: 320 }}
+                className="relative bg-white p-8 rounded-lg shadow-md w-full text-center mb-8 overflow-hidden h-80"
               >
                 <Quote className="h-8 w-8 text-[#c3e8fa] mx-auto mb-2" />
                 <p className="text-gray-700 mb-4">{testimonial.text}</p>

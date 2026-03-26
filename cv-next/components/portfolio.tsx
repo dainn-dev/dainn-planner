@@ -62,7 +62,7 @@ export default function Portfolio() {
   }
 
   return (
-    <section id="portfolio" className="py-16 bg-[#f5f8fd]">
+    <section id="portfolio" className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Portfolio</h2>

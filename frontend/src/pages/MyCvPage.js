@@ -125,9 +125,11 @@ const MyCvPage = () => {
   const isAdmin = isStoredAdmin();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadingCvAvatar, setUploadingCvAvatar] = useState(false);
+  const [uploadingCvBgImage, setUploadingCvBgImage] = useState(false);
   const [uploadingPortfolioImageIndex, setUploadingPortfolioImageIndex] = useState(null);
   const [uploadingTestimonialImageIndex, setUploadingTestimonialImageIndex] = useState(null);
   const cvAvatarFileRef = useRef(null);
+  const cvBgImageFileRef = useRef(null);
   const portfolioImageFileRefs = useRef({});
   const testimonialImageFileRefs = useRef({});
 
@@ -472,6 +474,42 @@ const MyCvPage = () => {
       // error toast from apiRequest
     } finally {
       setUploadingCvAvatar(false);
+    }
+  };
+
+  const handleCvBgImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t('settings.fileSizeError'));
+      return;
+    }
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+      toast.error(t('settings.fileTypeError'));
+      return;
+    }
+    setUploadingCvBgImage(true);
+    try {
+      const result = await cvMeAPI.uploadImage(file);
+      const path = result?.url ?? '';
+      if (path) {
+        handleProfileFieldChange('backgroundImage', path);
+        const currentRaw = typeof sectionDraft.profile === 'string' ? sectionDraft.profile : '{}';
+        let currentProfile = {};
+        try { currentProfile = JSON.parse(currentRaw); } catch { /* ignore */ }
+        const savedProfile = { ...currentProfile, backgroundImage: path };
+        try {
+          await cvMeAPI.putContent('profile', savedProfile);
+          setContent((prev) => ({ ...prev, profile: savedProfile }));
+        } catch {
+          // error toast auto-fired by apiRequest; draft still updated so manual Save still works
+        }
+      }
+    } catch {
+      // error toast from apiRequest
+    } finally {
+      setUploadingCvBgImage(false);
     }
   };
 
@@ -1125,6 +1163,57 @@ const MyCvPage = () => {
         </div>
       );
     };
+    const renderProfileBgImageCard = () => {
+      const rawBg = typeof profileDraft?.backgroundImage === 'string' ? profileDraft.backgroundImage : '';
+      const previewUrl = rawBg ? getAvatarFullUrl(rawBg) : '';
+      return (
+        <div
+          className="flex w-full flex-col rounded-lg border border-zinc-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-5 sm:px-6 sm:py-7 md:px-5 md:py-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none"
+          role="group"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-slate-400 mb-4">
+            {t('myCv.profileFields.backgroundImageSection')}
+          </p>
+          <div className="flex flex-col gap-4">
+            <div
+              className="group relative w-full h-[120px] rounded-lg overflow-hidden border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800 cursor-pointer"
+              onClick={() => !uploadingCvBgImage && cvBgImageFileRef.current?.click()}
+            >
+              {previewUrl ? (
+                <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[40px] text-zinc-300 dark:text-slate-500">image</span>
+                </div>
+              )}
+              {!uploadingCvBgImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/0 group-hover:bg-zinc-900/35 dark:group-hover:bg-black/45 transition-colors rounded-lg">
+                  <span className={`material-symbols-outlined text-white text-3xl transition-opacity ${previewUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-80'}`}>
+                    edit
+                  </span>
+                </div>
+              )}
+              {uploadingCvBgImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50 dark:bg-black/45 backdrop-blur-[1px] rounded-lg">
+                  <span className="material-symbols-outlined text-white text-4xl animate-spin">progress_activity</span>
+                </div>
+              )}
+            </div>
+            <input
+              ref={cvBgImageFileRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/gif"
+              className="sr-only"
+              onChange={handleCvBgImageFileChange}
+            />
+            <p className="text-[11px] text-zinc-500 dark:text-slate-500 leading-relaxed">
+              {t('myCv.profileFields.backgroundImageHint')}
+            </p>
+          </div>
+        </div>
+      );
+    };
+
     const portfolioDraft = isPortfolioSection ? getParsedSectionDraft('portfolio') : null;
     const portfolioIntro = portfolioDraft?.intro && typeof portfolioDraft.intro === 'object' ? portfolioDraft.intro : {};
     const portfolioItems = Array.isArray(portfolioDraft?.items) ? portfolioDraft.items : [];
@@ -1180,6 +1269,8 @@ const MyCvPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                 {PROFILE_FIELDS_GRID.map((field) => renderProfileFieldRow(field))}
               </div>
+
+              {renderProfileBgImageCard()}
 
               <div className={CV_SECTION_BLOCK}>
                 <div className="flex items-center justify-between gap-3 mb-3">

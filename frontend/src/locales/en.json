@@ -184,6 +184,8 @@
       "image": "Upload avatar",
       "profilePhotoSection": "Profile photo",
       "avatarHint": "JPG, PNG or GIF, max 5 MB. The file is saved on the server; your CV will use this image.",
+      "backgroundImageSection": "Hero Background Image",
+      "backgroundImageHint": "Displayed as background in the Hero section of your CV. JPG or PNG, max 5 MB.",
       "degree": "Degree",
       "location": "Address",
       "about": "Main intro",
