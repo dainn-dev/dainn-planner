@@ -71,7 +71,7 @@ builder.Services.AddSwaggerGen(c =>
     { 
         Title = "Daily Planner API", 
         Version = "v1",
-        Description = "Daily Planner and CV hosting API. CV surface: `api/v1/cv/*` (public site/themes/portfolio/contact; owner `me/*` with JWT; admin `admin/*` with role `platform_admin`). Tenant resolution: `Host` (`{slug}.ROOT_DOMAIN`) or `X-Tenant-Slug` (trusted from your reverse proxy / Next.js server)."
+        Description = "Daily Planner and CV hosting API. CV surface: `api/v1/cv/*` (public site/themes/portfolio/contact; owner `me/*` with JWT; admin `admin/*` with roles `Admin` or `platform_admin`). Tenant resolution: `Host` (`{slug}.ROOT_DOMAIN`) or `X-Tenant-Slug` (trusted from your reverse proxy / Next.js server)."
     });
     
     // Include XML comments if available

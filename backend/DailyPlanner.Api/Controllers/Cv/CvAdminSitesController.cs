@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DailyPlanner.Api.Controllers.Cv;
 
 [ApiController]
-[Authorize(Roles = "platform_admin")]
+[Authorize(Roles = "Admin,platform_admin")]
 [Route("api/v1/cv/admin/sites")]
 [Tags("CV — platform admin")]
 public class CvAdminSitesController : ControllerBase
