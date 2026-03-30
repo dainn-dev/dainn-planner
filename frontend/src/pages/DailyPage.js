@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI, notificationsAPI, eventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
-import { isStoredAdmin, isStoredCvPlatformStaff } from '../utils/auth';
 import { formatDate, formatTime, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 import AddTaskModal from '../components/AddTaskModal';
 
@@ -89,8 +88,6 @@ const mapTaskFromApi = (t) => {
 
 const DailyPage = () => {
   const { t } = useTranslation();
-  const isAdmin = isStoredAdmin();
-  const isCvStaff = isStoredCvPlatformStaff();
   const getPriorityLabel = (p) => (p === 2 ? t('daily.priorityHigh') : p === 1 ? t('daily.priorityMedium') : t('daily.priorityLow'));
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);

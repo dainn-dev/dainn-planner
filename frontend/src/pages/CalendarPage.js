@@ -5,7 +5,6 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { eventsAPI, googleEventsAPI, integrationsAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
-import { isStoredAdmin } from '../utils/auth';
 import { toast } from '../utils/toast';
 import { formatDateWithWeekday, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 
@@ -114,8 +113,6 @@ function utcDateInputToIso(dateStr) {
 
 const CalendarPage = () => {
   const { t, i18n } = useTranslation();
-  const isAdmin = isStoredAdmin();
-
   const [currentDate] = useState(() => new Date());
   const [viewMode] = useState(() => (
     (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT) ? VIEW_DAY : VIEW_WEEK
@@ -147,9 +144,6 @@ const CalendarPage = () => {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState(null);
 
-  const [isMobile, setIsMobile] = useState(() => (
-    typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
-  ));
   const [eventsOpen, setEventsOpen] = useState(false);
 
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -165,14 +159,6 @@ const CalendarPage = () => {
     location: '',
     color: '',
   });
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
 
   const googleEmbedUrl = useMemo(() => {
     if (!googleCalendarSrcId) return '';

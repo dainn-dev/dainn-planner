@@ -57,3 +57,19 @@ code {
   background-color: #475569;
 }
 
+/* Indeterminate bar for mutation blocking (DAI-147) */
+@keyframes modal-mutation-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.modal-mutation-progress-indeterminate {
+  width: 40%;
+  max-width: 12rem;
+  animation: modal-mutation-indeterminate 1.15s ease-in-out infinite;
+}
+

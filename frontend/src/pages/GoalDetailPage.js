@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import AddTaskModal from '../components/AddTaskModal';
+import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
 import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
-import { isStoredAdmin } from '../utils/auth';
 import { formatDate } from '../utils/dateFormat';
 
 const localeToDateLocale = (locale) => (locale === 'en' ? 'en-US' : 'vi-VN');
@@ -107,7 +107,6 @@ const GoalDetailPage = () => {
   const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const isAdmin = isStoredAdmin();
   const [goal, setGoal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -125,6 +124,9 @@ const GoalDetailPage = () => {
   const [addTaskInitialTask, setAddTaskInitialTask] = useState(null);
   const [addTaskGoalContext, setAddTaskGoalContext] = useState(null);
   const [milestoneToDelete, setMilestoneToDelete] = useState(null);
+  const [isSavingGoal, setIsSavingGoal] = useState(false);
+  const [deletingTaskId, setDeletingTaskId] = useState(null);
+  const [milestoneDeleteSubmitting, setMilestoneDeleteSubmitting] = useState(false);
 
   const handleMoveTaskToMilestone = async (taskId, targetMilestoneId) => {
     if (!id || !taskId || !targetMilestoneId) return;
@@ -156,12 +158,16 @@ const GoalDetailPage = () => {
 
   const handleDeleteGoalTask = async (taskId) => {
     if (!window.confirm(t('goals.confirmDeleteTask'))) return;
+    if (deletingTaskId) return;
+    setDeletingTaskId(taskId);
     try {
       await tasksAPI.deleteTask(taskId);
       const items = await loadGoalTasks(id);
       setGoalTasks(items ?? []);
     } catch (err) {
       console.error('Failed to delete task:', err);
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -212,12 +218,14 @@ const GoalDetailPage = () => {
   }, [id, navigate, i18n.language, loadGoalTasks]);
 
   const handleEdit = () => {
+    if (isSavingGoal) return;
     setSaveError(null);
     setIsEditing(true);
     setEditedGoal({ ...goal });
   };
 
   const handleCancel = () => {
+    if (isSavingGoal) return;
     setIsEditing(false);
     setEditedGoal({ ...goal });
   };
@@ -229,7 +237,9 @@ const GoalDetailPage = () => {
   };
 
   const handleSave = async () => {
+    if (isSavingGoal) return;
     setSaveError(null);
+    setIsSavingGoal(true);
     try {
       const parsedDue = parseGoalDate(editedGoal.dueDate);
       const targetDate = parsedDue ? parsedDue.toISOString() : null;
@@ -264,6 +274,8 @@ const GoalDetailPage = () => {
     } catch (error) {
       console.error('Failed to update goal:', error);
       setSaveError(error?.message || t('goals.saveError'));
+    } finally {
+      setIsSavingGoal(false);
     }
   };
 
@@ -413,7 +425,8 @@ const GoalDetailPage = () => {
           </button>
 
           {/* Goal Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+          <div className="relative flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl sm:rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+            <ModalMutationProgressBar active={isSavingGoal} label={t('common.saving')} />
             {/* Mobile: icon inline with title + actions */}
             <div className="flex sm:hidden items-center gap-3 w-full min-w-0">
               <div className="flex items-center justify-center rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200 dark:border-slate-600 size-12 shrink-0">
@@ -424,8 +437,9 @@ const GoalDetailPage = () => {
                   <input
                     type="text"
                     value={editedGoal.title}
+                    disabled={isSavingGoal}
                     onChange={(e) => handleFieldChange('title', e.target.value)}
-                    className="w-full text-xl font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm touch-manipulation"
+                    className="w-full text-xl font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm touch-manipulation disabled:opacity-60"
                   />
                 ) : (
                   <h2 className="text-xl font-semibold text-[#111418] dark:text-white break-words line-clamp-2">{goal.title}</h2>
@@ -434,8 +448,8 @@ const GoalDetailPage = () => {
               <div className="shrink-0 flex items-center gap-1">
                 {isEditing ? (
                   <>
-                    <button onClick={handleSave} type="button" className="min-h-[40px] px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg touch-manipulation" aria-label={t('common.save')}>{t('common.save')}</button>
-                    <button onClick={handleCancel} type="button" className="min-h-[40px] px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm font-medium rounded-lg border border-gray-200 dark:border-slate-600 touch-manipulation" aria-label={t('common.cancel')}>{t('common.cancel')}</button>
+                    <button onClick={handleSave} type="button" disabled={isSavingGoal} className="min-h-[40px] px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed" aria-label={t('common.save')}>{isSavingGoal ? t('common.processing') : t('common.save')}</button>
+                    <button onClick={handleCancel} type="button" disabled={isSavingGoal} className="min-h-[40px] px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm font-medium rounded-lg border border-gray-200 dark:border-slate-600 touch-manipulation disabled:opacity-50" aria-label={t('common.cancel')}>{t('common.cancel')}</button>
                   </>
                 ) : (
                   <button onClick={handleEdit} type="button" className="min-h-[40px] min-w-[40px] p-2 text-gray-500 hover:text-primary rounded-lg hover:bg-primary/10 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
@@ -455,8 +469,9 @@ const GoalDetailPage = () => {
                     <button
                       key={icon.value}
                       type="button"
+                      disabled={isSavingGoal}
                       onClick={() => handleFieldChange('icon', icon.value)}
-                      className={`flex items-center justify-center min-w-[44px] min-h-[44px] size-10 rounded-lg border transition-all touch-manipulation shrink-0 ${
+                      className={`flex items-center justify-center min-w-[44px] min-h-[44px] size-10 rounded-lg border transition-all touch-manipulation shrink-0 disabled:opacity-50 ${
                         (isEditing ? editedGoal.icon : goal.icon) === icon.value
                           ? 'bg-primary border-primary text-white'
                           : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500'
@@ -479,26 +494,29 @@ const GoalDetailPage = () => {
                       <input
                         type="text"
                         value={editedGoal.title}
+                        disabled={isSavingGoal}
                         onChange={(e) => handleFieldChange('title', e.target.value)}
-                        className="w-full text-2xl font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[48px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
+                        className="w-full text-2xl font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[48px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation disabled:opacity-60"
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <input
                           type="text"
                           value={editedGoal.category}
+                          disabled={isSavingGoal}
                           onChange={(e) => handleFieldChange('category', e.target.value)}
-                          className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
+                          className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation disabled:opacity-60"
                           placeholder={t('goals.category')}
                         />
                         <input
                           type="date"
                           value={toDateInputValue(editedGoal.dueDate)}
+                          disabled={isSavingGoal}
                           onChange={(e) => {
                             const date = new Date(e.target.value);
                             const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                             handleFieldChange('dueDate', formattedDate);
                           }}
-                          className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation"
+                          className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all touch-manipulation disabled:opacity-60"
                         />
                       </div>
                     </div>
@@ -518,8 +536,8 @@ const GoalDetailPage = () => {
                   )}
                   {isEditing ? (
                     <div className="flex gap-2">
-                      <button onClick={handleSave} type="button" className="min-h-[44px] px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors touch-manipulation" aria-label={t('goals.saveAria')}>{t('common.save')}</button>
-                      <button onClick={handleCancel} type="button" className="min-h-[44px] px-4 py-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm font-medium rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors touch-manipulation" aria-label={t('goals.cancelEditAria')}>{t('common.cancel')}</button>
+                      <button onClick={handleSave} type="button" disabled={isSavingGoal} className="min-h-[44px] px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed" aria-label={t('goals.saveAria')}>{isSavingGoal ? t('common.processing') : t('common.save')}</button>
+                      <button onClick={handleCancel} type="button" disabled={isSavingGoal} className="min-h-[44px] px-4 py-2.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 text-sm font-medium rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors touch-manipulation disabled:opacity-50" aria-label={t('goals.cancelEditAria')}>{t('common.cancel')}</button>
                     </div>
                   ) : (
                     <button onClick={handleEdit} type="button" className="min-h-[44px] min-w-[44px] p-2.5 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 rounded-lg hover:bg-primary/10 dark:hover:bg-blue-500/20 touch-manipulation flex items-center justify-center" aria-label={t('goals.editGoalAria')}>
@@ -541,8 +559,9 @@ const GoalDetailPage = () => {
                       <button
                         key={icon.value}
                         type="button"
+                        disabled={isSavingGoal}
                         onClick={() => handleFieldChange('icon', icon.value)}
-                        className={`flex items-center justify-center min-w-[32px] min-h-[32px] size-8 rounded-md border transition-all touch-manipulation shrink-0 ${
+                        className={`flex items-center justify-center min-w-[32px] min-h-[32px] size-8 rounded-md border transition-all touch-manipulation shrink-0 disabled:opacity-50 ${
                           (isEditing ? editedGoal.icon : goal.icon) === icon.value
                             ? 'bg-primary border-primary text-white'
                             : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300'
@@ -560,19 +579,21 @@ const GoalDetailPage = () => {
                     <input
                       type="text"
                       value={editedGoal.category}
+                      disabled={isSavingGoal}
                       onChange={(e) => handleFieldChange('category', e.target.value)}
-                      className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 touch-manipulation"
+                      className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 touch-manipulation disabled:opacity-60"
                       placeholder={t('goals.category')}
                     />
                     <input
                       type="date"
                       value={toDateInputValue(editedGoal.dueDate)}
+                      disabled={isSavingGoal}
                       onChange={(e) => {
                         const date = new Date(e.target.value);
                         const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                         handleFieldChange('dueDate', formattedDate);
                       }}
-                      className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 touch-manipulation"
+                      className="w-full text-sm text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[44px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 touch-manipulation disabled:opacity-60"
                     />
                   </div>
                 ) : (
@@ -585,8 +606,9 @@ const GoalDetailPage = () => {
               {isEditing ? (
                 <textarea
                   value={editedGoal.description}
+                  disabled={isSavingGoal}
                   onChange={(e) => handleFieldChange('description', e.target.value)}
-                  className="w-full mt-3 text-sm text-gray-900 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[90px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 resize-none leading-relaxed shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 touch-manipulation"
+                  className="w-full mt-3 text-sm text-gray-900 dark:text-slate-200 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-4 py-3 min-h-[90px] focus:outline-none focus:border-gray-400 dark:focus:border-primary focus:ring-0 resize-none leading-relaxed shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all placeholder:text-gray-400 dark:placeholder:text-slate-500 touch-manipulation disabled:opacity-60"
                   placeholder={t('goals.descriptionPlaceholder')}
                 />
               ) : (
@@ -872,7 +894,8 @@ const GoalDetailPage = () => {
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteGoalTask(task.id)}
-                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                          disabled={!!deletingTaskId}
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center disabled:opacity-50"
                                           aria-label={t('goals.deleteTaskAria', { title: task.title })}
                                           title={t('common.delete')}
                                         >
@@ -901,12 +924,13 @@ const GoalDetailPage = () => {
       {milestoneToDelete && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60"
-          onClick={() => setMilestoneToDelete(null)}
+          onClick={() => { if (!milestoneDeleteSubmitting) setMilestoneToDelete(null); }}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-5"
+            className="relative w-full max-w-sm overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-xl border border-gray-200 dark:border-slate-700 p-5 pt-6"
             onClick={(e) => e.stopPropagation()}
           >
+            <ModalMutationProgressBar active={milestoneDeleteSubmitting} label={t('common.processing')} />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               {t('goals.confirmDeleteMilestoneTitle', { title: milestoneToDelete.title })}
             </h2>
@@ -919,23 +943,25 @@ const GoalDetailPage = () => {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
+                disabled={milestoneDeleteSubmitting}
                 onClick={() => setMilestoneToDelete(null)}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="button"
+                disabled={milestoneDeleteSubmitting}
                 onClick={async () => {
                   const m = milestoneToDelete;
-                  setMilestoneToDelete(null);
+                  if (!m || milestoneDeleteSubmitting) return;
+                  setMilestoneDeleteSubmitting(true);
                   handleDeleteMilestone(m.id);
                   try {
                     const milestoneIdStr = String(m.id);
                     const tasksForMilestone = goalTasks.filter(
                       (t) => t.goalMilestoneId != null && String(t.goalMilestoneId) === milestoneIdStr
                     );
-                    // delete all tasks for this milestone
                     await Promise.all(
                       tasksForMilestone.map((t) => tasksAPI.deleteTask(t.id))
                     );
@@ -943,11 +969,14 @@ const GoalDetailPage = () => {
                     setGoalTasks(items ?? []);
                   } catch (err) {
                     console.error('Failed to delete tasks for milestone:', err);
+                  } finally {
+                    setMilestoneDeleteSubmitting(false);
+                    setMilestoneToDelete(null);
                   }
                 }}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {t('common.delete')}
+                {milestoneDeleteSubmitting ? t('common.processing') : t('common.delete')}
               </button>
             </div>
           </div>

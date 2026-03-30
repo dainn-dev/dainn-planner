@@ -16,7 +16,6 @@ import {
   validatePassword,
   validateConfirmPassword,
 } from '../utils/formValidation';
-import { isStoredAdmin } from '../utils/auth';
 import {
   INITIAL_PROFILE_FORM,
   INITIAL_SETTINGS,
@@ -30,11 +29,11 @@ import {
 import { userAPI, notificationsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY, getAvatarFullUrl } from '../services/api';
 import ErrorMessage from '../components/ErrorMessage';
 import { useRecaptchaV2 } from '../hooks/useRecaptchaV2';
+import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
 
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const isAdmin = isStoredAdmin();
   const [activeTab, setActiveTab] = useState('profile');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadImageModalOpen, setUploadImageModalOpen] = useState(false);
@@ -72,6 +71,7 @@ const SettingsPage = () => {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingTodoist, setDisconnectingTodoist] = useState(false);
   const [connectingTodoist, setConnectingTodoist] = useState(false);
+  const [savePending, setSavePending] = useState(false);
   // After OAuth callback we land with ?google=connected or ?todoist=connected; refetch settings and clear the param
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -282,6 +282,7 @@ const SettingsPage = () => {
   };
 
   const handleSave = async () => {
+    if (savePending) return;
     if (activeTab === 'profile') {
       const errors = {};
       errors.fullname = validateName(profileForm.fullname, true, 2, 255);
@@ -295,6 +296,7 @@ const SettingsPage = () => {
         return;
       }
 
+      setSavePending(true);
       try {
         await userAPI.updateProfile({
           fullName: profileForm.fullname,
@@ -320,6 +322,8 @@ const SettingsPage = () => {
         }
       } catch (error) {
         console.error('Failed to save profile:', error);
+      } finally {
+        setSavePending(false);
       }
       return;
     }
@@ -346,6 +350,7 @@ const SettingsPage = () => {
       }
       setSecurityCaptchaError('');
       setSecurityPasswordErrors({ currentPassword: null, newPassword: null, confirmPassword: null });
+      setSavePending(true);
       try {
         await userAPI.changePassword({
           currentPassword,
@@ -361,10 +366,13 @@ const SettingsPage = () => {
         }));
       } catch (error) {
         resetRecaptcha();
+      } finally {
+        setSavePending(false);
       }
       return;
     }
 
+    setSavePending(true);
     try {
       await userAPI.updateSettings({
         general: generalSettings,
@@ -402,10 +410,13 @@ const SettingsPage = () => {
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
+    } finally {
+      setSavePending(false);
     }
   };
 
   const handleCancel = () => {
+    if (savePending) return;
     // Reset to original values
     setProfileForm(INITIAL_PROFILE_FORM);
     setSettings(INITIAL_SETTINGS);
@@ -646,7 +657,8 @@ const SettingsPage = () => {
           </aside>
 
           {/* Main Content Area */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 relative">
+            <ModalMutationProgressBar active={savePending} label={t('common.saving')} />
             {activeTab === 'profile' && (
               <div className="flex flex-col gap-10">
                 <div className="flex flex-col gap-2 pb-6 border-b border-border-light dark:border-slate-700">
@@ -834,15 +846,17 @@ const SettingsPage = () => {
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto disabled:opacity-50"
                   >
                     {t('settings.cancel')}
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {t('settings.saveChanges')}
+                    {savePending ? t('common.saving') : t('settings.saveChanges')}
                   </button>
                 </div>
               </div>
@@ -960,7 +974,8 @@ const SettingsPage = () => {
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 bg-white dark:bg-slate-700 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-600 hover:text-zinc-900 dark:hover:text-white transition-colors w-full sm:w-auto shadow-sm"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 bg-white dark:bg-slate-700 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-600 hover:text-zinc-900 dark:hover:text-white transition-colors w-full sm:w-auto shadow-sm disabled:opacity-50"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -969,9 +984,10 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving general settings:', generalSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-md transition-all w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-md transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {t('settings.saveChanges')}
+                    {savePending ? t('common.saving') : t('settings.saveChanges')}
                   </button>
                 </div>
               </div>
@@ -1234,7 +1250,8 @@ const SettingsPage = () => {
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-2 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto disabled:opacity-50"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -1243,9 +1260,10 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving plans settings:', plansSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {t('settings.saveChanges')}
+                    {savePending ? t('common.saving') : t('settings.saveChanges')}
                   </button>
                 </div>
               </div>
@@ -1388,7 +1406,8 @@ const SettingsPage = () => {
                         notificationSound: 'Mặc định (Ping)',
                       });
                     }}
-                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-white dark:hover:bg-slate-700 hover:text-zinc-900 dark:hover:text-white transition-colors w-full sm:w-auto bg-transparent dark:bg-transparent"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-white dark:hover:bg-slate-700 hover:text-zinc-900 dark:hover:text-white transition-colors w-full sm:w-auto bg-transparent dark:bg-transparent disabled:opacity-50"
                   >
                     {t('settings.restoreDefaults')}
                   </button>
@@ -1397,9 +1416,10 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving notification settings:', notificationSettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {t('settings.saveChanges')}
+                    {savePending ? t('common.saving') : t('settings.saveChanges')}
                   </button>
                 </div>
               </div>
@@ -1582,7 +1602,8 @@ const SettingsPage = () => {
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 mt-4 border-t border-border-light dark:border-slate-700">
                   <button
                     onClick={handleCancel}
-                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg border border-border-light dark:border-slate-600 text-zinc-500 dark:text-slate-300 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors w-full sm:w-auto disabled:opacity-50"
                   >
                     {t('settings.cancel')}
                   </button>
@@ -1591,9 +1612,10 @@ const SettingsPage = () => {
                       handleSave();
                       console.log('Saving security settings:', securitySettings);
                     }}
-                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto"
+                    disabled={savePending}
+                    className="px-6 py-2.5 rounded-lg bg-zinc-900 dark:bg-primary hover:bg-zinc-800 dark:hover:bg-primary/90 text-white font-medium text-sm shadow-sm transition-all w-full sm:w-auto disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {t('settings.saveChanges')}
+                    {savePending ? t('common.saving') : t('settings.saveChanges')}
                   </button>
                 </div>
               </div>

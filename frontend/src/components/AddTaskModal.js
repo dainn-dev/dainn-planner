@@ -4,6 +4,7 @@ import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
 import { tasksAPI } from '../services/api';
 import { formatDate, formatLocalDateIso } from '../utils/dateFormat';
 import { DefaultTemplate } from './lexkit/DefaultTemplate';
+import ModalMutationProgressBar from './ModalMutationProgressBar';
 
 const USER_SETTINGS_STORAGE_KEY = 'user_settings';
 
@@ -81,9 +82,14 @@ const AddTaskModal = ({
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   taskFormRef.current = taskForm;
 
   const getTagLabel = (tag) => (TAG_I18N_KEYS[tag] ? t(`daily.${TAG_I18N_KEYS[tag]}`) : tag);
+
+  useEffect(() => {
+    if (!open) setIsSubmitting(false);
+  }, [open]);
 
   // Initialize form when modal opens or initialTask/goalContext change
   useEffect(() => {
@@ -234,7 +240,7 @@ const AddTaskModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!taskForm.name.trim()) return;
+    if (!taskForm.name.trim() || isSubmitting) return;
 
     const datePayload = taskForm.dueDate
       ? new Date(taskForm.dueDate).toISOString()
@@ -264,6 +270,7 @@ const AddTaskModal = ({
       if (formGoalId) payload.goalId = formGoalId;
     }
 
+    setIsSubmitting(true);
     try {
       if (editingTaskId) {
         // Split: template update (no per-day fields), then instance upsert for selected dueDate.
@@ -326,10 +333,13 @@ const AddTaskModal = ({
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(editingTaskId ? 'Failed to update task:' : 'Failed to create task:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCancel = () => {
+    if (isSubmitting) return;
     setShowNewTagInput(false);
     setNewTagValue('');
     if (onClose) onClose();
@@ -343,9 +353,10 @@ const AddTaskModal = ({
       onClick={handleCancel}
     >
       <div
-        className="w-full max-w-[980px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] min-h-0 animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
+        className="relative w-full max-w-[980px] flex flex-col bg-surface-light dark:bg-slate-800 rounded-2xl shadow-float border border-white/50 dark:border-slate-700 overflow-hidden max-h-[90vh] min-h-0 animate-fadeInScale ring-1 ring-black/5 dark:ring-slate-600/50"
         onClick={(e) => e.stopPropagation()}
       >
+        <ModalMutationProgressBar active={isSubmitting} label={t('common.processing')} />
         <div className="flex items-start justify-between px-8 pt-8 pb-4 bg-surface-light dark:bg-slate-800 shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -357,13 +368,19 @@ const AddTaskModal = ({
           </div>
           <button
             aria-label={t('common.close')}
-            className="group p-2 -mr-2 -mt-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
+            type="button"
+            disabled={isSubmitting}
+            className="group p-2 -mr-2 -mt-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
             onClick={handleCancel}
           >
             <span className="material-symbols-outlined text-gray-400 dark:text-slate-400 group-hover:text-gray-600 dark:group-hover:text-slate-200 text-[24px]">close</span>
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col min-h-0 flex-1"
+          aria-busy={isSubmitting}
+        >
           <div
             className="px-8 py-2 flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col gap-6 custom-scrollbar bg-surface-light dark:bg-slate-800 overscroll-contain touch-pan-y"
             style={{ WebkitOverflowScrolling: 'touch' }}
@@ -375,7 +392,8 @@ const AddTaskModal = ({
               <div className="relative group">
                 <input
                   autoFocus
-                  className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 px-4 py-3 text-base focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-gray-300 dark:hover:border-slate-500"
+                  disabled={isSubmitting}
+                  className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 px-4 py-3 text-base focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-gray-300 dark:hover:border-slate-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder={t('daily.taskNamePlaceholder')}
                   type="text"
                   value={taskForm.name}
@@ -405,9 +423,10 @@ const AddTaskModal = ({
                         <button
                           key={item.id ?? `${item.taskId}-${item.date}`}
                           type="button"
+                          disabled={isSubmitting}
                           title={done ? 'Completed' : 'Not completed'}
                           onClick={() => handleHistoryDateClick(item)}
-                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] ${
+                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] disabled:opacity-50 ${
                             isSelected
                               ? 'border-primary bg-primary text-white dark:border-blue-400 dark:bg-blue-500 dark:text-white'
                               : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:border-primary dark:hover:border-blue-400 hover:bg-primary/5 dark:hover:bg-blue-900/20'
@@ -427,7 +446,9 @@ const AddTaskModal = ({
                   </div>
                 )}
               </div>
-              <div className="rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all overflow-hidden">
+              <div
+                className={`rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all overflow-hidden ${isSubmitting ? 'pointer-events-none opacity-70' : ''}`}
+              >
                 <DefaultTemplate
                   key={editorKey}
                   placeholder={t('daily.descriptionPlaceholder')}
@@ -442,7 +463,8 @@ const AddTaskModal = ({
                 <div className="relative group">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">event</span>
                   <input
-                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
+                    disabled={isSubmitting}
+                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     type="datetime-local"
                     value={taskForm.dueDate}
                     onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -455,7 +477,8 @@ const AddTaskModal = ({
                 <div className="relative group">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">schedule</span>
                   <input
-                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm"
+                    disabled={isSubmitting}
+                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     type="time"
                     value={taskForm.reminderTime}
                     onChange={(e) => setTaskForm(prev => ({ ...prev, reminderTime: e.target.value }))}
@@ -473,7 +496,8 @@ const AddTaskModal = ({
                 <div className="relative group">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">repeat</span>
                   <select
-                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none"
+                    disabled={isSubmitting}
+                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
                     value={taskForm.repeat}
                     onChange={(e) => setTaskForm(prev => ({ ...prev, repeat: e.target.value }))}
                     aria-label={t('daily.repeat')}
@@ -492,7 +516,8 @@ const AddTaskModal = ({
                 <div className="relative group">
                   <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] pointer-events-none ${getPriorityFlagClass(taskForm.priority)}`}>flag</span>
                   <select
-                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none"
+                    disabled={isSubmitting}
+                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
                     value={taskForm.priority}
                     onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
                     aria-label={t('daily.priorityLabel')}
@@ -521,8 +546,9 @@ const AddTaskModal = ({
                       {getTagLabel(tag)}
                       <button
                         type="button"
+                        disabled={isSubmitting}
                         onClick={() => handleTagToggle(tag)}
-                        className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-white/20 rounded-full p-0.5 transition-colors disabled:opacity-50"
                         aria-label={t('daily.removeTag', { tag: getTagLabel(tag) })}
                       >
                         <span className="material-symbols-outlined text-[14px]">close</span>
@@ -536,7 +562,8 @@ const AddTaskModal = ({
                   <button
                     key={tag}
                     type="button"
-                    className={`group flex items-center gap-1.5 px-3.5 py-1.5 border rounded-full transition-all duration-200 shadow-sm ${
+                    disabled={isSubmitting}
+                    className={`group flex items-center gap-1.5 px-3.5 py-1.5 border rounded-full transition-all duration-200 shadow-sm disabled:opacity-50 ${
                       taskForm.tags.includes(tag)
                         ? 'bg-primary border-primary text-white hover:bg-primary-hover'
                         : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-600'
@@ -553,6 +580,7 @@ const AddTaskModal = ({
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
+                      disabled={isSubmitting}
                       value={newTagValue}
                       onChange={(e) => setNewTagValue(e.target.value)}
                       onKeyPress={(e) => {
@@ -567,19 +595,21 @@ const AddTaskModal = ({
                     />
                     <button
                       type="button"
+                      disabled={isSubmitting}
                       onClick={handleAddNewTag}
-                      className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white hover:bg-primary-hover transition-colors"
+                      className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
                       aria-label={t('daily.confirmAddTag')}
                     >
                       <span className="material-symbols-outlined text-[16px]">check</span>
                     </button>
                     <button
                       type="button"
+                      disabled={isSubmitting}
                       onClick={() => {
                         setShowNewTagInput(false);
                         setNewTagValue('');
                       }}
-                      className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-600 transition-all"
+                      className="flex items-center justify-center w-7 h-7 rounded-full text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-600 transition-all disabled:opacity-50"
                       aria-label={t('common.cancel')}
                     >
                       <span className="material-symbols-outlined text-[16px]">close</span>
@@ -588,7 +618,8 @@ const AddTaskModal = ({
                 ) : (
                   <button
                     type="button"
-                    className="group flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
+                    disabled={isSubmitting}
+                    className="group flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:text-gray-900 dark:hover:text-white hover:border-gray-400 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
                     onClick={() => setShowNewTagInput(true)}
                     aria-label={t('daily.addNewTag')}
                   >
@@ -601,16 +632,18 @@ const AddTaskModal = ({
           <div className="px-8 py-6 bg-surface-light dark:bg-slate-800 flex items-center justify-end gap-3 shrink-0">
             <button
               type="button"
-              className="px-5 py-2.5 rounded-lg text-gray-500 dark:text-slate-300 font-medium hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-sm"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-lg text-gray-500 dark:text-slate-300 font-medium hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none"
               onClick={handleCancel}
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-all shadow-minimal active:scale-[0.98] text-sm tracking-wide"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-all shadow-minimal active:scale-[0.98] text-sm tracking-wide disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {editingTaskId ? t('daily.update') : t('daily.createTask')}
+              {isSubmitting ? t('common.processing') : (editingTaskId ? t('daily.update') : t('daily.createTask'))}
             </button>
           </div>
         </form>

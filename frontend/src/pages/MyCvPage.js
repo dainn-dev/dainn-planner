@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
-import { cvMeAPI, userAPI, getAvatarFullUrl } from '../services/api';
+import { cvMeAPI, getAvatarFullUrl } from '../services/api';
 import { toast } from '../utils/toast';
 import { formatDateTime } from '../utils/dateFormat';
 import CvIconPicker from '../components/CvIconPicker';
 import CvSocialPlatformPicker from '../components/CvSocialPlatformPicker';
 import { DefaultTemplate } from '../components/lexkit/DefaultTemplate';
 import CvDdMmDateField from '../components/CvDdMmDateField';
-import { isStoredAdmin } from '../utils/auth';
 import { getCvRootDomain } from '../utils/tenantHost';
 
 const SECTIONS = [
@@ -122,7 +120,6 @@ const MyCvPage = () => {
   const [sectionDraft, setSectionDraft] = useState({});
   const [sectionErrors, setSectionErrors] = useState({});
   const [savingSection, setSavingSection] = useState({});
-  const isAdmin = isStoredAdmin();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadingCvAvatar, setUploadingCvAvatar] = useState(false);
   const [uploadingCvBgImage, setUploadingCvBgImage] = useState(false);

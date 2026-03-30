@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { validateTitle, validateCategory, validateDate } from '../utils/formValidation';
 import { goalsAPI, notificationsAPI, tasksAPI } from '../services/api';
-import { isStoredAdmin } from '../utils/auth';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 import { getGoalTimeCompletionPercent } from '../utils/goalProgress';
 import { USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
 
 const categoryToIcon = {
   'Kỹ năng': 'code',
@@ -92,7 +92,6 @@ const getPlansTrackingMethod = () => {
 const GoalsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const isAdmin = isStoredAdmin();
   const [goals, setGoals] = useState([]);
   const [goalsLoading, setGoalsLoading] = useState(true);
   const [listFilter, setListFilter] = useState(LIST_FILTER_ALL); // all | active | completed
@@ -114,6 +113,8 @@ const GoalsPage = () => {
   const [copyTitle, setCopyTitle] = useState('');
   const [copyTitleError, setCopyTitleError] = useState('');
   const [copyToastVisible, setCopyToastVisible] = useState(false);
+  const [goalFormSubmitting, setGoalFormSubmitting] = useState(false);
+  const [deleteGoalSubmitting, setDeleteGoalSubmitting] = useState(false);
 
   const handleCopyGoal = async (goal, overrideTitle) => {
     if (copyingGoalId) return;
@@ -188,6 +189,7 @@ const GoalsPage = () => {
   };
 
   const handleCloseCopyModal = () => {
+    if (copyingGoalId) return;
     setCopyModalOpen(false);
     setGoalToCopy(null);
     setCopyTitle('');
@@ -252,25 +254,29 @@ const GoalsPage = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (goalToDelete) {
-      try {
-        await goalsAPI.deleteGoal(goalToDelete.id);
-        setGoals(goals.filter(g => g.id !== goalToDelete.id));
-      } catch (error) {
-        console.error('Failed to delete goal:', error);
-      }
+    if (!goalToDelete || deleteGoalSubmitting) return;
+    setDeleteGoalSubmitting(true);
+    try {
+      await goalsAPI.deleteGoal(goalToDelete.id);
+      setGoals((prev) => prev.filter((g) => g.id !== goalToDelete.id));
+    } catch (error) {
+      console.error('Failed to delete goal:', error);
+    } finally {
+      setDeleteGoalSubmitting(false);
       setDeleteModalOpen(false);
       setGoalToDelete(null);
     }
   };
 
   const handleCancelDelete = () => {
+    if (deleteGoalSubmitting) return;
     setDeleteModalOpen(false);
     setGoalToDelete(null);
   };
 
   const handleAddGoal = async (e) => {
     e.preventDefault();
+    if (goalFormSubmitting) return;
 
     const errors = {};
     errors.title = validateTitle(goalForm.title, true, 255);
@@ -285,6 +291,7 @@ const GoalsPage = () => {
       return;
     }
 
+    setGoalFormSubmitting(true);
     try {
       const targetDate = goalForm.dueDate ? new Date(goalForm.dueDate).toISOString() : null;
       const created = await goalsAPI.createGoal({
@@ -294,17 +301,20 @@ const GoalsPage = () => {
         targetDate,
         startDate: null,
       });
-      setGoals([...goals, mapGoalFromApi(created, formatDate)]);
+      setGoals((prev) => [...prev, mapGoalFromApi(created, formatDate)]);
       setGoalForm({ title: '', category: '', dueDate: '', icon: 'flag' });
       setGoalFormErrors({});
       setAddGoalModalOpen(false);
     } catch (error) {
       console.error('Failed to create goal:', error);
       setGoalFormErrors({ submit: error.message || t('goals.createGoalFail') });
+    } finally {
+      setGoalFormSubmitting(false);
     }
   };
 
   const handleCloseAddModal = () => {
+    if (goalFormSubmitting) return;
     setAddGoalModalOpen(false);
     setGoalForm({
       title: '',
@@ -586,13 +596,14 @@ const GoalsPage = () => {
       {addGoalModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-zinc-900/20 backdrop-blur-sm transition-all duration-300"
-          onClick={handleCloseAddModal}
+          onClick={() => { if (!goalFormSubmitting) handleCloseAddModal(); }}
         >
           <div
             className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-zinc-100 dark:border-slate-700"
             onClick={(e) => e.stopPropagation()}
           >
-            <form onSubmit={handleAddGoal}>
+            <ModalMutationProgressBar active={goalFormSubmitting} label={t('common.processing')} />
+            <form onSubmit={handleAddGoal} aria-busy={goalFormSubmitting}>
               <div className="bg-white dark:bg-slate-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -601,7 +612,8 @@ const GoalsPage = () => {
                   </div>
                   <button
                     type="button"
-                    className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
+                    disabled={goalFormSubmitting}
+                    className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 transition-colors focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
                     onClick={handleCloseAddModal}
                     aria-label={t('common.close')}
                   >
@@ -615,7 +627,8 @@ const GoalsPage = () => {
                     </label>
                     <input
                       autoFocus
-                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border ${goalFormErrors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 dark:border-slate-600 focus:border-zinc-400 dark:focus:border-primary'
+                      disabled={goalFormSubmitting}
+                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border disabled:opacity-60 disabled:cursor-not-allowed ${goalFormErrors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-zinc-200 dark:border-slate-600 focus:border-zinc-400 dark:focus:border-primary'
                         }`}
                       placeholder={t('goals.goalNamePlaceholder')}
                       type="text"
@@ -637,7 +650,8 @@ const GoalsPage = () => {
                       <label className="text-xs font-semibold text-zinc-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="add-goal-category">{t('goals.category')}</label>
                       <select
                         id="add-goal-category"
-                        className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all font-medium cursor-pointer ${goalFormErrors.category ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300 dark:hover:border-slate-500'
+                        disabled={goalFormSubmitting}
+                        className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${goalFormErrors.category ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300 dark:hover:border-slate-500'
                           }`}
                         value={goalForm.category || ''}
                         onChange={(e) => {
@@ -665,7 +679,8 @@ const GoalsPage = () => {
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 dark:text-slate-500 text-[18px] pointer-events-none">event</span>
                         <input
                           id="add-goal-due"
-                          className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all cursor-pointer hover:bg-zinc-50 dark:hover:bg-slate-600 ${goalFormErrors.dueDate ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300'
+                          disabled={goalFormSubmitting}
+                          className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-primary/30 focus:border-blue-400 border transition-all cursor-pointer hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-60 disabled:cursor-not-allowed ${goalFormErrors.dueDate ? 'border-red-500' : 'border-zinc-200 dark:border-slate-600 hover:border-zinc-300'
                             }`}
                           type="date"
                           value={goalForm.dueDate}
@@ -692,13 +707,15 @@ const GoalsPage = () => {
               <div className="bg-zinc-50/50 dark:bg-slate-800/50 px-4 py-3 flex flex-row-reverse gap-3 sm:px-6 border-t border-zinc-100 dark:border-slate-700">
                 <button
                   type="submit"
-                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 dark:bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-blue-600 transition-colors touch-manipulation"
+                  disabled={goalFormSubmitting}
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-zinc-900 dark:bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:hover:bg-blue-600 transition-colors touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {t('goals.createGoal')}
+                  {goalFormSubmitting ? t('common.processing') : t('goals.createGoal')}
                 </button>
                 <button
                   type="button"
-                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors touch-manipulation"
+                  disabled={goalFormSubmitting}
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors touch-manipulation disabled:opacity-50"
                   onClick={handleCloseAddModal}
                 >
                   {t('common.cancel')}
@@ -713,13 +730,14 @@ const GoalsPage = () => {
       {copyModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-zinc-900/20 backdrop-blur-sm transition-all duration-300"
-          onClick={handleCloseCopyModal}
+          onClick={() => { if (!copyingGoalId) handleCloseCopyModal(); }}
         >
           <div
             className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-zinc-100 dark:border-slate-700"
             onClick={(e) => e.stopPropagation()}
           >
-            <form onSubmit={handleConfirmCopy}>
+            <ModalMutationProgressBar active={!!copyingGoalId} label={t('common.processing')} />
+            <form onSubmit={handleConfirmCopy} aria-busy={!!copyingGoalId}>
               <div className="bg-white dark:bg-slate-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -732,7 +750,8 @@ const GoalsPage = () => {
                   </div>
                   <button
                     type="button"
-                    className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 transition-colors focus:outline-none"
+                    disabled={!!copyingGoalId}
+                    className="p-2 -mr-2 -mt-2 rounded-full hover:bg-zinc-100 dark:hover:bg-slate-700 transition-colors focus:outline-none disabled:opacity-50"
                     onClick={handleCloseCopyModal}
                     aria-label={t('common.close')}
                   >
@@ -748,7 +767,8 @@ const GoalsPage = () => {
                     </label>
                     <input
                       autoFocus
-                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border ${
+                      disabled={!!copyingGoalId}
+                      className={`w-full rounded-lg bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 px-4 py-2.5 text-sm focus:bg-white dark:focus:bg-slate-700 focus:ring-0 placeholder:text-zinc-400 dark:placeholder:text-slate-500 transition-all font-medium shadow-sm hover:border-zinc-300 dark:hover:border-slate-600 border disabled:opacity-60 disabled:cursor-not-allowed ${
                         copyTitleError
                           ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
                           : 'border-zinc-200 dark:border-slate-600 focus:border-zinc-400 dark:focus:border-primary'
@@ -779,7 +799,8 @@ const GoalsPage = () => {
                 </button>
                 <button
                   type="button"
-                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors touch-manipulation"
+                  disabled={!!copyingGoalId}
+                  className="inline-flex flex-1 justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors touch-manipulation disabled:opacity-50"
                   onClick={handleCloseCopyModal}
                 >
                   {t('common.cancel')}
@@ -800,11 +821,12 @@ const GoalsPage = () => {
         >
           <div
             className="fixed inset-0 bg-zinc-900/20 backdrop-blur-sm transition-opacity"
-            onClick={handleCancelDelete}
+            onClick={() => { if (!deleteGoalSubmitting) handleCancelDelete(); }}
           />
           <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
               <div className="relative transform overflow-hidden rounded-xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-zinc-100 dark:border-slate-700">
+                <ModalMutationProgressBar active={deleteGoalSubmitting} label={t('common.processing')} />
                 <div className="bg-white dark:bg-slate-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/30 sm:mx-0 sm:h-10 sm:w-10">
@@ -829,15 +851,17 @@ const GoalsPage = () => {
                 </div>
                 <div className="bg-zinc-50/50 dark:bg-slate-800/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-zinc-100 dark:border-slate-700 gap-3 sm:gap-0">
                   <button
-                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-red-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors touch-manipulation"
+                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-red-600 px-3 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed"
                     type="button"
+                    disabled={deleteGoalSubmitting}
                     onClick={handleConfirmDelete}
                   >
-                    {t('goals.delete')}
+                    {deleteGoalSubmitting ? t('common.processing') : t('goals.delete')}
                   </button>
                   <button
-                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-3 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 sm:w-auto transition-colors touch-manipulation"
+                    className="inline-flex w-full justify-center items-center min-h-[48px] rounded-xl sm:rounded-lg bg-white dark:bg-slate-700 px-3 py-3 text-sm font-medium text-zinc-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-slate-600 hover:bg-zinc-50 dark:hover:bg-slate-600 sm:w-auto transition-colors touch-manipulation disabled:opacity-50"
                     type="button"
+                    disabled={deleteGoalSubmitting}
                     onClick={handleCancelDelete}
                   >
                     {t('common.cancel')}
