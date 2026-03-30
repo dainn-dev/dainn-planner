@@ -5,6 +5,7 @@ import { tasksAPI } from '../services/api';
 import { formatDate, formatLocalDateIso } from '../utils/dateFormat';
 import { DefaultTemplate } from './lexkit/DefaultTemplate';
 import ModalMutationProgressBar from './ModalMutationProgressBar';
+import { sanitizeTaskHtml } from '../utils/sanitizeTaskHtml';
 
 const USER_SETTINGS_STORAGE_KEY = 'user_settings';
 
@@ -165,7 +166,7 @@ const AddTaskModal = ({
           setSelectedHistoryDate(getItemDateStr(autoItem));
           // Sync the dueDate field to this instance's date
           setTaskForm((prev) => ({ ...prev, dueDate: dateToDatetimeLocal(autoItem.date) }));
-          const html = autoItem.description ?? '';
+          const html = sanitizeTaskHtml(autoItem.description ?? '');
           if (editorMethodsRef.current?.injectHTML) {
             editorMethodsRef.current.injectHTML(html);
           } else {
@@ -181,7 +182,7 @@ const AddTaskModal = ({
 
   const handleHistoryDateClick = useCallback((item) => {
     const dateStr = item.date ? item.date.slice(0, 10) : null;
-    const html = item.description ?? '';
+    const html = sanitizeTaskHtml(item.description ?? '');
     selectedHistoryItemRef.current = item;
     setSelectedHistoryDate(dateStr);
     // Sync the dueDate field so the save targets this instance's date
@@ -205,12 +206,14 @@ const AddTaskModal = ({
     }
     // If a history item is already selected, use its description (not the template description)
     if (selectedHistoryItemRef.current) {
-      methods.injectHTML(selectedHistoryItemRef.current.description ?? '');
+      methods.injectHTML(
+        sanitizeTaskHtml(selectedHistoryItemRef.current.description ?? ''),
+      );
       return;
     }
     const desc = taskFormRef.current?.description;
     if (desc) {
-      methods.injectHTML(desc);
+      methods.injectHTML(sanitizeTaskHtml(desc));
     }
   }, []);
 
@@ -251,10 +254,11 @@ const AddTaskModal = ({
     const recurrence = recurrenceMap[taskForm.repeat] ?? 0;
     const descriptionFromEditor =
       editorMethodsRef.current?.getHTML() ?? taskForm.description ?? '';
+    const descriptionFromEditorSanitized = sanitizeTaskHtml(descriptionFromEditor);
 
     const payload = {
       title: taskForm.name.trim(),
-      description: descriptionFromEditor,
+      description: descriptionFromEditorSanitized,
       date: datePayload,
       priority: priorityInt,
       recurrence,
@@ -301,7 +305,7 @@ const AddTaskModal = ({
         await tasksAPI.upsertTaskInstance({
           taskId: editingTaskId,
           date: instanceDate,
-          description: descriptionFromEditor ?? null,
+          description: descriptionFromEditorSanitized ?? null,
           isCompleted: instanceCompleted,
         });
       } else {

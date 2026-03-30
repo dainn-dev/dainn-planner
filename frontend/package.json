@@ -13,6 +13,7 @@
     "@lexkit/editor": "^0.0.38",
     "i18next": "^25.8.14",
     "i18next-browser-languagedetector": "^8.2.1",
+    "isomorphic-dompurify": "^3.7.1",
     "lexical": "^0.41.0",
     "lucide-react": "^0.577.0",
     "react": "^18.2.0",

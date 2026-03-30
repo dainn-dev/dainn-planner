@@ -224,6 +224,78 @@ public class DailyTaskServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateTaskAsync_ShouldSanitizeTaskDescription()
+    {
+        var userId = Guid.NewGuid().ToString();
+
+        var request = new CreateDailyTaskRequest
+        {
+            Title = "New Task",
+            Description = "<script>alert(1)</script><p>ok</p><a href='javascript:alert(2)'>x</a><img src=x onerror='alert(3)' />",
+            Date = DateTime.Today,
+            Priority = 1
+        };
+
+        var result = await _service.CreateTaskAsync(userId, request);
+
+        result.Success.Should().BeTrue();
+        result.Data!.Description.Should().Contain("<p>ok</p>");
+        result.Data.Description!.ToLowerInvariant().Should().NotContain("<script");
+        result.Data.Description.ToLowerInvariant().Should().NotContain("javascript:");
+        result.Data.Description.ToLowerInvariant().Should().NotContain("onerror");
+    }
+
+    [Fact]
+    public async Task UpsertTaskInstanceAsync_ShouldSanitizeTaskDescription()
+    {
+        var userId = Guid.NewGuid().ToString();
+
+        var task = new DailyTask { Id = Guid.NewGuid(), UserId = userId, Title = "T", Date = DateTime.Today, Priority = 0, Recurrence = 0 };
+        _context.DailyTasks.Add(task);
+        await _context.SaveChangesAsync();
+
+        var payload = new UpsertTaskInstanceRequest
+        {
+            TaskId = task.Id,
+            Date = DateTime.Today,
+            Description = "<script>x</script><p>ok</p><a href='javascript:alert(1)'>bad</a>",
+            IsCompleted = false
+        };
+
+        var result = await _service.UpsertTaskInstanceAsync(userId, payload);
+
+        result.Success.Should().BeTrue();
+
+        var instance = await _context.TaskInstances.FirstAsync(i => i.TaskId == task.Id && i.InstanceDate.Date == DateTime.Today);
+        instance.Description.Should().Contain("<p>ok</p>");
+        instance.Description!.ToLowerInvariant().Should().NotContain("<script");
+        instance.Description.ToLowerInvariant().Should().NotContain("javascript:");
+    }
+
+    [Fact]
+    public async Task UpdateTaskAsync_WhenDescriptionProvided_SanitizesTaskDescription()
+    {
+        var userId = Guid.NewGuid().ToString();
+
+        var task = new DailyTask { Id = Guid.NewGuid(), UserId = userId, Title = "Original", Date = DateTime.Today, Priority = 0, Recurrence = 0 };
+        _context.DailyTasks.Add(task);
+        await _context.SaveChangesAsync();
+
+        var request = new UpdateDailyTaskRequest
+        {
+            Description = "<script>alert(1)</script><p>yo</p><a href='javascript:alert(1)'>bad</a>",
+            Date = DateTime.Today
+        };
+
+        var result = await _service.UpdateTaskAsync(userId, task.Id, request);
+
+        result.Success.Should().BeTrue();
+        result.Data!.Description.Should().Contain("<p>yo</p>");
+        result.Data.Description!.ToLowerInvariant().Should().NotContain("javascript:");
+        result.Data.Description.ToLowerInvariant().Should().NotContain("<script");
+    }
+
+    [Fact]
     public async Task DeleteTaskAsync_ShouldDeleteTask()
     {
         // Arrange

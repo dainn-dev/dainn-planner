@@ -139,4 +139,119 @@ public class CvServiceTests : IDisposable
         json.Should().Contain("site_approved");
         json.Should().NotContain("TaskReminder");
     }
+
+    [Fact]
+    public async Task PutContentAsync_SanitizesExperienceRichText()
+    {
+        var owner = TestHelpers.CreateTestUser();
+        _context.Users.Add(owner);
+        await _context.SaveChangesAsync();
+
+        var svc = CreateService();
+
+        var payload = """
+                      {
+                        "experience": [
+                          {
+                            "id": "e1",
+                            "description": "<script>alert(1)</script><p>ok</p><a href='javascript:alert(2)' onmouseover='alert(3)'>x</a>"
+                          }
+                        ]
+                      }
+                      """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var r = await svc.PutContentAsync(owner.Id, doc.RootElement.Clone());
+
+        r.StatusCode.Should().Be(200);
+
+        var saved = await _context.CvDocuments.SingleAsync(d => d.UserId == owner.Id);
+
+        using var expDoc = JsonDocument.Parse(saved.ExperienceJson ?? "[]");
+        var desc = expDoc.RootElement[0].GetProperty("description").GetString();
+
+        desc.Should().NotContain("<script");
+        desc.Should().NotContain("javascript:");
+        desc.Should().NotContain("onmouseover");
+        desc.Should().Contain("<p>ok</p>");
+    }
+
+    [Fact]
+    public async Task PutContentAsync_SanitizesCertificatesRichText()
+    {
+        var owner = TestHelpers.CreateTestUser();
+        _context.Users.Add(owner);
+        await _context.SaveChangesAsync();
+
+        var svc = CreateService();
+
+        var payload = """
+                      {
+                        "certificates": [
+                          {
+                            "id": "c1",
+                            "description": "<img src=x onerror='alert(1)' /><div>hello</div>"
+                          }
+                        ]
+                      }
+                      """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var r = await svc.PutContentAsync(owner.Id, doc.RootElement.Clone());
+
+        r.StatusCode.Should().Be(200);
+
+        var saved = await _context.CvDocuments.SingleAsync(d => d.UserId == owner.Id);
+
+        using var certDoc = JsonDocument.Parse(saved.CertificatesJson ?? "[]");
+        var desc = certDoc.RootElement[0].GetProperty("description").GetString();
+
+        desc.ToLowerInvariant().Should().NotContain("<img");
+        desc.ToLowerInvariant().Should().NotContain("onerror");
+        desc.Should().Contain("<div>hello</div>");
+    }
+
+    [Fact]
+    public async Task PutContentAsync_SanitizesPortfolioItemDescription()
+    {
+        var owner = TestHelpers.CreateTestUser();
+        _context.Users.Add(owner);
+        await _context.SaveChangesAsync();
+
+        var svc = CreateService();
+
+        var payload = """
+                      {
+                        "portfolio": {
+                          "intro": { "title": "t", "description": "plain" },
+                          "items": [
+                            { "id": "p1", "category": "web", "description": "<script>x</script><span>ok</span><a href='javascript:alert(1)'>bad</a>" }
+                          ]
+                        }
+                      }
+                      """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var r = await svc.PutContentAsync(owner.Id, doc.RootElement.Clone());
+
+        r.StatusCode.Should().Be(200);
+
+        var saved = await _context.CvDocuments.SingleAsync(d => d.UserId == owner.Id);
+
+        using var pDoc = JsonDocument.Parse(saved.PortfolioJson ?? "{}");
+        var items = pDoc.RootElement.GetProperty("items");
+        string? desc = null;
+        foreach (var item in items.EnumerateArray())
+        {
+            if (item.TryGetProperty("id", out var idProp) && idProp.GetString() == "p1")
+            {
+                desc = item.GetProperty("description").GetString();
+                break;
+            }
+        }
+
+        desc.Should().NotContain("<script");
+        desc.Should().NotContain("javascript:");
+        desc.Should().Contain("<span>ok</span>");
+    }
 }

@@ -134,7 +134,7 @@ public class DailyTaskService : IDailyTaskService
                 Id = Guid.NewGuid(),
                 TaskId = request.TaskId,
                 InstanceDate = instanceDateUtc,
-                Description = request.Description,
+                Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description),
                 Status = request.IsCompleted ? TaskInstance.StatusCompleted : TaskInstance.StatusIncomplete,
                 CompletedDate = request.IsCompleted ? completedAtUtc : null,
                 IsOverride = false,
@@ -145,7 +145,7 @@ public class DailyTaskService : IDailyTaskService
         }
         else
         {
-            instance.Description = request.Description;
+            instance.Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description);
             if (request.IsCompleted)
                 instance.MarkCompleted(completedAtUtc);
             else
@@ -267,7 +267,7 @@ public class DailyTaskService : IDailyTaskService
             Id = Guid.NewGuid(),
             TaskId = task.Id,
             InstanceDate = instanceDateUtc,
-            Description = request.Description,
+            Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description),
             Status = TaskInstance.StatusIncomplete,
             IsOverride = false,
             CreatedAt = DateTime.UtcNow
@@ -379,7 +379,7 @@ public class DailyTaskService : IDailyTaskService
                     Id = Guid.NewGuid(),
                     TaskId = task.Id,
                     InstanceDate = instanceDateUtc,
-                    Description = request.Description,
+                    Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description),
                     Status = TaskInstance.StatusIncomplete,
                     IsOverride = false,
                     CreatedAt = DateTime.UtcNow
@@ -388,7 +388,7 @@ public class DailyTaskService : IDailyTaskService
             }
             else
             {
-                instance.Description = request.Description;
+                instance.Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description);
                 instance.UpdatedAt = DateTime.UtcNow;
             }
 

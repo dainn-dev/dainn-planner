@@ -234,14 +234,14 @@ public class CvService : ICvService
         {
             UserId = userId,
             ProfileJson = pick("profile") ?? baseRow.Profile.GetRawText(),
-            PortfolioJson = pick("portfolio") ?? baseRow.Portfolio.GetRawText(),
+            PortfolioJson = CvRichTextSanitizer.SanitizePortfolioJson(pick("portfolio") ?? baseRow.Portfolio.GetRawText()),
             SkillsJson = pick("skills") ?? baseRow.Skills.GetRawText(),
             TestimonialsJson = pick("testimonials") ?? baseRow.Testimonials.GetRawText(),
             FactsJson = pick("facts") ?? baseRow.Facts.GetRawText(),
             ServicesJson = pick("services") ?? baseRow.Services.GetRawText(),
             EducationJson = pick("education") ?? baseRow.Education.GetRawText(),
-            ExperienceJson = pick("experience") ?? baseRow.Experience.GetRawText(),
-            CertificatesJson = pick("certificates") ?? baseRow.Certificates.GetRawText(),
+            ExperienceJson = CvRichTextSanitizer.SanitizeExperienceJson(pick("experience") ?? baseRow.Experience.GetRawText()),
+            CertificatesJson = CvRichTextSanitizer.SanitizeCertificatesJson(pick("certificates") ?? baseRow.Certificates.GetRawText()),
             UpdatedAt = DateTime.UtcNow,
         };
 

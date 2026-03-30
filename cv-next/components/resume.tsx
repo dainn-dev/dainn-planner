@@ -55,7 +55,7 @@ export default function Resume() {
                   {exp.location ? <p className="italic text-sm text-gray-500 mb-2">{exp.location}</p> : null}
                   <div
                     className="text-gray-600 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: exp.description || "" }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(exp.description || "") }}
                   />
                 </div>
               ))
