@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { notFound } from "next/navigation"
 import { parseTenantSlugFromHost } from "@/lib/tenant"
 import { cvApi, cvUrl } from "@/lib/api/cv"
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 interface PortfolioItem {
   id: string
@@ -199,7 +200,7 @@ export default function PortfolioDetails({ params }: { params: Promise<{ id: str
                 <h2 className="text-xl font-bold text-[#173b6c] mb-4">{item.title}</h2>
                 <div 
                   className="text-gray-600 prose prose-sm max-w-none" 
-                  dangerouslySetInnerHTML={{ __html: item.description || '' }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(item.description) }}
                 />
               </div>
             </div>

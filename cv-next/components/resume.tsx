@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 export default function Resume() {
   const apiCv = useCvContentFromApi()
@@ -101,7 +102,7 @@ export default function Resume() {
                   {cert.date ? <p className="italic text-sm text-gray-500 mb-1">{cert.date}</p> : null}
                   <div
                     className="text-gray-600 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: cert.description || "" }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(cert.description) }}
                   />
                 </div>
               ))

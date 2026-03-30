@@ -48,6 +48,8 @@ public class GoogleIntegrationController : ControllerBase
         var url = BuildGoogleAuthorizeUrl(out var error);
         if (error != null)
             return Unauthorized();
+        if (string.IsNullOrEmpty(url))
+            return StatusCode(500, new { error = "authorize_url_unavailable" });
         return Ok(new AuthorizeUrlResponse { Url = url });
     }
 
@@ -61,6 +63,8 @@ public class GoogleIntegrationController : ControllerBase
         var url = BuildGoogleAuthorizeUrl(out var error);
         if (error != null)
             return Unauthorized();
+        if (string.IsNullOrEmpty(url))
+            return StatusCode(500, "Authorize URL could not be built.");
         return Redirect(url);
     }
 

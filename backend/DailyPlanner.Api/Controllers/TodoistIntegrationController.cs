@@ -47,6 +47,8 @@ public class TodoistIntegrationController : ControllerBase
         var url = BuildTodoistAuthorizeUrl(out var error);
         if (error != null)
             return Unauthorized();
+        if (string.IsNullOrEmpty(url))
+            return StatusCode(500, new { error = "authorize_url_unavailable" });
         return Ok(new AuthorizeUrlResponse { Url = url });
     }
 

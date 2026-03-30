@@ -158,6 +158,7 @@ const GoalDetailPage = () => {
 
   const handleDeleteGoalTask = async (taskId) => {
     if (!window.confirm(t('goals.confirmDeleteTask'))) return;
+    if (togglingTaskId === taskId) return;
     if (deletingTaskId) return;
     setDeletingTaskId(taskId);
     try {
@@ -839,7 +840,7 @@ const GoalDetailPage = () => {
                                 {tasksForMilestone.map((task) => (
                                   <li
                                     key={task.id}
-                                    draggable
+                                    draggable={togglingTaskId !== task.id && deletingTaskId !== task.id}
                                     onDragStart={(e) => {
                                       e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, sourceMilestoneId: milestoneIdStr }));
                                       e.dataTransfer.effectAllowed = 'move';
@@ -878,6 +879,7 @@ const GoalDetailPage = () => {
                                         <button
                                           type="button"
                                           onClick={() => {
+                                            if (togglingTaskId === task.id || deletingTaskId === task.id) return;
                                             setAddTaskGoalContext({
                                               goalMilestoneId: milestone.id,
                                               goalId: goal.id,
@@ -885,7 +887,8 @@ const GoalDetailPage = () => {
                                             setAddTaskInitialTask(task);
                                             setAddTaskModalOpen(true);
                                           }}
-                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                                          disabled={togglingTaskId === task.id || deletingTaskId === task.id}
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 rounded-lg transition-colors touch-manipulation flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
                                           aria-label={t('goals.editTaskAria', { title: task.title })}
                                           title={t('goals.edit')}
                                         >
@@ -894,8 +897,8 @@ const GoalDetailPage = () => {
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteGoalTask(task.id)}
-                                          disabled={!!deletingTaskId}
-                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center disabled:opacity-50"
+                                          disabled={!!deletingTaskId || togglingTaskId === task.id}
+                                          className="min-h-[40px] min-w-[40px] p-2 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 active:bg-red-100 dark:active:bg-red-900/50 rounded-lg transition-colors touch-manipulation flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
                                           aria-label={t('goals.deleteTaskAria', { title: task.title })}
                                           title={t('common.delete')}
                                         >

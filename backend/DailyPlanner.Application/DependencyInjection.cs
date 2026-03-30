@@ -1,4 +1,4 @@
-using DailyPlanner.Application.Mappings;
+using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using FluentValidation;
@@ -10,7 +10,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddAutoMapper(typeof(MappingProfile));
+        services.AddAutoMapper(cfg => cfg.AddMaps(Assembly.GetExecutingAssembly()));
         services.AddFluentValidationAutoValidation();
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         return services;

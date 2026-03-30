@@ -4,6 +4,7 @@ using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using AutoMapper;
 using System.Linq.Expressions;
 
@@ -26,7 +27,7 @@ public static class TestHelpers
         var configuration = new MapperConfiguration(cfg =>
         {
             cfg.AddProfile<MappingProfile>();
-        });
+        }, NullLoggerFactory.Instance);
         return configuration.CreateMapper();
     }
 

@@ -339,6 +339,7 @@ const DailyPage = () => {
 
   const handleDeleteTask = async (id) => {
     if (typeof id === 'string' && id.startsWith('todoist:')) return;
+    if (togglingTaskId === id) return;
     try {
       await tasksAPI.deleteTask(id);
       await loadData();
@@ -349,6 +350,7 @@ const DailyPage = () => {
 
   const handleOpenEditTask = (task) => {
     if (task.source === 'todoist') return;
+    if (togglingTaskId === task.id) return;
     setAddTaskGoalContext({
       goalMilestoneId: task.goalMilestoneId ?? null,
       goalId: task.goalId ?? null
@@ -761,7 +763,8 @@ const DailyPage = () => {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors p-1 rounded"
+                              disabled={togglingTaskId === task.id}
+                              className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors p-1 rounded disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed"
                               onClick={() => handleOpenEditTask(task)}
                               aria-label={t('daily.editTaskLabel', { title: task.text || task.title })}
                             >
@@ -769,7 +772,8 @@ const DailyPage = () => {
                             </button>
                             <button
                               type="button"
-                              className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded"
+                              disabled={togglingTaskId === task.id}
+                              className="invisible group-hover:visible text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed"
                               onClick={() => handleDeleteTask(task.id)}
                               aria-label={t('daily.deleteTaskLabel', { title: task.text || task.title })}
                             >

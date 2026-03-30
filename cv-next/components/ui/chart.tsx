@@ -76,6 +76,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  // CSS generated from chart theme tokens only — not API/user HTML; no XSS surface.
   return (
     <style
       dangerouslySetInnerHTML={{

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
+import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
 import { eventsAPI, googleEventsAPI, integrationsAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import { toast } from '../utils/toast';
 import { formatDateWithWeekday, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
@@ -147,6 +148,7 @@ const CalendarPage = () => {
   const [eventsOpen, setEventsOpen] = useState(false);
 
   const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [eventFormSubmitting, setEventFormSubmitting] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null); // CalendarEventDto
   const [eventForm, setEventForm] = useState({
     title: '',
@@ -216,6 +218,7 @@ const CalendarPage = () => {
   }, [eventRange.startStr, eventRange.endStr]);
 
   const openCreateModal = () => {
+    if (eventFormSubmitting) return;
     const baseDateStr = formatLocalDateIso(new Date(currentDate));
     const start = new Date(currentDate);
     start.setHours(9, 0, 0, 0);
@@ -238,6 +241,7 @@ const CalendarPage = () => {
   };
 
   const openEditModal = (evt) => {
+    if (eventFormSubmitting) return;
     const isGoogle = evt?.source === 'Google';
     const allDay = !!evt?.isAllDay;
     setEditingEvent(evt);
@@ -260,8 +264,82 @@ const CalendarPage = () => {
   };
 
   const closeModal = () => {
+    if (eventFormSubmitting) return;
     setEventModalOpen(false);
     setEditingEvent(null);
+  };
+
+  const handleCalendarEventSubmit = async (e) => {
+    e.preventDefault();
+    if (eventFormSubmitting) return;
+
+    if (!eventForm.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+
+    let startIso = null;
+    let endIso = null;
+
+    if (eventForm.isAllDay) {
+      startIso = utcDateInputToIso(eventForm.startDate);
+      endIso = utcDateInputToIso(eventForm.endDate);
+    } else {
+      const sDate = eventForm.startDateTime ? new Date(eventForm.startDateTime) : null;
+      const sValid = sDate && !Number.isNaN(sDate.getTime());
+
+      const eDate = eventForm.endDateTime ? new Date(eventForm.endDateTime) : null;
+      const eValid = eDate && !Number.isNaN(eDate.getTime());
+
+      const endFallback = sValid ? new Date(sDate.getTime() + 60 * 60 * 1000) : null;
+
+      startIso = sValid ? sDate.toISOString() : null;
+      const endDateToUse = eValid ? eDate : endFallback;
+      endIso = endDateToUse ? endDateToUse.toISOString() : null;
+    }
+
+    if (!startIso || !endIso) {
+      toast.error('Please provide start and end dates');
+      return;
+    }
+
+    if (new Date(endIso).getTime() < new Date(startIso).getTime()) {
+      toast.error('End time must be after start time');
+      return;
+    }
+
+    const payload = {
+      title: eventForm.title.trim(),
+      description: eventForm.description || undefined,
+      startDate: startIso,
+      endDate: endIso,
+      location: eventForm.location || undefined,
+      color: eventForm.color || undefined,
+      isAllDay: !!eventForm.isAllDay,
+    };
+
+    setEventFormSubmitting(true);
+    try {
+      if (!editingEvent) {
+        await eventsAPI.createEvent(payload);
+      } else {
+        const isGoogle = editingEvent?.source === 'Google';
+        if (isGoogle) {
+          await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
+        } else {
+          await eventsAPI.updateEvent(editingEvent.id, payload);
+        }
+      }
+
+      await loadEvents();
+      setEmbedReloadKey((k) => k + 1);
+      setEventModalOpen(false);
+      setEditingEvent(null);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save event');
+    } finally {
+      setEventFormSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -436,7 +514,8 @@ const CalendarPage = () => {
                           <div className="flex items-center gap-2 mt-3">
                             <button
                               type="button"
-                              className="p-1 rounded-md text-gray-500 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                              disabled={eventFormSubmitting}
+                              className="p-1 rounded-md text-gray-500 hover:text-primary dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                               onClick={() => openEditModal(evt)}
                               aria-label={t('common.edit')}
                               title={t('common.edit')}
@@ -445,7 +524,8 @@ const CalendarPage = () => {
                             </button>
                             <button
                               type="button"
-                              className="p-1 rounded-md text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                              disabled={eventFormSubmitting}
+                              className="p-1 rounded-md text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                               onClick={async () => {
                                 try {
                                   if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
@@ -483,12 +563,13 @@ const CalendarPage = () => {
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
           role="dialog"
           aria-modal="true"
-          onClick={closeModal}
+          onClick={() => { if (!eventFormSubmitting) closeModal(); }}
         >
           <div
-            className="w-full max-w-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden"
+            className="relative w-full max-w-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
+            <ModalMutationProgressBar active={eventFormSubmitting} label={t('common.saving')} />
             <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-slate-700">
               <div>
                 <h2 className="text-base font-semibold text-[#111418] dark:text-slate-100 flex items-center gap-2 flex-wrap">
@@ -507,7 +588,8 @@ const CalendarPage = () => {
               </div>
               <button
                 type="button"
-                className="text-gray-500 hover:text-[#111418] dark:hover:text-white"
+                disabled={eventFormSubmitting}
+                className="text-gray-500 hover:text-[#111418] dark:hover:text-white disabled:opacity-50 disabled:pointer-events-none"
                 aria-label="Close"
                 onClick={closeModal}
               >
@@ -516,82 +598,18 @@ const CalendarPage = () => {
             </div>
 
             <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                try {
-                  if (!eventForm.title.trim()) {
-                    toast.error('Title is required');
-                    return;
-                  }
-
-                  let startIso = null;
-                  let endIso = null;
-
-                  if (eventForm.isAllDay) {
-                    startIso = utcDateInputToIso(eventForm.startDate);
-                    endIso = utcDateInputToIso(eventForm.endDate);
-                  } else {
-                    const sDate = eventForm.startDateTime ? new Date(eventForm.startDateTime) : null;
-                    const sValid = sDate && !Number.isNaN(sDate.getTime());
-
-                    const eDate = eventForm.endDateTime ? new Date(eventForm.endDateTime) : null;
-                    const eValid = eDate && !Number.isNaN(eDate.getTime());
-
-                    // If end is empty, default to +1 hour for better UX.
-                    const endFallback = sValid ? new Date(sDate.getTime() + 60 * 60 * 1000) : null;
-
-                    startIso = sValid ? sDate.toISOString() : null;
-                    const endDateToUse = eValid ? eDate : endFallback;
-                    endIso = endDateToUse ? endDateToUse.toISOString() : null;
-                  }
-
-                  if (!startIso || !endIso) {
-                    toast.error('Please provide start and end dates');
-                    return;
-                  }
-
-                  if (new Date(endIso).getTime() < new Date(startIso).getTime()) {
-                    toast.error('End time must be after start time');
-                    return;
-                  }
-
-                  const payload = {
-                    title: eventForm.title.trim(),
-                    description: eventForm.description || undefined,
-                    startDate: startIso,
-                    endDate: endIso,
-                    location: eventForm.location || undefined,
-                    color: eventForm.color || undefined,
-                    isAllDay: !!eventForm.isAllDay,
-                  };
-
-                  if (!editingEvent) {
-                    await eventsAPI.createEvent(payload);
-                  } else {
-                    const isGoogle = editingEvent?.source === 'Google';
-                    if (isGoogle) {
-                      await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
-                    } else {
-                      await eventsAPI.updateEvent(editingEvent.id, payload);
-                    }
-                  }
-
-                  await loadEvents();
-                  setEmbedReloadKey((k) => k + 1);
-                  closeModal();
-                } catch (err) {
-                  toast.error(err?.message || 'Failed to save event');
-                }
-              }}
+              onSubmit={handleCalendarEventSubmit}
+              aria-busy={eventFormSubmitting}
               className="px-5 py-4"
             >
-              <div className="flex flex-col gap-4">
+              <div className={`flex flex-col gap-4 ${eventFormSubmitting ? 'pointer-events-none opacity-70' : ''}`}>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     {t('calendar.titleLabel')}
                   </label>
                   <input
-                    className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:border-primary"
+                    disabled={eventFormSubmitting}
+                    className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                     value={eventForm.title}
                     placeholder={t('calendar.titlePlaceholder')}
                     onChange={(e) => setEventForm((p) => ({ ...p, title: e.target.value }))}
@@ -604,6 +622,7 @@ const CalendarPage = () => {
                   </label>
                   <input
                     type="checkbox"
+                    disabled={eventFormSubmitting}
                     checked={eventForm.isAllDay}
                     onChange={(e) => {
                       const next = e.target.checked;
@@ -632,7 +651,8 @@ const CalendarPage = () => {
                       <div className="flex-1">
                         <input
                           type="date"
-                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                          disabled={eventFormSubmitting}
+                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                           value={eventForm.startDate}
                           onChange={(e) => setEventForm((p) => ({ ...p, startDate: e.target.value, endDate: p.endDate || e.target.value }))}
                         />
@@ -640,7 +660,8 @@ const CalendarPage = () => {
                       <div className="flex-1">
                         <input
                           type="date"
-                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                          disabled={eventFormSubmitting}
+                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                           value={eventForm.endDate}
                           onChange={(e) => setEventForm((p) => ({ ...p, endDate: e.target.value }))}
                         />
@@ -651,7 +672,8 @@ const CalendarPage = () => {
                       <div className="flex-1">
                         <input
                           type="datetime-local"
-                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                          disabled={eventFormSubmitting}
+                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                           value={eventForm.startDateTime}
                           onChange={(e) => setEventForm((p) => ({ ...p, startDateTime: e.target.value }))}
                         />
@@ -659,7 +681,8 @@ const CalendarPage = () => {
                       <div className="flex-1">
                         <input
                           type="datetime-local"
-                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                          disabled={eventFormSubmitting}
+                          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                           value={eventForm.endDateTime}
                           onChange={(e) => setEventForm((p) => ({ ...p, endDateTime: e.target.value }))}
                         />
@@ -674,7 +697,8 @@ const CalendarPage = () => {
                   </label>
                   <textarea
                     rows={3}
-                    className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:border-primary"
+                    disabled={eventFormSubmitting}
+                    className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                     value={eventForm.description}
                     onChange={(e) => setEventForm((p) => ({ ...p, description: e.target.value }))}
                   />
@@ -686,7 +710,8 @@ const CalendarPage = () => {
                       {t('calendar.locationOptional')}
                     </label>
                     <input
-                      className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      disabled={eventFormSubmitting}
+                      className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
                       value={eventForm.location}
                       placeholder={t('calendar.locationLabel') ?? ''}
                       onChange={(e) => setEventForm((p) => ({ ...p, location: e.target.value }))}
@@ -702,8 +727,9 @@ const CalendarPage = () => {
                         <button
                           key={color}
                           type="button"
+                          disabled={eventFormSubmitting}
                           onClick={() => setEventForm((p) => ({ ...p, color: p.color === color ? '' : color }))}
-                          className="size-7 rounded-full border-2 transition-all shrink-0 hover:scale-110 active:scale-95"
+                          className="size-7 rounded-full border-2 transition-all shrink-0 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
                           style={{
                             backgroundColor: color,
                             borderColor: eventForm.color === color ? '#fff' : color,
@@ -716,22 +742,26 @@ const CalendarPage = () => {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors text-sm"
-                    onClick={closeModal}
-                  >
-                    {t('common.cancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-semibold"
-                  >
-                    {editingEvent ? (t('calendar.update') ?? t('daily.update') ?? 'Update') : t('calendar.submitAdd')}
-                  </button>
-                </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={eventFormSubmitting}
+                  className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none"
+                  onClick={closeModal}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={eventFormSubmitting}
+                  className="px-5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-semibold disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {eventFormSubmitting
+                    ? t('common.saving')
+                    : (editingEvent ? (t('calendar.update') ?? t('daily.update') ?? 'Update') : t('calendar.submitAdd'))}
+                </button>
               </div>
             </form>
           </div>
