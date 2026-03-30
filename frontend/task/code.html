@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-container": "#84ebda",
+              "on-primary": "#ffffff",
+              "error-container": "#ffdad6",
+              "primary": "#00478d",
+              "surface-container-low": "#f2f4f7",
+              "surface": "#f7f9fc",
+              "on-secondary-fixed": "#021f29",
+              "surface-bright": "#f7f9fc",
+              "inverse-surface": "#2d3133",
+              "inverse-primary": "#a9c7ff",
+              "surface-container-highest": "#e0e3e6",
+              "on-surface": "#191c1e",
+              "surface-container-high": "#e6e8eb",
+              "secondary-container": "#cbe7f5",
+              "on-primary-fixed-variant": "#00468c",
+              "tertiary": "#005148",
+              "surface-container-lowest": "#ffffff",
+              "on-primary-container": "#c8daff",
+              "surface-container": "#eceef1",
+              "tertiary-fixed-dim": "#70d8c8",
+              "outline": "#727783",
+              "on-secondary": "#ffffff",
+              "error": "#ba1a1a",
+              "on-secondary-container": "#4e6874",
+              "on-tertiary": "#ffffff",
+              "on-secondary-fixed-variant": "#304a55",
+              "secondary-fixed": "#cbe7f5",
+              "primary-fixed": "#d6e3ff",
+              "on-error-container": "#93000a",
+              "surface-variant": "#e0e3e6",
+              "on-tertiary-fixed": "#00201c",
+              "tertiary-fixed": "#8df5e4",
+              "on-primary-fixed": "#001b3d",
+              "on-surface-variant": "#424752",
+              "on-error": "#ffffff",
+              "on-tertiary-fixed-variant": "#005048",
+              "primary-container": "#005eb8",
+              "inverse-on-surface": "#eff1f4",
+              "tertiary-container": "#006b60",
+              "background": "#f7f9fc",
+              "surface-dim": "#d8dadd",
+              "secondary-fixed-dim": "#afcbd8",
+              "outline-variant": "#c2c6d4",
+              "surface-tint": "#005db6",
+              "primary-fixed-dim": "#a9c7ff",
+              "on-background": "#191c1e",
+              "secondary": "#48626e"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fc; color: #191c1e; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .headline-font { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar (Authority Source: JSON) -->
+<aside class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-[#f2f4f7] dark:bg-slate-900 font-['Inter'] text-sm font-medium p-4 space-y-2 z-50">
+<div class="flex items-center space-x-3 px-2 py-6 mb-4">
+<div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">time_auto</span>
+</div>
+<div>
+<h1 class="font-['Manrope'] text-lg font-bold text-[#00478d] dark:text-blue-400">Chronographer</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Premium Scheduling</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-[#00478d] dark:hover:text-blue-300 hover:bg-white/60 dark:hover:bg-slate-800/60 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Active Tab: Calendar -->
+<a class="flex items-center space-x-3 px-4 py-3 bg-white dark:bg-slate-800 text-[#00478d] dark:text-blue-300 shadow-sm rounded-xl" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span class="font-bold">Calendar</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-[#00478d] dark:hover:text-blue-300 hover:bg-white/60 dark:hover:bg-slate-800/60 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">event_available</span>
+<span>Booking</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-[#00478d] dark:hover:text-blue-300 hover:bg-white/60 dark:hover:bg-slate-800/60 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+<span>Events</span>
+</a>
+</nav>
+<div class="pt-4 mt-4 border-t border-slate-200/50">
+<button class="w-full bg-primary py-3 rounded-full text-white font-semibold flex items-center justify-center space-x-2 shadow-lg shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
+<span class="material-symbols-outlined">add</span>
+<span>Create Event</span>
+</button>
+</div>
+<div class="mt-auto space-y-1">
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-white/60 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Help</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-white/60 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Sign Out</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 flex flex-col min-h-screen bg-surface">
+<!-- TopAppBar (Authority Source: JSON) -->
+<header class="flex items-center justify-between px-8 w-full h-16 sticky top-0 z-40 bg-[#f7f9fc] dark:bg-slate-950">
+<div class="flex items-center space-x-4">
+<div class="relative flex items-center bg-[#f2f4f7] dark:bg-slate-900 rounded-full px-4 py-1.5 w-64 md:w-96 group transition-all focus-within:ring-2 focus-within:ring-primary/20">
+<span class="material-symbols-outlined text-slate-400 text-lg mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder-slate-400" placeholder="Search events..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 ring-2 ring-white shadow-sm cursor-pointer transition-transform active:scale-95">
+<img alt="User profile" class="h-full w-full object-cover" data-alt="Close up portrait of a professional man with clean-shaven face and confident expression, soft corporate studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4mYHWf4SftlyBvVz291SeL1tBQ5c3r_3doukPgBjfcJk9aTEzQn68DK41zHtceWkwV9zkhnd_8ccKXDBjRtIu2CO0__DLBrlk1Is-EN9BoZV6IVOBZbq0cxX8k8vGMrm-8dyGBCghjr5Cd3clx6zyQ40_1Z7Gyz1cUKcpNynfjR8IRiL6M2xKlZoUqKD2kfFO5XANs9cbHWIEKbfQK4cgVtnuI4k0wGK4ZoJpJCiZe5s56jqDPzUhxBZ-8AYMhGJUP35ArkHVUmo"/>
+</div>
+</div>
+</header>
+<!-- Calendar Container -->
+<section class="flex-1 px-8 py-6 space-y-8">
+<!-- Calendar Header -->
+<div class="flex items-end justify-between">
+<div>
+<h2 class="font-['Manrope'] text-4xl font-extrabold text-on-surface tracking-tighter">October 2024</h2>
+<p class="text-on-surface-variant font-medium mt-1">You have 12 meetings scheduled this week.</p>
+</div>
+<div class="flex items-center bg-surface-container-low rounded-full p-1.5 space-x-1 shadow-sm">
+<button class="p-2 hover:bg-white rounded-full transition-all text-primary">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="px-6 py-1.5 bg-white text-primary font-bold rounded-full text-sm shadow-sm">Today</button>
+<button class="p-2 hover:bg-white rounded-full transition-all text-primary">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Day Selector (Horizontal) -->
+<div class="grid grid-cols-5 gap-4">
+<div class="bg-surface-container-low p-6 rounded-2xl flex flex-col items-center justify-center space-y-1 transition-all hover:bg-surface-container hover:scale-[1.02] cursor-pointer">
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Mon</span>
+<span class="text-2xl font-bold font-['Manrope']">14</span>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl flex flex-col items-center justify-center space-y-1 transition-all hover:bg-surface-container hover:scale-[1.02] cursor-pointer">
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Tue</span>
+<span class="text-2xl font-bold font-['Manrope']">15</span>
+</div>
+<!-- Current Day Highlight -->
+<div class="bg-primary text-white p-6 rounded-2xl flex flex-col items-center justify-center space-y-1 shadow-xl shadow-primary/20 ring-4 ring-primary/10 scale-105 z-10">
+<span class="text-xs font-bold uppercase tracking-widest opacity-80">Wed</span>
+<span class="text-3xl font-extrabold font-['Manrope']">16</span>
+<div class="w-1.5 h-1.5 bg-white rounded-full mt-1"></div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl flex flex-col items-center justify-center space-y-1 transition-all hover:bg-surface-container hover:scale-[1.02] cursor-pointer">
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Thu</span>
+<span class="text-2xl font-bold font-['Manrope']">17</span>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl flex flex-col items-center justify-center space-y-1 transition-all hover:bg-surface-container hover:scale-[1.02] cursor-pointer">
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fri</span>
+<span class="text-2xl font-bold font-['Manrope']">18</span>
+</div>
+</div>
+<!-- Vertical Timeline Grid -->
+<div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm">
+<div class="space-y-0 relative">
+<!-- Timeline background hours -->
+<div class="absolute left-0 top-0 bottom-0 w-20 border-r border-slate-100 flex flex-col">
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">08 AM</div>
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">09 AM</div>
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">10 AM</div>
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">11 AM</div>
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">12 PM</div>
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">01 PM</div>
+<div class="h-32 flex items-start pt-2 pr-4 justify-end text-xs font-bold text-on-surface-variant">02 PM</div>
+</div>
+<!-- Events Area -->
+<div class="ml-20 space-y-2 py-2">
+<!-- Event 1: Strategic Review -->
+<div class="h-28 ml-4 mr-8 rounded-2xl bg-secondary-container p-5 flex flex-col justify-between border-l-4 border-secondary transition-transform hover:-translate-y-1 cursor-pointer">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-bold text-secondary font-['Manrope']">Strategic Review</h3>
+<p class="text-xs text-on-secondary-container font-medium">08:15 AM - 09:15 AM • Boardroom A</p>
+</div>
+<span class="material-symbols-outlined text-secondary opacity-40">more_vert</span>
+</div>
+<div class="flex -space-x-2">
+<img class="h-6 w-6 rounded-full border-2 border-white object-cover" data-alt="Profile of a professional woman with a friendly smile, daylight lighting, clean minimalist background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpefllHDe-zAJjsi-zi7eBR2yvwEHlakSHVUieAunbtTApPZl9zOygKVbqXXr9MBVyDosQMeZeLc5nuAOf9SqA3vSn9HsxRbLi87cHMQWpPsZ4yXLQ9xFMCtVU3Pwb58GW1H-vWUewqdUO_lHAhGPJJqUhSvqh-2o0ZBu0twKc4S-37JEbfVrKdjAJjCJ8zDjro46yM8qERQrXotaBtz_XMMQeeBYVRVBXDots8RHSlSC37UK3dMJ7WZwvXH07XfyTEfby3Dwtx8A"/>
+<img class="h-6 w-6 rounded-full border-2 border-white object-cover" data-alt="Portrait of a male executive in a neutral grey shirt, soft focus office interior background, high quality photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCscrhQCzmu3RI_81XoKKmKmSdPJwbmjzUwFER3KGGOAZaRHwHMTTUSABfwTCowpP1pN2Hap-3oX7M8zCGCSVK4FGS0lBROYBDD4AMuecWYGNeWMu95QpPKN_oyIFMRfSGb8_izgw3WmBB8rhhHW79sSqlht7kuPRWeNnW6go-RTsQk1sM20abujwlDepMwgZaGXfgaAaqsj-pOb06FG-6Dy7NXPGeXiLnEKTe3PulmwWgupps_LvmPEF-DAALS4aO73TGE2FwsrCw"/>
+<div class="h-6 w-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">+3</div>
+</div>
+</div>
+<!-- Spacer for 10am slot -->
+<div class="h-32 flex items-center justify-center border-b border-slate-50 border-dashed">
+<button class="opacity-0 hover:opacity-100 bg-surface-container-high px-4 py-2 rounded-full text-xs font-bold text-primary transition-opacity">+ Add Entry</button>
+</div>
+<!-- Event 2: Deep Focus: Architecture (PRIORITY) -->
+<div class="h-60 ml-4 mr-8 rounded-3xl bg-tertiary/5 p-6 flex flex-col justify-between relative overflow-hidden group border-l-4 border-tertiary transition-all hover:shadow-lg hover:shadow-tertiary/5">
+<div class="absolute top-0 right-0 p-4">
+<div class="px-3 py-1 bg-tertiary text-white text-[10px] font-black uppercase tracking-widest rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">priority_high</span>
+<span>Priority</span>
+</div>
+</div>
+<div>
+<h3 class="font-bold text-tertiary text-xl font-['Manrope'] tracking-tight">Deep Focus: Architecture</h3>
+<p class="text-sm text-on-tertiary-fixed-variant mt-1">10:30 AM - 12:30 PM • Home Office</p>
+<div class="mt-4 flex items-center space-x-4">
+<div class="flex items-center space-x-1.5 text-xs text-on-tertiary-fixed-variant bg-tertiary/10 px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm">lock</span>
+<span>Do Not Disturb</span>
+</div>
+<div class="flex items-center space-x-1.5 text-xs text-on-tertiary-fixed-variant bg-tertiary/10 px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm">label</span>
+<span>Project Alpha</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between mt-4">
+<p class="text-xs text-on-tertiary-fixed-variant max-w-md italic opacity-70">"Finalize structural drafts for the Q4 expansion and review client feedback on initial wireframes."</p>
+<button class="bg-tertiary text-white p-2 rounded-xl transition-transform active:scale-90">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+<!-- Event 3: Coffee Sync -->
+<div class="h-20 ml-4 mr-8 rounded-2xl bg-surface-container-high p-4 flex items-center justify-between border-l-4 border-slate-400 transition-all hover:bg-surface-container-highest cursor-pointer">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-slate-500">coffee</span>
+</div>
+<div>
+<h3 class="font-bold text-on-surface text-sm font-['Manrope']">Coffee Sync</h3>
+<p class="text-[11px] text-on-surface-variant">01:00 PM - 01:30 PM • Blue Bottle Coffee</p>
+</div>
+</div>
+<div class="flex items-center space-x-2">
+<img class="h-8 w-8 rounded-full object-cover" data-alt="Portrait of a young woman with elegant glasses and professional attire, soft natural light, minimalist background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvGl-NrtosBIyxhXG3M5EHxhA2B43ez0q9XSb2uHF8XXfR5W0fReMYEIGVcXrVwrtqLdlZ-5efkjFXOaDtiHnA0_vWUOanSU5sXWxIohdwv9iv5nMNR_bgdNAkPpc-Kj3YIPXfHeFJaPuqkRQqE6gadQugW51WSXboDfl1ZUmZO6uYHRlw8hbi0fkjVgLuRk5dIMt1J-MBFIaDfj7PSUtcQ2grUnxqKnweQXJnsYYCFVJuaAavvZrPosIXIkLdLPT3FmcMtz1xfL0"/>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Bottom Section (Secondary Insights) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 pb-8">
+<div class="bg-[#e0eafc] p-6 rounded-3xl flex flex-col justify-between min-h-[160px]">
+<span class="material-symbols-outlined text-primary text-3xl">bolt</span>
+<div>
+<h4 class="font-bold text-primary font-['Manrope']">Productivity Peak</h4>
+<p class="text-xs text-primary/70 mt-1">Your most active window is between 09 AM and 11 AM.</p>
+</div>
+</div>
+<div class="bg-surface-container-high p-6 rounded-3xl flex items-center space-x-4 min-h-[160px]">
+<div class="flex-1">
+<h4 class="font-bold text-on-surface font-['Manrope']">Task Completion</h4>
+<div class="mt-3 w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full w-[65%] rounded-full"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mt-2">65% of daily goals met</p>
+</div>
+</div>
+<div class="bg-primary text-white p-6 rounded-3xl flex flex-col justify-center items-center text-center space-y-2 min-h-[160px] shadow-xl shadow-primary/10">
+<p class="text-xs font-bold uppercase tracking-widest opacity-80">Next Reminder</p>
+<h4 class="font-extrabold text-lg font-['Manrope']">Client Presentation</h4>
+<p class="text-xs opacity-80 italic">Starting in 45 minutes</p>
+<button class="mt-2 text-[10px] font-black uppercase tracking-tighter bg-white/20 px-4 py-1.5 rounded-full hover:bg-white/30 transition-colors">Snooze</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button (Specific Condition: Home/Dashboard Calendar) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl shadow-primary/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300">add</span>
+</button>
+</body></html>
