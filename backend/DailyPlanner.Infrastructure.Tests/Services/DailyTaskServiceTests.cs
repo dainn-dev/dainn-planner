@@ -357,6 +357,50 @@ public class DailyTaskServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ToggleTaskAsync_ShouldToggleGoalTask_OnScheduledDate_WithoutCreatingTodayInstance()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var goalId = Guid.NewGuid();
+        var scheduledUtc = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(-10).Date, DateTimeKind.Utc);
+        var todayUtc = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
+        var goal = new LongTermGoal { Id = goalId, UserId = userId, Title = "Goal", Status = "Active" };
+        var task = new DailyTask
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Title = "Milestone task",
+            Date = scheduledUtc,
+            GoalId = goalId,
+            IsCompleted = false
+        };
+        _context.LongTermGoals.Add(goal);
+        _context.DailyTasks.Add(task);
+        _context.TaskInstances.Add(new TaskInstance
+        {
+            Id = Guid.NewGuid(),
+            TaskId = task.Id,
+            InstanceDate = scheduledUtc,
+            Status = TaskInstance.StatusIncomplete,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ToggleTaskAsync(userId, task.Id);
+
+        result.Success.Should().BeTrue();
+        result.Data!.IsCompleted.Should().BeTrue();
+
+        var instances = await _context.TaskInstances.Where(i => i.TaskId == task.Id).ToListAsync();
+        instances.Should().HaveCount(1);
+        instances[0].InstanceDate.Date.Should().Be(scheduledUtc.Date);
+        instances[0].Status.Should().Be(TaskInstance.StatusCompleted);
+
+        var strayToday = instances.Any(i => i.InstanceDate.Date == todayUtc.Date && i.InstanceDate.Date != scheduledUtc.Date);
+        strayToday.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task RecurringTaskRenewalService_ShouldBeIdempotent()
     {
         // Arrange

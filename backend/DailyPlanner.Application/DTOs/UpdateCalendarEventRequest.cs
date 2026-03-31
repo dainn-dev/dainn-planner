@@ -9,5 +9,11 @@ public class UpdateCalendarEventRequest
     public string? Location { get; set; }
     public string? Color { get; set; }
     public bool? IsAllDay { get; set; }
+    public string? EventType { get; set; }
+    public string? Icon { get; set; }
+    public bool? DndEnabled { get; set; }
+    public int? ReminderMinutes { get; set; }
+    public List<string>? Attendees { get; set; }
+    public List<string>? ProjectTags { get; set; }
 }
 

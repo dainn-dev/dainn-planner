@@ -53,6 +53,12 @@ public class GoogleCalendarEventsController : ControllerBase
         existing.Location = request.Location;
         existing.Color = request.Color;
         existing.IsAllDay = request.IsAllDay;
+        existing.EventType = request.EventType;
+        existing.Icon = request.Icon;
+        existing.DndEnabled = request.DndEnabled;
+        existing.ReminderMinutes = request.ReminderMinutes;
+        existing.AttendeesJson = request.Attendees != null ? System.Text.Json.JsonSerializer.Serialize(request.Attendees, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)) : null;
+        existing.ProjectTagsJson = request.ProjectTags != null ? System.Text.Json.JsonSerializer.Serialize(request.ProjectTags, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)) : null;
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(ct);

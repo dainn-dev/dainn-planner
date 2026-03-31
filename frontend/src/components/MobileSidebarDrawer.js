@@ -122,13 +122,14 @@ const MobileSidebarDrawer = ({ isOpen, onClose }) => {
             <span className={`material-symbols-outlined ${isActive('/daily') ? 'fill-1' : ''}`}>today</span>
             <span>{t('sidebar.dailyPlan')}</span>
           </Link>
-          <Link to="/goals" className={linkClass('/goals')} onClick={onClose}>
-            <span className="material-symbols-outlined">target</span>
-            <span>{t('sidebar.goals')}</span>
-          </Link>
           <Link to="/calendar" className={linkClass('/calendar')} onClick={onClose}>
             <span className="material-symbols-outlined">calendar_month</span>
             <span>{t('sidebar.calendar')}</span>
+          </Link>
+          
+          <Link to="/goals" className={linkClass('/goals')} onClick={onClose}>
+            <span className="material-symbols-outlined">target</span>
+            <span>{t('sidebar.goals')}</span>
           </Link>
           {showMyCvInMenu && (
             <Link to="/cv" className={linkClass('/cv')} onClick={onClose}>

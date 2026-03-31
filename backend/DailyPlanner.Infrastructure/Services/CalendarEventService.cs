@@ -4,6 +4,7 @@ using DailyPlanner.Application.Interfaces;
 using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace DailyPlanner.Infrastructure.Services;
 
@@ -15,12 +16,41 @@ public class CalendarEventService : ICalendarEventService
 
     private static DateTime ToUtc(DateTime d) => DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
     private static DateTime ToUtcFull(DateTime d) => d.Kind == DateTimeKind.Utc ? d : DateTime.SpecifyKind(d, DateTimeKind.Utc);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public CalendarEventService(ApplicationDbContext context, IMapper mapper, IGoogleCalendarService googleCalendarService)
     {
         _context = context;
         _mapper = mapper;
         _googleCalendarService = googleCalendarService;
+    }
+
+    private static string? ToJsonOrNull(List<string>? items)
+    {
+        if (items == null) return null;
+        var cleaned = items.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).Distinct().ToList();
+        return cleaned.Count == 0 ? null : JsonSerializer.Serialize(cleaned, JsonOptions);
+    }
+
+    private static List<string>? FromJsonList(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json, JsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private CalendarEventDto MapWithUiFields(CalendarEvent entity)
+    {
+        var dto = _mapper.Map<CalendarEventDto>(entity);
+        dto.Attendees = FromJsonList(entity.AttendeesJson);
+        dto.ProjectTags = FromJsonList(entity.ProjectTagsJson);
+        return dto;
     }
 
     public async Task<ApiResponse<List<CalendarEventDto>>> GetEventsAsync(string userId, DateTime? startDate, DateTime? endDate)
@@ -38,7 +68,7 @@ public class CalendarEventService : ICalendarEventService
             query = query.Where(e => e.EndDate <= endUtc);
 
         var events = await query.OrderBy(e => e.StartDate).ToListAsync();
-        var dtos = _mapper.Map<List<CalendarEventDto>>(events);
+        var dtos = events.Select(MapWithUiFields).ToList();
 
         var googleEvents = await _googleCalendarService.GetEventsAsync(userId, startUtc, endUtc);
         if (googleEvents.Count > 0)
@@ -71,7 +101,7 @@ public class CalendarEventService : ICalendarEventService
         return new ApiResponse<CalendarEventDto>
         {
             Success = true,
-            Data = _mapper.Map<CalendarEventDto>(eventEntity)
+            Data = MapWithUiFields(eventEntity)
         };
     }
 
@@ -87,7 +117,13 @@ public class CalendarEventService : ICalendarEventService
             EndDate = ToUtcFull(request.EndDate),
             Location = request.Location,
             Color = request.Color,
-            IsAllDay = request.IsAllDay
+            IsAllDay = request.IsAllDay,
+            EventType = request.EventType,
+            Icon = request.Icon,
+            DndEnabled = request.DndEnabled,
+            ReminderMinutes = request.ReminderMinutes,
+            AttendeesJson = ToJsonOrNull(request.Attendees),
+            ProjectTagsJson = ToJsonOrNull(request.ProjectTags),
         };
 
         _context.CalendarEvents.Add(eventEntity);
@@ -104,7 +140,7 @@ public class CalendarEventService : ICalendarEventService
         {
             Success = true,
             Message = "Event created successfully",
-            Data = _mapper.Map<CalendarEventDto>(eventEntity)
+            Data = MapWithUiFields(eventEntity)
         };
     }
 
@@ -136,6 +172,18 @@ public class CalendarEventService : ICalendarEventService
             eventEntity.Color = request.Color;
         if (request.IsAllDay.HasValue)
             eventEntity.IsAllDay = request.IsAllDay.Value;
+        if (request.EventType != null)
+            eventEntity.EventType = request.EventType;
+        if (request.Icon != null)
+            eventEntity.Icon = request.Icon;
+        if (request.DndEnabled.HasValue)
+            eventEntity.DndEnabled = request.DndEnabled.Value;
+        if (request.ReminderMinutes.HasValue)
+            eventEntity.ReminderMinutes = request.ReminderMinutes.Value;
+        if (request.Attendees != null)
+            eventEntity.AttendeesJson = ToJsonOrNull(request.Attendees);
+        if (request.ProjectTags != null)
+            eventEntity.ProjectTagsJson = ToJsonOrNull(request.ProjectTags);
 
         eventEntity.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -151,7 +199,7 @@ public class CalendarEventService : ICalendarEventService
         {
             Success = true,
             Message = "Event updated successfully",
-            Data = _mapper.Map<CalendarEventDto>(eventEntity)
+            Data = MapWithUiFields(eventEntity)
         };
     }
 

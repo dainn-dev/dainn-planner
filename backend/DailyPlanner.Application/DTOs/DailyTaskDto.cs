@@ -11,6 +11,8 @@ public class DailyTaskDto
     public int Priority { get; set; }
     public int Recurrence { get; set; }
     public string? ReminderTime { get; set; }
+    public string? StartTime { get; set; }
+    public string? EndTime { get; set; }
     public List<string> Tags { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public Guid? GoalMilestoneId { get; set; }

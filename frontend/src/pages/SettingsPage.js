@@ -393,6 +393,8 @@ const SettingsPage = () => {
           darkMode: settings.darkMode,
           publicProfile: settings.publicProfile,
           weekStartDay: settings.weekStartDay,
+          workHourStart: generalSettings.workHourStart ?? 8,
+          workHourEnd: generalSettings.workHourEnd ?? 23,
         }));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
@@ -966,6 +968,40 @@ const SettingsPage = () => {
                           {t('settings.timeFormat24')}
                         </button>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-zinc-100 dark:border-slate-700" />
+
+                {/* Working Hours Section */}
+                <div className="flex flex-col gap-8">
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">{t('settings.workingHours')}</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium text-zinc-900 dark:text-white">{t('settings.workingHoursLabel')}</span>
+                      <span className="text-sm text-secondary dark:text-slate-400">{t('settings.workingHoursDesc')}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <select
+                        className="appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer shadow-sm"
+                        value={generalSettings.workHourStart ?? 8}
+                        onChange={(e) => handleGeneralSettingChange('workHourStart', Number(e.target.value))}
+                      >
+                        {Array.from({ length: 23 }, (_, i) => (
+                          <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-secondary dark:text-slate-400">{t('settings.workingHoursTo')}</span>
+                      <select
+                        className="appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer shadow-sm"
+                        value={generalSettings.workHourEnd ?? 23}
+                        onChange={(e) => handleGeneralSettingChange('workHourEnd', Number(e.target.value))}
+                      >
+                        {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                          <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>

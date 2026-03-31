@@ -48,7 +48,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="bg-[#f6f7f8] text-[#111418] font-display overflow-x-hidden">
+    <div className="bg-background-light text-[#111418] font-display overflow-x-hidden">
       <PublicHeader />
       <main className="flex flex-col items-center">
         <Hero onGetStarted={handleGetStarted} onViewDemo={handleViewDemo} />

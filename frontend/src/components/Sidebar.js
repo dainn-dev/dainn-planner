@@ -49,8 +49,8 @@ const Sidebar = ({ className = '' }) => {
   const baseMenuItems = [
     { path: '/dashboard', labelKey: 'sidebar.userDashboard', icon: 'bar_chart', fillWhenActive: false },
     { path: '/daily', labelKey: 'sidebar.dailyPlan', icon: 'today', fillWhenActive: true },
-    { path: '/goals', labelKey: 'sidebar.goals', icon: 'target', fillWhenActive: false },
     { path: '/calendar', labelKey: 'sidebar.calendar', icon: 'calendar_month', fillWhenActive: false },
+    { path: '/goals', labelKey: 'sidebar.goals', icon: 'target', fillWhenActive: false },
     ...(showMyCvInMenu ? [{ path: '/cv', labelKey: 'sidebar.myCv', icon: 'badge', fillWhenActive: false }] : []),
     { path: '/settings', labelKey: 'sidebar.settings', icon: 'settings', fillWhenActive: false },
   ];

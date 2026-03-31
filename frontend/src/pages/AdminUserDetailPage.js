@@ -316,7 +316,7 @@ const AdminUserDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display min-h-screen flex flex-row">
+      <div className="bg-background-light dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display min-h-screen flex flex-row">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header title={t('admin.userDetails')} icon="person" notifications={[]} onNotificationsChange={() => {}} onToggleSidebar={() => {}} />
@@ -338,7 +338,7 @@ const AdminUserDetailPage = () => {
   const lastActiveDisplay = user.lastActive && user.lastActive.trim() ? user.lastActive : null;
 
   return (
-    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden h-screen overflow-hidden flex flex-row">
+    <div className="bg-background-light dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden h-screen overflow-hidden flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 

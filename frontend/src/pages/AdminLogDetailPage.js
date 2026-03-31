@@ -239,7 +239,7 @@ const AdminLogDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="bg-[#f6f7f8] dark:bg-[#101922] min-h-screen flex items-center justify-center">
+      <div className="bg-background-light dark:bg-[#101922] min-h-screen flex items-center justify-center">
         <p className="text-slate-500 dark:text-slate-400">Đang tải...</p>
       </div>
     );
@@ -247,7 +247,7 @@ const AdminLogDetailPage = () => {
 
   if (error && (!logFile || !logContent)) {
     return (
-      <div className="bg-[#f6f7f8] dark:bg-[#101922] min-h-screen flex flex-col items-center justify-center gap-4 p-6">
+      <div className="bg-background-light dark:bg-[#101922] min-h-screen flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-red-600 dark:text-red-400">{error}</p>
         <button
           onClick={() => navigate('/admin/logs')}
@@ -264,12 +264,12 @@ const AdminLogDetailPage = () => {
   }
 
   return (
-    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-slate-900 dark:text-slate-100 font-display overflow-hidden h-screen flex flex-row">
+    <div className="bg-background-light dark:bg-[#101922] text-slate-900 dark:text-slate-100 font-display overflow-hidden h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#f6f7f8] dark:bg-[#101922] relative overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background-light dark:bg-[#101922] relative overflow-hidden">
         {/* Header Section */}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 z-10">
           <div className="max-w-[1600px] mx-auto px-6 py-4">

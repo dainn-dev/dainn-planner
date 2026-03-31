@@ -93,7 +93,7 @@ const AdminDashboardPage = () => {
   }, []);
 
   return (
-    <div className="bg-[#f6f7f8] dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
+    <div className="bg-background-light dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display overflow-x-hidden min-h-screen flex flex-row">
       {/* Sidebar - Desktop */}
       <Sidebar />
 

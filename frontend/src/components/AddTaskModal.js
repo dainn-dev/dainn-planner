@@ -76,7 +76,9 @@ const AddTaskModal = ({
     reminderTime: '',
     repeat: 'none',
     priority: 'low', // 'low' | 'medium' | 'high'
-    tags: []
+    tags: [],
+    startTime: '',
+    endTime: '',
   });
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
@@ -111,7 +113,9 @@ const AddTaskModal = ({
         reminderTime: initialTask.reminderTime ?? '',
         repeat: recurrenceToOption[initialTask.recurrence] ?? 'none',
         priority: priorityNumToOption[initialTask.priority] ?? 'low',
-        tags: initialTask.tags ? [...initialTask.tags] : []
+        tags: initialTask.tags ? [...initialTask.tags] : [],
+        startTime: initialTask.startTime ?? '',
+        endTime: initialTask.endTime ?? '',
       });
     } else {
       // Create new task (optionally prefilled from milestone)
@@ -131,7 +135,9 @@ const AddTaskModal = ({
         reminderTime: initialTask?.reminderTime ?? '',
         repeat: 'none',
         priority: 'low',
-        tags: initialTask?.tags ? [...initialTask.tags] : []
+        tags: initialTask?.tags ? [...initialTask.tags] : [],
+        startTime: initialTask?.startTime ?? '',
+        endTime: initialTask?.endTime ?? '',
       });
     }
     setShowNewTagInput(false);
@@ -264,6 +270,8 @@ const AddTaskModal = ({
       recurrence,
       reminderTime: taskForm.reminderTime || undefined,
       tags: taskForm.tags,
+      startTime: taskForm.startTime || undefined,
+      endTime: taskForm.endTime || undefined,
     };
 
     if (editingTaskId) {
@@ -284,6 +292,8 @@ const AddTaskModal = ({
           recurrence: payload.recurrence,
           reminderTime: payload.reminderTime,
           tags: payload.tags,
+          startTime: payload.startTime,
+          endTime: payload.endTime,
         };
 
         // Keep goal associations consistent with existing update behavior.
@@ -487,6 +497,37 @@ const AddTaskModal = ({
                     value={taskForm.reminderTime}
                     onChange={(e) => setTaskForm(prev => ({ ...prev, reminderTime: e.target.value }))}
                     aria-label={t('daily.reminderTime')}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('daily.startTime')}</label>
+                <div className="relative group">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">play_circle</span>
+                  <input
+                    disabled={isSubmitting}
+                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    type="time"
+                    value={taskForm.startTime}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, startTime: e.target.value }))}
+                    aria-label={t('daily.startTime')}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{t('daily.endTime')}</label>
+                <div className="relative group">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-slate-500 text-[18px] pointer-events-none">stop_circle</span>
+                  <input
+                    disabled={isSubmitting}
+                    className="form-input w-full rounded-lg border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 dark:focus:border-primary focus:bg-white dark:focus:bg-slate-700 focus:ring-0 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    type="time"
+                    value={taskForm.endTime}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, endTime: e.target.value }))}
+                    aria-label={t('daily.endTime')}
                   />
                 </div>
               </div>

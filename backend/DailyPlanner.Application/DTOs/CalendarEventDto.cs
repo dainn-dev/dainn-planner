@@ -10,6 +10,12 @@ public class CalendarEventDto
     public string? Location { get; set; }
     public string? Color { get; set; }
     public bool IsAllDay { get; set; }
+    public string? EventType { get; set; }
+    public string? Icon { get; set; }
+    public bool? DndEnabled { get; set; }
+    public int? ReminderMinutes { get; set; }
+    public List<string>? Attendees { get; set; }
+    public List<string>? ProjectTags { get; set; }
     public DateTime CreatedAt { get; set; }
     /// <summary>Optional source identifier, e.g. "Google" for Google Calendar events.</summary>
     public string? Source { get; set; }

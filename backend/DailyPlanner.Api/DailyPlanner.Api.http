@@ -223,9 +223,12 @@ Content-Type: application/json
 {
   "title": "Team Meeting",
   "description": "Weekly team sync meeting",
-  "startTime": "2024-12-15T09:00:00Z",
-  "endTime": "2024-12-15T10:00:00Z",
+  "startDate": "2024-12-15T09:00:00Z",
+  "endDate": "2024-12-15T10:00:00Z",
   "location": "Conference Room A",
+  "color": "blue",
+  "eventType": "meeting",
+  "attendees": ["james@example.com", "sarah@example.com"],
   "isAllDay": false
 }
 
@@ -239,9 +242,12 @@ Content-Type: application/json
 {
   "title": "Team Meeting - Updated",
   "description": "Weekly team sync meeting with project updates",
-  "startTime": "2024-12-15T09:30:00Z",
-  "endTime": "2024-12-15T10:30:00Z",
+  "startDate": "2024-12-15T09:30:00Z",
+  "endDate": "2024-12-15T10:30:00Z",
   "location": "Conference Room B",
+  "color": "teal",
+  "eventType": "meeting",
+  "attendees": ["james@example.com", "sarah@example.com", "mike@example.com"],
   "isAllDay": false
 }
 

@@ -20,6 +20,8 @@ export const INITIAL_GENERAL_SETTINGS = {
   dateFormat: '31/12/2024 (DD/MM/YYYY)',
   timeFormat: '24',
   weekStartDay: 'monday',
+  workHourStart: 8,
+  workHourEnd: 23,
 };
 
 export const INITIAL_PLANS_SETTINGS = {

@@ -86,6 +86,8 @@ public class DailyTaskService : IDailyTaskService
             Priority = x.task.Priority,
             Recurrence = x.task.Recurrence,
             ReminderTime = x.task.ReminderTime,
+            StartTime = x.task.StartTime,
+            EndTime = x.task.EndTime,
             Tags = x.task.Tags != null ? x.task.Tags.ToList() : new List<string>(),
             CreatedAt = x.task.CreatedAt,
             GoalMilestoneId = x.task.GoalMilestoneId,
@@ -255,6 +257,8 @@ public class DailyTaskService : IDailyTaskService
             Priority = request.Priority,
             Recurrence = request.Recurrence,
             ReminderTime = request.ReminderTime,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
             Tags = request.Tags != null ? request.Tags.ToArray() : null,
             IsCompleted = false,
             GoalMilestoneId = request.GoalMilestoneId,
@@ -293,6 +297,8 @@ public class DailyTaskService : IDailyTaskService
                 Priority = task.Priority,
                 Recurrence = task.Recurrence,
                 ReminderTime = task.ReminderTime,
+                StartTime = task.StartTime,
+                EndTime = task.EndTime,
                 Tags = task.Tags != null ? task.Tags.ToList() : new List<string>(),
                 CreatedAt = task.CreatedAt,
                 GoalMilestoneId = task.GoalMilestoneId,
@@ -321,6 +327,10 @@ public class DailyTaskService : IDailyTaskService
             task.Recurrence = request.Recurrence.Value;
         if (request.ReminderTime != null)
             task.ReminderTime = request.ReminderTime;
+        if (request.StartTime != null)
+            task.StartTime = request.StartTime;
+        if (request.EndTime != null)
+            task.EndTime = request.EndTime;
         if (request.Tags != null)
             task.Tags = request.Tags.ToArray();
 
@@ -413,6 +423,8 @@ public class DailyTaskService : IDailyTaskService
                 Priority = task.Priority,
                 Recurrence = task.Recurrence,
                 ReminderTime = task.ReminderTime,
+                StartTime = task.StartTime,
+                EndTime = task.EndTime,
                 Tags = task.Tags != null ? task.Tags.ToList() : new List<string>(),
                 CreatedAt = task.CreatedAt,
                 GoalMilestoneId = task.GoalMilestoneId,
@@ -455,11 +467,15 @@ public class DailyTaskService : IDailyTaskService
             };
         }
 
-        // Toggle completion state for today's instance.
-        var todayUtc = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+        // Toggle the appropriate instance: for tasks tied to a goal, use the task's scheduled date
+        // (same row the goal UI shows). Using "today" would create a second instance on another day
+        // and leave the original instance incomplete — duplicate titles in the goal task list.
+        var instanceDateUtc = task.GoalId.HasValue || task.GoalMilestoneId.HasValue
+            ? ToUtc(task.Date)
+            : DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
 
         var instance = await _context.TaskInstances
-            .FirstOrDefaultAsync(i => i.TaskId == task.Id && i.InstanceDate.Date == todayUtc.Date);
+            .FirstOrDefaultAsync(i => i.TaskId == task.Id && i.InstanceDate.Date == instanceDateUtc.Date);
 
         if (instance == null)
         {
@@ -467,7 +483,7 @@ public class DailyTaskService : IDailyTaskService
             {
                 Id = Guid.NewGuid(),
                 TaskId = task.Id,
-                InstanceDate = todayUtc,
+                InstanceDate = instanceDateUtc,
                 Description = null,
                 Status = TaskInstance.StatusIncomplete,
                 IsOverride = false,
@@ -505,6 +521,8 @@ public class DailyTaskService : IDailyTaskService
                 Priority = task.Priority,
                 Recurrence = task.Recurrence,
                 ReminderTime = task.ReminderTime,
+                StartTime = task.StartTime,
+                EndTime = task.EndTime,
                 Tags = task.Tags != null ? task.Tags.ToList() : new List<string>(),
                 CreatedAt = task.CreatedAt,
                 GoalMilestoneId = task.GoalMilestoneId,

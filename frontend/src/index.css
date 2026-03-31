@@ -4,10 +4,10 @@
 
 @layer utilities {
   .input-minimal {
-    @apply w-full h-11 px-4 bg-white border border-border-light rounded-xl text-text-main placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 transition-all duration-200 shadow-sm;
+    @apply w-full h-11 px-4 bg-white border border-border-light rounded-xl text-text-main placeholder:text-text-muted/80 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 shadow-sm;
   }
   .btn-primary {
-    @apply flex w-full items-center justify-center h-11 px-6 rounded-xl bg-primary-dark hover:bg-primary-hover text-white font-semibold tracking-wide transition-all duration-200 shadow-sm hover:shadow-lg hover:shadow-gray-200 transform active:scale-[0.99];
+    @apply flex w-full items-center justify-center h-11 px-6 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold tracking-wide transition-all duration-200 shadow-sm hover:shadow-lg hover:shadow-primary/10 transform active:scale-[0.99];
   }
   .btn-social {
     @apply flex w-full items-center justify-center h-11 px-6 rounded-xl border border-border-light bg-white text-text-main font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200;

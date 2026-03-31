@@ -23,7 +23,7 @@ const LoginHeader = () => {
             {t('header.features')}
           </a>
         </div>
-        <Link to="/register" className="flex items-center justify-center rounded-xl h-9 px-5 bg-primary-dark text-white text-sm font-semibold hover:bg-primary-hover shadow-sm transition-all">
+        <Link to="/register" className="flex items-center justify-center rounded-xl h-9 px-5 bg-primary text-white text-sm font-semibold hover:bg-primary-hover shadow-sm transition-all">
           <span>{t('header.registerFree')}</span>
         </Link>
       </div>
