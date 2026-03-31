@@ -253,7 +253,7 @@ const AddTaskModal = ({
 
     const datePayload = taskForm.dueDate
       ? new Date(taskForm.dueDate).toISOString()
-      : new Date().toISOString();
+      : (initialTask?.date ? new Date(initialTask.date).toISOString() : new Date().toISOString());
     const priorityMap = { low: 0, medium: 1, high: 2 };
     const priorityInt = priorityMap[taskForm.priority] ?? 0;
     const recurrenceMap = { none: 0, daily: 1, weekly: 2, monthly: 3 };
@@ -290,6 +290,7 @@ const AddTaskModal = ({
           title: payload.title,
           priority: payload.priority,
           recurrence: payload.recurrence,
+          date: datePayload,
           reminderTime: payload.reminderTime,
           tags: payload.tags,
           startTime: payload.startTime,
@@ -307,7 +308,7 @@ const AddTaskModal = ({
         const selectedItem = selectedHistoryItemRef.current;
         const instanceDate = selectedItem?.date
           ? new Date(selectedItem.date).toISOString()
-          : datePayload;
+          : (initialTask?.date ? new Date(initialTask.date).toISOString() : datePayload);
         const instanceCompleted = selectedItem
           ? (selectedItem.isCompleted ?? false)
           : (initialTask?.isCompleted ?? initialTask?.completed ?? false);

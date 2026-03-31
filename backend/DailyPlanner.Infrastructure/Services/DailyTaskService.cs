@@ -325,6 +325,8 @@ public class DailyTaskService : IDailyTaskService
             task.Priority = request.Priority.Value;
         if (request.Recurrence.HasValue)
             task.Recurrence = request.Recurrence.Value;
+        if (request.Date.HasValue)
+            task.Date = ToUtcFull(request.Date.Value);
         if (request.ReminderTime != null)
             task.ReminderTime = request.ReminderTime;
         if (request.StartTime != null)
