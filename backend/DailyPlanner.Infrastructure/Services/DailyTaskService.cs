@@ -28,8 +28,10 @@ public class DailyTaskService : IDailyTaskService
         var baseQuery =
             from inst in _context.TaskInstances.AsNoTracking()
             join task in _context.DailyTasks.AsNoTracking() on inst.TaskId equals task.Id
+            join goal in _context.LongTermGoals.AsNoTracking() on task.GoalId equals goal.Id into goalJoin
+            from goal in goalJoin.DefaultIfEmpty()
             where task.UserId == userId
-            select new { task, inst };
+            select new { task, inst, goalName = goal != null ? goal.Title : null };
 
         if (date.HasValue)
         {
@@ -91,7 +93,8 @@ public class DailyTaskService : IDailyTaskService
             Tags = x.task.Tags != null ? x.task.Tags.ToList() : new List<string>(),
             CreatedAt = x.task.CreatedAt,
             GoalMilestoneId = x.task.GoalMilestoneId,
-            GoalId = x.task.GoalId
+            GoalId = x.task.GoalId,
+            GoalName = x.goalName
         }).ToList();
 
         return new ApiResponse<PagedTasksResult>
@@ -169,6 +172,21 @@ public class DailyTaskService : IDailyTaskService
                 CompletedDate = instance.CompletedDate.HasValue ? ToUtcFull(instance.CompletedDate.Value) : null
             }
         };
+    }
+
+    public async Task<ApiResponse<object>> DeleteTaskInstanceAsync(string userId, Guid instanceId)
+    {
+        var instance = await _context.TaskInstances
+            .Include(i => i.Task)
+            .FirstOrDefaultAsync(i => i.Id == instanceId && i.Task.UserId == userId);
+
+        if (instance == null)
+            return new ApiResponse<object> { Success = false, Message = "Task instance not found" };
+
+        _context.TaskInstances.Remove(instance);
+        await _context.SaveChangesAsync();
+
+        return new ApiResponse<object> { Success = true, Message = "Task instance deleted successfully" };
     }
 
     public async Task<ApiResponse<TaskHistoryResult>> GetTaskHistoryAsync(string userId, Guid taskId)

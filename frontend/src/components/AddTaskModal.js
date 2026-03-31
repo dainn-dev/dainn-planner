@@ -327,6 +327,18 @@ const AddTaskModal = ({
           ? (selectedItem.isCompleted ?? false)
           : (initialTask?.isCompleted ?? initialTask?.completed ?? false);
 
+        // For non-recurring tasks: if the date changed, delete the old instance first
+        // so there's no stale instance left on the previous date.
+        const isNoRepeat = recurrence === 0;
+        const oldInstanceDate = selectedItem?.date ?? initialTask?.date;
+        const oldInstanceId = selectedItem?.id;
+        const dateChanged = oldInstanceDate &&
+          new Date(oldInstanceDate).toISOString().slice(0, 10) !== new Date(instanceDate).toISOString().slice(0, 10);
+
+        if (isNoRepeat && dateChanged && oldInstanceId) {
+          await tasksAPI.deleteTaskInstance(oldInstanceId);
+        }
+
         await tasksAPI.upsertTaskInstance({
           taskId: editingTaskId,
           date: instanceDate,

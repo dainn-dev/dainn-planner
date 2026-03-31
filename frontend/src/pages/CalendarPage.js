@@ -11,6 +11,12 @@ import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+/** Format task display title, prepending goal name when available. */
+const taskDisplayTitle = (task) => {
+  const base = task?.title || task?.text || '';
+  return task?.goalName ? `[${task.goalName}] - ${base}` : base;
+};
+
 const TASK_SCHEDULE_KEY = 'task_schedule';
 
 /** Read persisted schedule map: { [taskId]: { startTime, endTime } } */
@@ -919,7 +925,7 @@ const CalendarPage = () => {
                                 setSelectedTask((prev) => prev?.id === task.id ? null : task);
                                 setTaskDeleteConfirm(false);
                               }}
-                              title={task.title || task.text}
+                              title={taskDisplayTitle(task)}
                               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.97] shrink-0 cursor-grab active:cursor-grabbing ${
                                 isActive
                                   ? 'ring-2 ring-primary ring-offset-1'
@@ -941,7 +947,7 @@ const CalendarPage = () => {
                                 : 'bg-gray-400'
                               }`} />
                               <span className={`max-w-[140px] truncate ${isCompleted ? 'line-through' : ''}`}>
-                                {task.title || task.text}
+                                {taskDisplayTitle(task)}
                               </span>
                               {isCompleted && (
                                 <span className="material-symbols-outlined text-[11px] shrink-0">check</span>
@@ -982,7 +988,7 @@ const CalendarPage = () => {
                               {priorityLabel}
                             </span>
                             <p className={`min-w-0 text-sm font-semibold text-[#111418] dark:text-slate-100 leading-snug truncate ${isCompleted ? 'line-through opacity-60' : ''}`}>
-                              {t2.title || t2.text}
+                              {taskDisplayTitle(t2)}
                             </p>
                           </div>
                           <button
@@ -1510,7 +1516,7 @@ const CalendarPage = () => {
                         >
                           <div className="mx-1 h-full rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-50/40 dark:bg-emerald-900/20 flex items-center px-3">
                             <span className="text-xs text-emerald-600 dark:text-emerald-300 font-medium">
-                              {String(dragOverHour.hour).padStart(2, '0')}:{String(dragOverHour.min).padStart(2, '0')} – {draggedTask.title || draggedTask.text}
+                              {String(dragOverHour.hour).padStart(2, '0')}:{String(dragOverHour.min).padStart(2, '0')} – {taskDisplayTitle(draggedTask)}
                             </span>
                           </div>
                         </div>
@@ -1570,7 +1576,7 @@ const CalendarPage = () => {
                                 : isOverdue ? 'text-red-600 dark:text-red-300'
                                 : 'text-emerald-700 dark:text-emerald-300'
                               }`}>
-                                {task.title || task.text}
+                                {taskDisplayTitle(task)}
                               </span>
                             </div>
                             <p className={`text-[10px] mt-0.5 ${isOverdue ? 'text-red-400 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400'}`}>
@@ -1699,7 +1705,7 @@ const CalendarPage = () => {
                         {isCompleted ? 'task_alt' : isOverdue ? 'warning' : 'radio_button_unchecked'}
                       </span>
                       <span className="text-sm font-semibold text-[#111418] dark:text-slate-100 truncate">
-                        {t2.title || t2.text}
+                        {taskDisplayTitle(t2)}
                       </span>
                     </div>
                     <button

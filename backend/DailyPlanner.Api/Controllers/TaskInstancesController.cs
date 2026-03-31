@@ -28,5 +28,16 @@ public class TaskInstancesController : ControllerBase
         var result = await _taskService.UpsertTaskInstanceAsync(userId, request);
         return Ok(result);
     }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteTaskInstance(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _taskService.DeleteTaskInstanceAsync(userId, id);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
 }
 
