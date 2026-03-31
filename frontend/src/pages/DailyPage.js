@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import { DEFAULT_TAGS, TAG_I18N_KEYS } from '../constants/tasks';
-import { tasksAPI, notificationsAPI, eventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { tasksAPI, goalsAPI, notificationsAPI, eventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import { formatDate, formatTime, formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 import AddTaskModal from '../components/AddTaskModal';
 
@@ -110,6 +110,7 @@ const DailyPage = () => {
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [togglingTaskId, setTogglingTaskId] = useState(null);
   const [todoistTasks, setTodoistTasks] = useState([]);
+  const [goalMap, setGoalMap] = useState({}); // { goalId: goalTitle }
   const [, setTimeProgressTick] = useState(0); // tick every minute to refresh time-based progress
   const [notifications, setNotifications] = useState([
     {
@@ -246,6 +247,17 @@ const DailyPage = () => {
         setNotifications(Array.isArray(notificationsData) ? notificationsData : (notificationsData?.notifications || []));
       } catch (error) {
         console.error('Failed to load notifications:', error);
+      }
+
+      // Load goals for goalId → title lookup (used to show prefix on milestone tasks)
+      try {
+        const goalsData = await goalsAPI.getGoals({ pageSize: 200 });
+        const goalList = Array.isArray(goalsData) ? goalsData : (goalsData?.items ?? goalsData?.data ?? []);
+        const map = {};
+        goalList.forEach((g) => { if (g.id) map[g.id] = g.title; });
+        setGoalMap(map);
+      } catch {
+        // non-critical, ignore
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -737,6 +749,9 @@ const DailyPage = () => {
                                   <span className={`inline-flex items-center rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium ${getPriorityBadgeClass(task.priority)}`}>
                                     {getPriorityLabel(task.priority)}
                                   </span>
+                                )}
+                                {task.goalId && goalMap[task.goalId] && (
+                                  <span className="text-primary dark:text-blue-400 font-semibold mr-1">[{goalMap[task.goalId]}]</span>
                                 )}
                                 {task.text || task.title}
                               </p>
