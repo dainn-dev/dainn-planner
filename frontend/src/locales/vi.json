@@ -655,6 +655,7 @@
     "markTaskComplete": "Đánh dấu hoàn thành: {{title}}",
     "editTaskLabel": "Chỉnh sửa nhiệm vụ: {{title}}",
     "deleteTaskLabel": "Xóa nhiệm vụ: {{title}}",
+    "deleteInstance": "Xóa dữ liệu ngày này",
     "updating": "Đang cập nhật",
     "editTaskTitle": "Chỉnh sửa nhiệm vụ",
     "addTaskTitle": "Thêm Nhiệm Vụ",

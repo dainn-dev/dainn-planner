@@ -655,6 +655,10 @@ export const tasksAPI = {
     return await apiRequest(`/tasks/${taskId}/history`);
   },
 
+  deleteTaskInstance: async (instanceId) => {
+    return await apiRequest(`/task-instances/${instanceId}`, { method: 'DELETE' });
+  },
+
   deleteTask: async (taskId) => {
     return await apiRequest(`/tasks/${taskId}`, {
       method: 'DELETE',

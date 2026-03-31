@@ -230,6 +230,21 @@ const AddTaskModal = ({
     }
   }, [open, editingTaskId]);
 
+  const handleDeleteInstance = useCallback(async (item, e) => {
+    e.stopPropagation();
+    if (!item?.id || isSubmitting) return;
+    try {
+      await tasksAPI.deleteTaskInstance(item.id);
+      setHistoryItems((prev) => prev.filter((h) => h.id !== item.id));
+      if (selectedHistoryDate && item.date?.slice(0, 10) === selectedHistoryDate) {
+        selectedHistoryItemRef.current = null;
+        setSelectedHistoryDate(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete instance:', err);
+    }
+  }, [isSubmitting, selectedHistoryDate]);
+
   const handleTagToggle = (tag) => {
     setTaskForm(prev => ({
       ...prev,
@@ -434,27 +449,38 @@ const AddTaskModal = ({
                         ? item.date.slice(0, 10) === selectedHistoryDate
                         : false;
                       return (
-                        <button
+                        <span
                           key={item.id ?? `${item.taskId}-${item.date}`}
-                          type="button"
-                          disabled={isSubmitting}
-                          title={done ? 'Completed' : 'Not completed'}
-                          onClick={() => handleHistoryDateClick(item)}
-                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] disabled:opacity-50 ${
+                          className={`group/pill shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] ${isSubmitting ? 'opacity-50 pointer-events-none' : ''} ${
                             isSelected
                               ? 'border-primary bg-primary text-white dark:border-blue-400 dark:bg-blue-500 dark:text-white'
                               : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:border-primary dark:hover:border-blue-400 hover:bg-primary/5 dark:hover:bg-blue-900/20'
                           }`}
                         >
-                          <span className={`material-symbols-outlined text-[13px] ${
-                            isSelected
-                              ? 'text-white'
-                              : done ? 'text-green-500 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'
-                          }`}>
-                            {done ? 'check_circle' : 'radio_button_unchecked'}
-                          </span>
-                          {dateLabel}
-                        </button>
+                          <button
+                            type="button"
+                            title={done ? 'Completed' : 'Not completed'}
+                            onClick={() => handleHistoryDateClick(item)}
+                            className="inline-flex items-center gap-1 focus:outline-none"
+                          >
+                            <span className={`material-symbols-outlined text-[13px] ${
+                              isSelected
+                                ? 'text-white'
+                                : done ? 'text-green-500 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'
+                            }`}>
+                              {done ? 'check_circle' : 'radio_button_unchecked'}
+                            </span>
+                            {dateLabel}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={t('daily.deleteInstance')}
+                            onClick={(e) => handleDeleteInstance(item, e)}
+                            className="hidden group-hover/pill:inline-flex items-center justify-center ml-0.5 rounded-full text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">close</span>
+                          </button>
+                        </span>
                       );
                     })}
                   </div>

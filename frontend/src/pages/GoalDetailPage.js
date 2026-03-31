@@ -803,7 +803,13 @@ const GoalDetailPage = () => {
                       </div>
                       {!isEditing && (() => {
                         const milestoneIdStr = milestone.id != null ? String(milestone.id) : '';
-                        const tasksForMilestone = goalTasks.filter(t => t.goalMilestoneId != null && String(t.goalMilestoneId) === milestoneIdStr);
+                        const _seenTaskIds = new Set();
+                        const tasksForMilestone = goalTasks.filter(t => {
+                          if (t.goalMilestoneId == null || String(t.goalMilestoneId) !== milestoneIdStr) return false;
+                          if (_seenTaskIds.has(t.id)) return false;
+                          _seenTaskIds.add(t.id);
+                          return true;
+                        });
                         const formatTaskDate = (d) => {
                           if (!d) return '';
                           return formatDate(typeof d === 'string' ? new Date(d) : d);
