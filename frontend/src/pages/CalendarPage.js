@@ -1130,8 +1130,8 @@ const CalendarPage = () => {
                   {/* Current-time indicator */}
                   {showTimeLine && (
                     <div
-                      className="absolute left-12 right-0 z-10 pointer-events-none"
-                      style={{ top: timeLineTop }}
+                      className="absolute left-12 right-0 pointer-events-none"
+                      style={{ top: timeLineTop, zIndex: 9998 }}
                     >
                       <div className="relative">
                         <span className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500" />
