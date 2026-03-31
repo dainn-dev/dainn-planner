@@ -365,11 +365,9 @@ public class DailyTaskService : IDailyTaskService
             task.GoalMilestoneId = null;
             task.GoalId = goal.Id;
         }
-        else
-        {
-            task.GoalMilestoneId = null;
-            task.GoalId = null;
-        }
+        // If neither GoalMilestoneId nor GoalId is provided, keep existing goal linkage.
+        // This supports partial updates (e.g., drag/drop rescheduling) without unintentionally
+        // removing goal/milestone associations.
 
         // Optional: description/date are per-day data; only upsert an instance when description is provided.
         // This supports the FE split workflow (template update vs per-day instance upsert).
