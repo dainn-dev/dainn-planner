@@ -1128,7 +1128,7 @@ const CalendarPage = () => {
                   })}
 
                   {/* Current-time indicator */}
-                  {showTimeLine && (
+                  {showTimeLine && !eventModalOpen && !taskEditModalOpen && (
                     <div
                       className="absolute left-12 right-0 pointer-events-none"
                       style={{ top: timeLineTop, zIndex: 20000 }}
