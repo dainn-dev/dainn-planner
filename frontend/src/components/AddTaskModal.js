@@ -303,12 +303,11 @@ const AddTaskModal = ({
 
         await tasksAPI.updateTask(editingTaskId, templatePayload);
 
-        // Use the selected history instance's date and completion status if one is selected,
-        // otherwise fall back to the form's dueDate and the initial task's completion status.
+        // Always use datePayload (from taskForm.dueDate) as the instance date so that
+        // manually changing the due date field is respected. selectedItem is only used
+        // for the completion status of the matching instance.
         const selectedItem = selectedHistoryItemRef.current;
-        const instanceDate = selectedItem?.date
-          ? new Date(selectedItem.date).toISOString()
-          : (initialTask?.date ? new Date(initialTask.date).toISOString() : datePayload);
+        const instanceDate = datePayload;
         const instanceCompleted = selectedItem
           ? (selectedItem.isCompleted ?? false)
           : (initialTask?.isCompleted ?? initialTask?.completed ?? false);
