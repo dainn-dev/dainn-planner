@@ -85,6 +85,7 @@ const AddTaskModal = ({
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+  const [isCreatingInstance, setIsCreatingInstance] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   taskFormRef.current = taskForm;
 
@@ -244,6 +245,28 @@ const AddTaskModal = ({
       console.error('Failed to delete instance:', err);
     }
   }, [isSubmitting, selectedHistoryDate]);
+
+  const handleCreateTodayInstance = useCallback(async () => {
+    if (!editingTaskId || isCreatingInstance) return;
+    const todayStr = formatLocalDateIso(new Date());
+    setIsCreatingInstance(true);
+    try {
+      const isoDate = new Date(`${todayStr}T12:00:00`).toISOString();
+      const res = await tasksAPI.upsertTaskInstance({ taskId: editingTaskId, date: isoDate, description: null, isCompleted: false });
+      const newItem = res?.data ?? res;
+      if (newItem?.id) {
+        setHistoryItems((prev) => {
+          const exists = prev.some((h) => h.id === newItem.id);
+          return exists ? prev : [newItem, ...prev];
+        });
+        handleHistoryDateClick(newItem);
+      }
+    } catch (err) {
+      console.error('Failed to create instance:', err);
+    } finally {
+      setIsCreatingInstance(false);
+    }
+  }, [editingTaskId, isCreatingInstance, handleHistoryDateClick]);
 
   const handleTagToggle = (tag) => {
     setTaskForm(prev => ({
@@ -450,6 +473,7 @@ const AddTaskModal = ({
                   {t('daily.description')}
                 </label>
                 {editingTaskId && (
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0 pb-0.5" style={{ scrollbarWidth: 'none' }}>
                     {historyLoading && (
                       <span className="text-[10px] text-gray-400 dark:text-slate-500 shrink-0 italic">Loading…</span>
@@ -495,6 +519,24 @@ const AddTaskModal = ({
                         </span>
                       );
                     })}
+                  </div>
+                  {/* Plus button — create instance for today */}
+                  {!historyLoading && (() => {
+                    const todayStr = formatLocalDateIso(new Date());
+                    const todayExists = historyItems.some((h) => h.date?.slice(0, 10) === todayStr);
+                    const plusDisabled = isSubmitting || isCreatingInstance || todayExists;
+                    return (
+                      <button
+                        type="button"
+                        aria-label={t('daily.addInstance')}
+                        disabled={plusDisabled}
+                        onClick={handleCreateTodayInstance}
+                        className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:border-primary hover:text-primary dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-400"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">add</span>
+                      </button>
+                    );
+                  })()}
                   </div>
                 )}
               </div>

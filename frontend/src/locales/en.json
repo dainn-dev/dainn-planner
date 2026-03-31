@@ -656,6 +656,7 @@
     "editTaskLabel": "Edit task: {{title}}",
     "deleteTaskLabel": "Delete task: {{title}}",
     "deleteInstance": "Delete data for this date",
+    "addInstance": "Add new date",
     "updating": "Updating",
     "editTaskTitle": "Edit task",
     "addTaskTitle": "Add Task",

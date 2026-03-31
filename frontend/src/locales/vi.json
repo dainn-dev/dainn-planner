@@ -656,6 +656,7 @@
     "editTaskLabel": "Chỉnh sửa nhiệm vụ: {{title}}",
     "deleteTaskLabel": "Xóa nhiệm vụ: {{title}}",
     "deleteInstance": "Xóa dữ liệu ngày này",
+    "addInstance": "Thêm ngày mới",
     "updating": "Đang cập nhật",
     "editTaskTitle": "Chỉnh sửa nhiệm vụ",
     "addTaskTitle": "Thêm Nhiệm Vụ",
