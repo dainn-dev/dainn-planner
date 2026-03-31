@@ -25,7 +25,8 @@ function saveTaskSchedule(taskId, startTime, endTime) {
   localStorage.setItem(TASK_SCHEDULE_KEY, JSON.stringify(map));
 }
 
-const EVENT_COLOR_PALETTE = ['#005EB8', '#00897B', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+// Dark (high-contrast) accent colors for the Add/Edit Event picker.
+const EVENT_COLOR_PALETTE = ['#1E3A8A', '#064E3B', '#78350F', '#7F1D1D', '#4C1D95', '#701A75', '#0E3A4C'];
 
 /** Visual tokens aligned with calendar mockups (navy + forest green + type-specific surfaces). */
 const CAL_THEME = {
@@ -54,6 +55,28 @@ const CAL_THEME = {
   casualChevron: '#B0BEC5',
   productivityBg: '#e8eaf6',
 };
+
+function toHex6(input) {
+  const s = String(input || '').trim();
+  if (!s) return null;
+  const m = s.match(/^#?([0-9a-f]{6})$/i);
+  return m ? `#${m[1].toUpperCase()}` : null;
+}
+
+/** Mix hex color with white. `whiteRatio` in [0..1], higher = lighter. */
+function tintHexWithWhite(hex, whiteRatio) {
+  const h = toHex6(hex);
+  if (!h) return null;
+  const r = parseInt(h.slice(1, 3), 16);
+  const g = parseInt(h.slice(3, 5), 16);
+  const b = parseInt(h.slice(5, 7), 16);
+  const t = Math.min(1, Math.max(0, Number(whiteRatio)));
+  const mix = (c) => Math.round(c + (255 - c) * t);
+  const rr = mix(r).toString(16).padStart(2, '0');
+  const gg = mix(g).toString(16).padStart(2, '0');
+  const bb = mix(b).toString(16).padStart(2, '0');
+  return `#${rr}${gg}${bb}`.toUpperCase();
+}
 
 function normalizeEventType(evt) {
   const raw = evt?.eventType ?? evt?.EventType;
@@ -286,6 +309,7 @@ const CalendarPage = () => {
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverHour, setDragOverHour] = useState(null);
   const timelineRef = useRef(null);
+  const timelineScrollRef = useRef(null);
 
   // ── Event CRUD form state (unchanged) ──
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -692,6 +716,24 @@ const CalendarPage = () => {
   const showTimeLine = isToday && nowHour >= workHourStart && nowHour < workHourEnd;
   const timeLineTop = showTimeLine ? eventTopPx(nowHour, nowMin, workHourStart) : null;
 
+  // Keep current-time indicator centered in the visible timeline viewport.
+  useEffect(() => {
+    if (!showTimeLine) return;
+    const scroller = timelineScrollRef.current;
+    if (!scroller) return;
+    if (timeLineTop == null) return;
+
+    // If layout isn't ready yet, defer one tick.
+    const raf = requestAnimationFrame(() => {
+      const viewportH = scroller.clientHeight || 0;
+      const maxScrollTop = Math.max(0, scroller.scrollHeight - viewportH);
+      const target = Math.min(maxScrollTop, Math.max(0, Math.round(timeLineTop - viewportH / 2)));
+      scroller.scrollTo({ top: target, behavior: 'auto' });
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [showTimeLine, timeLineTop, selectedDateIso, workHourStart, workHourEnd]);
+
   const totalTasks = tasksForDay.length;
   const completedTasks = tasksForDay.filter(
     (task) => task.completed || task.status === 'completed' || task.isCompleted,
@@ -1058,7 +1100,7 @@ const CalendarPage = () => {
               )}
 
               {/* Scrollable grid */}
-              <div className="relative flex-1 overflow-y-auto">
+              <div ref={timelineScrollRef} className="relative flex-1 overflow-y-auto">
                 <div
                   className="relative"
                   style={{
@@ -1123,7 +1165,18 @@ const CalendarPage = () => {
                       const cardHeight = Math.max(36, height - CARD_GAP_PX);
                       const startLabel = formatLocalTimeHHmm(evt.startDate) ?? '';
                       const endLabel = formatLocalTimeHHmm(evt.endDate) ?? '';
+                      const isCompactEventCard = cardHeight <= 52;
+                      const isLongEventCard = durationMin >= 60;
+                      const fallbackEventTextColor = '#06b6d4';
+                      const accentColor = evt?.color ? String(evt.color) : fallbackEventTextColor;
                       const type = normalizeEventType(evt);
+                      const accentSurfaceColor =
+                        tintHexWithWhite(accentColor, 0.96)
+                        ?? (type === 'meeting'
+                          ? CAL_THEME.meetingBg
+                          : type === 'deepfocus'
+                            ? CAL_THEME.deepFocusBg
+                            : CAL_THEME.casualBg);
                       const attendees = Array.isArray(evt?.attendees) ? evt.attendees : [];
                       const projectTags = Array.isArray(evt?.projectTags) ? evt.projectTags : [];
                       const deepTitle = displayDeepFocusTitle(evt.title);
@@ -1154,21 +1207,21 @@ const CalendarPage = () => {
                           ? {
                             top: cardTop,
                             height: cardHeight,
-                            backgroundColor: CAL_THEME.meetingBg,
-                            borderLeft: `5px solid ${CAL_THEME.meetingBorder}`,
+                            backgroundColor: accentSurfaceColor,
+                            borderLeft: `5px solid ${accentColor}`,
                           }
                           : type === 'deepfocus'
                             ? {
                               top: cardTop,
                               height: cardHeight,
-                              backgroundColor: CAL_THEME.deepFocusBg,
-                              borderLeft: `5px solid ${CAL_THEME.deepFocusTeal}`,
+                              backgroundColor: accentSurfaceColor,
+                              borderLeft: `5px solid ${accentColor}`,
                             }
                             : {
                               top: cardTop,
                               height: cardHeight,
-                              backgroundColor: CAL_THEME.casualBg,
-                              borderLeft: `5px solid ${CAL_THEME.casualBorder}`,
+                              backgroundColor: accentSurfaceColor,
+                              borderLeft: `5px solid ${accentColor}`,
                             };
 
                       // Render overlaps side-by-side using % widths (max 2 columns).
@@ -1222,7 +1275,7 @@ const CalendarPage = () => {
                         >
                           {/* Meeting — pastel card: title + meta, avatars bottom-left, menu centered right */}
                           {type === 'meeting' && (
-                            <div className="relative flex h-full w-full flex-col p-4 pt-3 pb-3 font-display antialiased">
+                            <div className={`relative flex h-full w-full flex-col font-display antialiased ${isCompactEventCard ? 'p-2.5' : 'p-4 pt-3 pb-3'}`}>
                               <span
                                 role="button"
                                 tabIndex={0}
@@ -1239,23 +1292,31 @@ const CalendarPage = () => {
                               >
                               </span>
 
-                              <div className="min-w-0 flex-1 pr-10">
+                              <div className={`min-w-0 flex-1 ${isCompactEventCard ? 'pr-0' : 'pr-10'}`}>
+                                {isLongEventCard ? (
+                                  <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
+                                    {evt.title}
+                                  </h3>
+                                ) : (
+                                  <p
+                                    className="truncate text-xs font-bold leading-snug tracking-tight"
+                                    style={{ color: accentColor }}
+                                  >
+                                    {evt.title}
+                                  </p>
+                                )}
                                 <p
-                                  className="truncate text-sm font-bold leading-snug tracking-tight sm:text-[15px]"
-                                  style={{ color: CAL_THEME.meetingTitle }}
-                                >
-                                  {evt.title}
-                                </p>
-                                <p
-                                  className="mt-1.5 text-xs font-normal leading-relaxed sm:text-[13px]"
+                                  className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[10px] leading-relaxed'}`}
                                   style={{ color: CAL_THEME.meetingMeta }}
                                 >
                                   {startLabel}{endLabel ? ` – ${endLabel}` : ''}
-                                  {evt.location
-                                    ? ` • ${evt.location}`
-                                    : evt.description
-                                      ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
-                                      : ''}
+                                  {!isCompactEventCard && (
+                                    evt.location
+                                      ? ` • ${evt.location}`
+                                      : evt.description
+                                        ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                        : ''
+                                  )}
                                 </p>
                               </div>
 
@@ -1266,7 +1327,7 @@ const CalendarPage = () => {
                                       <span
                                         key={a}
                                         className="inline-flex h-8 w-8 items-center justify-center rounded-full border-[2.5px] border-white bg-white text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.06]"
-                                        style={{ color: CAL_THEME.meetingBorder }}
+                                        style={{ color: accentColor }}
                                         title={a}
                                       >
                                         {getInitials(a)}
@@ -1289,28 +1350,36 @@ const CalendarPage = () => {
 
                           {/* Deep focus — light card, teal top+left frame, grey tag pills, teal type */}
                           {type === 'deepfocus' && (
-                            <div className="relative flex h-full w-full flex-col p-4 pr-14 pt-3.5">
-                              <span
-                                className="absolute right-3 top-3 shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
-                                style={{ backgroundColor: CAL_THEME.deepFocusTeal }}
-                              >
-                                ! {t('calendar.priority')}
-                              </span>
+                            <div className={`relative flex h-full w-full flex-col ${isCompactEventCard ? 'p-2.5' : 'p-4 pr-14 pt-3.5'}`}>
+                              {!isCompactEventCard && (
+                                <span
+                                  className="absolute right-3 top-3 shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
+                                  style={{ backgroundColor: accentColor }}
+                                >
+                                  ! {t('calendar.priority')}
+                                </span>
+                              )}
 
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1">
+                                  {isLongEventCard ? (
+                                    <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
+                                      {t('calendar.deepFocusPrefix')}{deepTitle}
+                                    </h3>
+                                  ) : (
+                                    <p
+                                      className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
+                                      style={{ color: accentColor }}
+                                    >
+                                      {t('calendar.deepFocusPrefix')}{deepTitle}
+                                    </p>
+                                  )}
                                   <p
-                                    className="truncate text-sm font-bold leading-snug tracking-tight sm:text-[15px]"
-                                    style={{ color: CAL_THEME.deepFocusTealDark }}
-                                  >
-                                    {t('calendar.deepFocusPrefix')}{deepTitle}
-                                  </p>
-                                  <p
-                                    className="mt-1.5 text-xs font-normal leading-relaxed sm:text-[13px] truncate"
+                                    className={`font-normal truncate ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1.5 text-[11px] leading-relaxed sm:text-[12px]'}`}
                                     style={{ color: CAL_THEME.deepFocusMeta }}
                                   >
                                     {startLabel}{endLabel ? ` – ${endLabel}` : ''}
-                                    {evt.location ? ` • ${evt.location}` : ''}
+                                    {!isCompactEventCard && evt.location ? ` • ${evt.location}` : ''}
                                   </p>
                                 </div>
                               </div>
@@ -1325,7 +1394,7 @@ const CalendarPage = () => {
                                         color: CAL_THEME.deepFocusTealDark,
                                       }}
                                     >
-                                      <span className="material-symbols-outlined text-[15px]" style={{ color: CAL_THEME.deepFocusTeal }}>lock</span>
+                                      <span className="material-symbols-outlined text-[15px]" style={{ color: accentColor }}>lock</span>
                                       {t('calendar.doNotDisturb')}
                                     </span>
                                   )}
@@ -1338,7 +1407,7 @@ const CalendarPage = () => {
                                         color: CAL_THEME.deepFocusTealDark,
                                       }}
                                     >
-                                      <span className="material-symbols-outlined text-[15px]" style={{ color: CAL_THEME.deepFocusTeal }}>folder_special</span>
+                                      <span className="material-symbols-outlined text-[15px]" style={{ color: accentColor }}>folder_special</span>
                                       {tag}
                                     </span>
                                   ))}
@@ -1384,36 +1453,44 @@ const CalendarPage = () => {
 
                           {/* Casual — lavender bar, white rounded icon tile, avatar + chevron */}
                           {type === 'casual' && (
-                            <div className="flex h-full w-full items-center gap-3 px-4 py-2.5">
+                            <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
                               <span
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04]"
+                                className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
                                 style={{ backgroundColor: CAL_THEME.casualIconTile }}
                               >
                                 {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
-                                  <span className="text-xl leading-none">{evt.icon}</span>
+                                  <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
                                 ) : (
-                                  <span className="material-symbols-outlined text-[22px]" style={{ color: CAL_THEME.deepFocusTeal }}>
+                                  <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
                                     local_cafe
                                   </span>
                                 )}
                               </span>
                               <div className="min-w-0 flex-1">
+                                {isLongEventCard ? (
+                                  <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
+                                    {evt.title}
+                                  </h3>
+                                ) : (
+                                  <p
+                                    className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
+                                    style={{ color: accentColor }}
+                                  >
+                                    {evt.title}
+                                  </p>
+                                )}
                                 <p
-                                  className="truncate text-sm font-bold leading-snug tracking-tight sm:text-[15px]"
-                                  style={{ color: CAL_THEME.casualTitle }}
-                                >
-                                  {evt.title}
-                                </p>
-                                <p
-                                  className="mt-1 text-xs font-normal leading-relaxed sm:text-[13px]"
+                                  className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
                                   style={{ color: CAL_THEME.casualMeta }}
                                 >
                                   {startLabel}{endLabel ? ` – ${endLabel}` : ''}
-                                  {evt.location
-                                    ? ` • ${evt.location}`
-                                    : evt.description
-                                      ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
-                                      : ''}
+                                  {!isCompactEventCard && (
+                                    evt.location
+                                      ? ` • ${evt.location}`
+                                      : evt.description
+                                        ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                        : ''
+                                  )}
                                 </p>
                               </div>
 
