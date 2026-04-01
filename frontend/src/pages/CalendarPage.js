@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
@@ -380,11 +380,25 @@ const CalendarPage = () => {
 
   // ── Data loading ──
   const selectedDateIso = formatLocalDateIso(selectedDate);
+  const weekStart = useMemo(() => {
+    const d = new Date(currentDate);
+    d.setHours(0, 0, 0, 0);
+    const dow = d.getDay();
+    const delta = weekStartDay === 'sunday' ? -dow : -((dow + 6) % 7);
+    d.setDate(d.getDate() + delta);
+    return d;
+  }, [currentDate, weekStartDay]);
+  const weekStartIso = useMemo(() => formatLocalDateIso(weekStart), [weekStart]);
+  const weekEndIso = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
+    return formatLocalDateIso(d);
+  }, [weekStart]);
 
   const loadEvents = async () => {
     setEventsLoading(true);
     try {
-      const res = await eventsAPI.getEvents({ startDate: selectedDateIso, endDate: selectedDateIso });
+      const res = await eventsAPI.getEvents({ startDate: weekStartIso, endDate: weekEndIso });
       const list = res?.data ?? res?.items ?? res ?? [];
       setEvents(Array.isArray(list) ? list : []);
     } catch {
@@ -413,6 +427,10 @@ const CalendarPage = () => {
 
   useEffect(() => {
     loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStartIso]);
+
+  useEffect(() => {
     loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateIso]);
@@ -730,8 +748,8 @@ const CalendarPage = () => {
 
   // ── Derived values ──
   const weekDays = getWeekDays(currentDate, weekStartDay);
-  const timedEvents = events.filter((e) => !e.isAllDay);
-  const allDayEvents = events.filter((e) => e.isAllDay);
+  const timedEvents = events.filter((e) => !e.isAllDay && isSameDay(new Date(e.startDate), selectedDate));
+  const allDayEvents = events.filter((e) => e.isAllDay && isSameDay(new Date(e.startDate), selectedDate));
   const timedEventLayout = computeTimedEventColumns(timedEvents);
 
   // Earlier start time → higher z-index (earlier events render on top when overlapping)
@@ -898,7 +916,8 @@ const CalendarPage = () => {
                 <div className="flex gap-1 sm:gap-2 p-2">
                   {weekDays.map((day) => {
                     const isSelected = isSameDay(day, selectedDate);
-                    const isTodayDay = isSameDay(day, new Date());
+                    const dayIso = formatLocalDateIso(day);
+                    const dayHasEvents = events.some((e) => formatLocalDateIso(new Date(e.startDate)) === dayIso);
                     return (
                       <button
                         key={day.toISOString()}
@@ -915,7 +934,7 @@ const CalendarPage = () => {
                         </span>
                         <span className="text-sm sm:text-base font-bold leading-none">{day.getDate()}</span>
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : isTodayDay ? 'bg-[#005EB8]' : 'invisible'}`}
+                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : dayHasEvents ? 'bg-[#005EB8]' : 'invisible'}`}
                         />
                       </button>
                     );
