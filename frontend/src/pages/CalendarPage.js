@@ -848,6 +848,35 @@ const CalendarPage = () => {
             </div>
           </div>
 
+          {/* ── Google Calendar connect nudge ── */}
+          {!isGoogleConnected && !googleNudgeDismissed && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-[#4285F4] shrink-0">calendar_month</span>
+                <span className="text-sm text-blue-700 dark:text-blue-300 truncate">
+                  {t('calendar.connectGoogleBanner')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = '/settings'; }}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-[#4285F4] text-white hover:bg-[#3367d6] transition-colors"
+                >
+                  {t('calendar.connectGoogleAction')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissGoogleNudge}
+                  className="p-1 rounded-lg text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"
+                  aria-label={t('common.close')}
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── M2: Day Selector + Task Strip ── */}
           {(() => {
             const incompleteTasks = tasksForDay.filter((t) => !(t.completed || t.isCompleted));
