@@ -6,6 +6,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using DailyPlanner.Api.Jobs;
 using DailyPlanner.Api.Swagger;
+using DailyPlanner.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -156,6 +157,7 @@ builder.Services.AddScoped<RecurringTaskRenewalJob>();
 builder.Services.AddScoped<OldDailyTaskCleanupJob>();
 builder.Services.AddScoped<WeeklySummaryEmailJob>();
 builder.Services.AddScoped<EmailTaskReminderJob>();
+builder.Services.AddScoped<IWebPushService, WebPushService>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");

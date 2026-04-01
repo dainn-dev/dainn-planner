@@ -28,6 +28,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import CvPlatformAdminRoute from './components/CvPlatformAdminRoute';
+import { initPushNotificationsOnce } from './utils/pushNotifications';
 
 function applyDarkModeFromStorage() {
   try {
@@ -51,6 +52,9 @@ function App() {
     const settingsHandler = () => applyDarkModeFromStorage();
     const downHandler = () => setIsBackendDown(true);
     const upHandler = () => setIsBackendDown(false);
+
+    // Fire-and-forget; skips if not supported or permission denied.
+    initPushNotificationsOnce();
 
     window.addEventListener('userSettingsUpdated', settingsHandler);
     window.addEventListener('backendUnavailable', downHandler);

@@ -609,6 +609,29 @@ export const userAPI = {
 };
 
 // ============================================
+// PUSH NOTIFICATIONS API (Web Push)
+// ============================================
+
+export const pushAPI = {
+  getVapidPublicKey: async () => {
+    return await apiRequest('/push/vapid-public-key');
+  },
+
+  saveMyPushSubscription: async (subscription) => {
+    if (!subscription) return;
+    // PushSubscription has toJSON() in browsers.
+    const payload = typeof subscription.toJSON === 'function' ? subscription.toJSON() : subscription;
+    const deviceLabel = (typeof navigator !== 'undefined' && navigator.userAgent)
+      ? navigator.userAgent.slice(0, 96)
+      : undefined;
+    await apiRequest('/users/me/push-subscription', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, deviceLabel }),
+    });
+  },
+};
+
+// ============================================
 // TASKS API
 // ============================================
 
