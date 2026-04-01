@@ -13,7 +13,7 @@ const CvPlatformAdminRoute = ({ children }) => {
   try {
     const user = getStoredUser();
     if (!user || !isCvPlatformStaffUser(user)) {
-      return <Navigate to="/daily" replace />;
+      return <Navigate to="/calendar" replace />;
     }
   } catch {
     return <Navigate to="/" replace />;

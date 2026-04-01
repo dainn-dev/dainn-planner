@@ -68,12 +68,6 @@ const NotFoundPage = () => {
             <p className="text-sm text-gray-500 mb-4">{t('notFound.youMightWant')}</p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link
-                to="/daily"
-                className="text-blue-600 hover:text-blue-700 hover:underline text-sm"
-              >
-                {t('notFound.dailyPage')}
-              </Link>
-              <Link
                 to="/goals"
                 className="text-blue-600 hover:text-blue-700 hover:underline text-sm"
               >

@@ -26,9 +26,9 @@ export function isStoredCvPlatformStaff() {
 
 /** Where to send the user right after planner login (token already stored). */
 export function getPostLoginPath(user) {
-  if (!user) return '/daily';
+  if (!user) return '/calendar';
   if (user.role === 'Admin') return '/admin/dashboard';
   if (user.role === 'platform_admin') return '/admin/cv-sites';
-  return '/daily';
+  return '/calendar';
 }
 

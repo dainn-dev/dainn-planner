@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MaintenancePage from './pages/MaintenancePage';
 import ToastContainer from './components/ToastContainer';
 import HomePage from './pages/HomePage';
@@ -11,7 +11,6 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ContactPage from './pages/ContactPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import DailyPage from './pages/DailyPage';
 import GoalsPage from './pages/GoalsPage';
 import GoalDetailPage from './pages/GoalDetailPage';
 import CalendarPage from './pages/CalendarPage';
@@ -84,11 +83,7 @@ function App() {
         <Route path="/term" element={<TermsPage />} />
         <Route path="/conditions" element={<PrivacyPolicyPage />} />
         {/* Protected Routes - Require Authentication */}
-        <Route path="/daily" element={
-          <ProtectedRoute>
-            <DailyPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/daily" element={<Navigate to="/calendar" replace />} />
         <Route path="/goals" element={
           <ProtectedRoute>
             <GoalsPage />

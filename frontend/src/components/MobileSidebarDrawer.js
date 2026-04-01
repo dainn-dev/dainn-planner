@@ -118,10 +118,6 @@ const MobileSidebarDrawer = ({ isOpen, onClose }) => {
             <span className="material-symbols-outlined">bar_chart</span>
             <span>{t('sidebar.userDashboard')}</span>
           </Link>
-          <Link to="/daily" className={linkClass('/daily')} onClick={onClose}>
-            <span className={`material-symbols-outlined ${isActive('/daily') ? 'fill-1' : ''}`}>today</span>
-            <span>{t('sidebar.dailyPlan')}</span>
-          </Link>
           <Link to="/calendar" className={linkClass('/calendar')} onClick={onClose}>
             <span className="material-symbols-outlined">calendar_month</span>
             <span>{t('sidebar.calendar')}</span>
