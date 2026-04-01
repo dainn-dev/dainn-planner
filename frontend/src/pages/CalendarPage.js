@@ -607,6 +607,7 @@ const CalendarPage = () => {
       if (!editingEvent) {
         await eventsAPI.createEvent(payload);
       } else if (editingEvent.source === 'Google') {
+        if (!editingEvent.externalId) throw new Error(t('calendar.saveEventFail'));
         await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
       } else {
         await eventsAPI.updateEvent(editingEvent.id, payload);
@@ -1735,6 +1736,7 @@ const CalendarPage = () => {
                         if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
                         try {
                           if (selectedEvent.source === 'Google') {
+                            if (!selectedEvent.externalId) throw new Error('Failed to delete event');
                             await googleEventsAPI.deleteGoogleEvent(selectedEvent.externalId);
                           } else {
                             await eventsAPI.deleteEvent(selectedEvent.id);
