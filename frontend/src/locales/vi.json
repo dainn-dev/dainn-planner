@@ -30,7 +30,8 @@
     "remove": "Xóa",
     "email": "Email",
     "password": "Mật khẩu",
-    "more": "Thêm"
+    "more": "Thêm",
+    "copyLink": "Sao chép liên kết"
   },
   "notifications": {
     "milestoneCompletedTitle": "Chúc mừng",

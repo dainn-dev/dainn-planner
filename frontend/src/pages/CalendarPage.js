@@ -316,6 +316,7 @@ const CalendarPage = () => {
   const [dragOverHour, setDragOverHour] = useState(null);
   const timelineRef = useRef(null);
   const timelineScrollRef = useRef(null);
+  const [activeEventMenuId, setActiveEventMenuId] = useState(null);
 
   // ── Event CRUD form state (unchanged) ──
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -402,6 +403,13 @@ const CalendarPage = () => {
       .then((data) => setNotifications(Array.isArray(data) ? data : (data?.notifications ?? [])))
       .catch(() => { });
   }, []);
+
+  useEffect(() => {
+    if (activeEventMenuId === null) return;
+    const handleOutsideClick = () => setActiveEventMenuId(null);
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [activeEventMenuId]);
 
   // ── Event CRUD handlers ──
   const openCreateModal = () => {
@@ -1282,21 +1290,96 @@ const CalendarPage = () => {
                           {/* Meeting — pastel card: title + meta, avatars bottom-left, menu centered right */}
                           {type === 'meeting' && (
                             <div className={`relative flex h-full w-full flex-col font-display antialiased ${isCompactEventCard ? 'p-2.5' : 'p-4 pt-3 pb-3'}`}>
-                              <span
-                                role="button"
-                                tabIndex={0}
-                                onClick={(e) => { e.stopPropagation(); }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }
-                                }}
-                                className="absolute right-3 top-1/2 z-[1] -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-[#7F8C8D] transition-colors hover:bg-white/80 hover:text-[#2C3E50]"
-                                aria-label={t('common.more')}
-                                title={t('common.more')}
-                              >
-                              </span>
+                              {!isCompactEventCard && (
+                                <div className="absolute right-2 top-1/2 z-[2] -translate-y-1/2">
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveEventMenuId((prev) => (prev === evt.id ? null : evt.id));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setActiveEventMenuId((prev) => (prev === evt.id ? null : evt.id));
+                                      }
+                                      if (e.key === 'Escape') {
+                                        e.stopPropagation();
+                                        setActiveEventMenuId(null);
+                                      }
+                                    }}
+                                    className="flex items-center justify-center cursor-pointer rounded-lg p-1.5 text-[#7F8C8D] transition-colors hover:bg-white/80 hover:text-[#2C3E50]"
+                                    aria-label={t('common.more')}
+                                    title={t('common.more')}
+                                  >
+                                    <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
+                                  </span>
+
+                                  {activeEventMenuId === evt.id && (
+                                    <div
+                                      className="absolute right-0 top-full mt-1 z-50 min-w-[140px] rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg py-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveEventMenuId(null);
+                                          openEditModal(evt);
+                                        }}
+                                      >
+                                        <span className="material-symbols-outlined text-[15px]">edit</span>
+                                        {t('common.edit')}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setActiveEventMenuId(null);
+                                          const url = `${window.location.origin}/calendar?date=${formatLocalDateIso(new Date(evt.startDate))}`;
+                                          try {
+                                            await navigator.clipboard.writeText(url);
+                                            toast.success(t('common.copyLink'));
+                                          } catch {
+                                            toast.error(t('common.copyLink'));
+                                          }
+                                        }}
+                                      >
+                                        <span className="material-symbols-outlined text-[15px]">link</span>
+                                        {t('common.copyLink')}
+                                      </button>
+                                      <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setActiveEventMenuId(null);
+                                          if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
+                                          try {
+                                            if (evt.source === 'Google') {
+                                              if (!evt.externalId) throw new Error(t('calendar.deleteEventFail'));
+                                              await googleEventsAPI.deleteGoogleEvent(evt.externalId);
+                                            } else {
+                                              await eventsAPI.deleteEvent(evt.id);
+                                            }
+                                            await loadEvents();
+                                          } catch (err) {
+                                            toast.error(err?.message || t('calendar.deleteEventFail'));
+                                          }
+                                        }}
+                                      >
+                                        <span className="material-symbols-outlined text-[15px]">delete</span>
+                                        {t('common.delete')}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
                               <div className={`min-w-0 flex-1 ${isCompactEventCard ? 'pr-0' : 'pr-10'}`}>
                                 {isLongEventCard ? (

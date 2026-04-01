@@ -30,7 +30,8 @@
     "remove": "Remove",
     "email": "Email",
     "password": "Password",
-    "more": "More"
+    "more": "More",
+    "copyLink": "Copy link"
   },
   "notifications": {
     "milestoneCompletedTitle": "Congratulations",
