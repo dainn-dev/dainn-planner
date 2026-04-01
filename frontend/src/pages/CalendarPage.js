@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
@@ -380,22 +380,20 @@ const CalendarPage = () => {
 
   // ── Data loading ──
   const selectedDateIso = formatLocalDateIso(selectedDate);
-  const weekStartIso = (() => {
+  const weekStart = useMemo(() => {
     const d = new Date(currentDate);
     d.setHours(0, 0, 0, 0);
     const dow = d.getDay();
     const delta = weekStartDay === 'sunday' ? -dow : -((dow + 6) % 7);
     d.setDate(d.getDate() + delta);
+    return d;
+  }, [currentDate, weekStartDay]);
+  const weekStartIso = useMemo(() => formatLocalDateIso(weekStart), [weekStart]);
+  const weekEndIso = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
     return formatLocalDateIso(d);
-  })();
-  const weekEndIso = (() => {
-    const d = new Date(currentDate);
-    d.setHours(0, 0, 0, 0);
-    const dow = d.getDay();
-    const delta = weekStartDay === 'sunday' ? -dow : -((dow + 6) % 7);
-    d.setDate(d.getDate() + delta + 6);
-    return formatLocalDateIso(d);
-  })();
+  }, [weekStart]);
 
   const loadEvents = async () => {
     setEventsLoading(true);
@@ -918,7 +916,6 @@ const CalendarPage = () => {
                 <div className="flex gap-1 sm:gap-2 p-2">
                   {weekDays.map((day) => {
                     const isSelected = isSameDay(day, selectedDate);
-                    const isTodayDay = isSameDay(day, new Date());
                     const dayIso = formatLocalDateIso(day);
                     const dayHasEvents = events.some((e) => formatLocalDateIso(new Date(e.startDate)) === dayIso);
                     return (
