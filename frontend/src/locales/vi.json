@@ -925,7 +925,11 @@
     "deleteTaskFail": "Không thể xóa nhiệm vụ.",
     "overdue": "Quá hạn",
     "priority": "Ưu tiên",
-    "deepFocusPrefix": "Tập trung: "
+    "deepFocusPrefix": "Tập trung: ",
+    "googleSourceBadge": "Google",
+    "connectGoogleBanner": "Kết nối Google Calendar để xem events của bạn trên lịch",
+    "connectGoogleAction": "Kết nối",
+    "googleEventUpdated": "Đã cập nhật Google event"
   },
   "userDashboard": {
     "title": "Tổng quan",
