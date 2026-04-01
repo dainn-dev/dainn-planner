@@ -1734,7 +1734,11 @@ const CalendarPage = () => {
                       onClick={async () => {
                         if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
                         try {
-                          await eventsAPI.deleteEvent(selectedEvent.id);
+                          if (selectedEvent.source === 'Google') {
+                            await googleEventsAPI.deleteGoogleEvent(selectedEvent.externalId);
+                          } else {
+                            await eventsAPI.deleteEvent(selectedEvent.id);
+                          }
                           setSelectedEvent(null);
                           await loadEvents();
                         } catch (e) {
