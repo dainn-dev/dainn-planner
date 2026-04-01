@@ -295,6 +295,24 @@ const CalendarPage = () => {
   const workHourStart = workHours.start;
   const workHourEnd = workHours.end;
 
+  const [isGoogleConnected] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+      const stored = raw ? JSON.parse(raw) : {};
+      return !!stored?.plans?.googleCalendarConnected;
+    } catch {
+      return false;
+    }
+  });
+
+  const [googleNudgeDismissed, setGoogleNudgeDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('gcal_nudge_dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
@@ -697,6 +715,11 @@ const CalendarPage = () => {
     const today = new Date();
     setCurrentDate(today);
     setSelectedDate(today);
+  };
+
+  const handleDismissGoogleNudge = () => {
+    try { sessionStorage.setItem('gcal_nudge_dismissed', '1'); } catch { /* ignore */ }
+    setGoogleNudgeDismissed(true);
   };
 
   // ── Derived values ──
