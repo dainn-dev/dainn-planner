@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
-import { eventsAPI, tasksAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import AddTaskModal from '../components/AddTaskModal';
 import { toast } from '../utils/toast';
 import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
@@ -606,6 +606,8 @@ const CalendarPage = () => {
     try {
       if (!editingEvent) {
         await eventsAPI.createEvent(payload);
+      } else if (editingEvent.source === 'Google') {
+        await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
       } else {
         await eventsAPI.updateEvent(editingEvent.id, payload);
       }
