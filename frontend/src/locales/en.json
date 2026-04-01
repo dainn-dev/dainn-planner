@@ -925,7 +925,12 @@
     "deleteTaskFail": "Failed to delete task.",
     "overdue": "Overdue",
     "priority": "Priority",
-    "deepFocusPrefix": "Deep Focus: "
+    "deepFocusPrefix": "Deep Focus: ",
+    "googleSourceBadge": "Google",
+    "connectGoogleBanner": "Connect Google Calendar to see your events here",
+    "connectGoogleAction": "Connect",
+    "googleEventUpdated": "Google event updated",
+    "deleteEventFail": "Failed to delete event"
   },
   "userDashboard": {
     "title": "Overview",

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
-import { eventsAPI, tasksAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import AddTaskModal from '../components/AddTaskModal';
 import { toast } from '../utils/toast';
 import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
@@ -267,6 +268,7 @@ function getMonthDays(year, month, wsDay) {
 
 const CalendarPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [weekStartDay] = useState(() => {
     try {
@@ -294,6 +296,24 @@ const CalendarPage = () => {
   });
   const workHourStart = workHours.start;
   const workHourEnd = workHours.end;
+
+  const [isGoogleConnected] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+      const stored = raw ? JSON.parse(raw) : {};
+      return !!stored?.plans?.googleCalendarConnected;
+    } catch {
+      return false;
+    }
+  });
+
+  const [googleNudgeDismissed, setGoogleNudgeDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('gcal_nudge_dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -588,6 +608,10 @@ const CalendarPage = () => {
     try {
       if (!editingEvent) {
         await eventsAPI.createEvent(payload);
+      } else if (editingEvent.source === 'Google') {
+        if (!editingEvent.externalId) throw new Error(t('calendar.saveEventFail'));
+        await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
+        toast.success(t('calendar.googleEventUpdated'));
       } else {
         await eventsAPI.updateEvent(editingEvent.id, payload);
       }
@@ -697,6 +721,11 @@ const CalendarPage = () => {
     const today = new Date();
     setCurrentDate(today);
     setSelectedDate(today);
+  };
+
+  const handleDismissGoogleNudge = () => {
+    try { sessionStorage.setItem('gcal_nudge_dismissed', '1'); } catch { /* ignore */ }
+    setGoogleNudgeDismissed(true);
   };
 
   // ── Derived values ──
@@ -824,6 +853,35 @@ const CalendarPage = () => {
               </button>
             </div>
           </div>
+
+          {/* ── Google Calendar connect nudge ── */}
+          {!isGoogleConnected && !googleNudgeDismissed && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-[#4285F4] shrink-0">calendar_month</span>
+                <span className="text-sm text-blue-700 dark:text-blue-300 truncate">
+                  {t('calendar.connectGoogleBanner')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { navigate('/settings'); }}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-[#4285F4] text-white hover:bg-[#3367d6] transition-colors"
+                >
+                  {t('calendar.connectGoogleAction')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissGoogleNudge}
+                  className="p-1 rounded-lg text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"
+                  aria-label={t('common.close')}
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── M2: Day Selector + Task Strip ── */}
           {(() => {
@@ -1282,6 +1340,11 @@ const CalendarPage = () => {
                           {/* Meeting — pastel card: title + meta, avatars bottom-left, menu centered right */}
                           {type === 'meeting' && (
                             <div className={`relative flex h-full w-full flex-col font-display antialiased ${isCompactEventCard ? 'p-2.5' : 'p-4 pt-3 pb-3'}`}>
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  {t('calendar.googleSourceBadge')}
+                                </span>
+                              )}
                               <span
                                 role="button"
                                 tabIndex={0}
@@ -1357,6 +1420,11 @@ const CalendarPage = () => {
                           {/* Deep focus — light card, teal top+left frame, grey tag pills, teal type */}
                           {type === 'deepfocus' && (
                             <div className={`relative flex h-full w-full flex-col ${isCompactEventCard ? 'p-2.5' : 'p-4 pr-14 pt-3.5'}`}>
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  {t('calendar.googleSourceBadge')}
+                                </span>
+                              )}
                               {!isCompactEventCard && (
                                 <span
                                   className="absolute right-3 top-3 shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
@@ -1459,47 +1527,54 @@ const CalendarPage = () => {
 
                           {/* Casual — lavender bar, white rounded icon tile, avatar + chevron */}
                           {type === 'casual' && (
-                            <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
-                              <span
-                                className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
-                                style={{ backgroundColor: CAL_THEME.casualIconTile }}
-                              >
-                                {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
-                                  <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
-                                ) : (
-                                  <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
-                                    local_cafe
-                                  </span>
-                                )}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                {isLongEventCard ? (
-                                  <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
-                                    {evt.title}
-                                  </h3>
-                                ) : (
-                                  <p
-                                    className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
-                                    style={{ color: accentColor }}
-                                  >
-                                    {evt.title}
-                                  </p>
-                                )}
-                                <p
-                                  className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
-                                  style={{ color: CAL_THEME.casualMeta }}
+                            <div className="relative h-full w-full">
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  {t('calendar.googleSourceBadge')}
+                                </span>
+                              )}
+                              <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
+                                <span
+                                  className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
+                                  style={{ backgroundColor: CAL_THEME.casualIconTile }}
                                 >
-                                  {startLabel}{endLabel ? ` – ${endLabel}` : ''}
-                                  {!isCompactEventCard && (
-                                    evt.location
-                                      ? ` • ${evt.location}`
-                                      : evt.description
-                                        ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
-                                        : ''
+                                  {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
+                                    <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
+                                  ) : (
+                                    <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
+                                      local_cafe
+                                    </span>
                                   )}
-                                </p>
-                              </div>
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  {isLongEventCard ? (
+                                    <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
+                                      {evt.title}
+                                    </h3>
+                                  ) : (
+                                    <p
+                                      className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
+                                      style={{ color: accentColor }}
+                                    >
+                                      {evt.title}
+                                    </p>
+                                  )}
+                                  <p
+                                    className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
+                                    style={{ color: CAL_THEME.casualMeta }}
+                                  >
+                                    {startLabel}{endLabel ? ` – ${endLabel}` : ''}
+                                    {!isCompactEventCard && (
+                                      evt.location
+                                        ? ` • ${evt.location}`
+                                        : evt.description
+                                          ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                          : ''
+                                    )}
+                                  </p>
+                                </div>
 
+                              </div>
                             </div>
                           )}
                         </button>
@@ -1663,11 +1738,16 @@ const CalendarPage = () => {
                       onClick={async () => {
                         if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
                         try {
-                          await eventsAPI.deleteEvent(selectedEvent.id);
+                          if (selectedEvent.source === 'Google') {
+                            if (!selectedEvent.externalId) throw new Error(t('calendar.deleteEventFail'));
+                            await googleEventsAPI.deleteGoogleEvent(selectedEvent.externalId);
+                          } else {
+                            await eventsAPI.deleteEvent(selectedEvent.id);
+                          }
                           setSelectedEvent(null);
                           await loadEvents();
                         } catch (e) {
-                          toast.error(e?.message || 'Failed to delete event');
+                          toast.error(e?.message || t('calendar.deleteEventFail'));
                         }
                       }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
