@@ -31,7 +31,9 @@
     "email": "Email",
     "password": "Password",
     "more": "More",
-    "copyLink": "Copy link"
+    "copyLink": "Copy link",
+    "copyLinkSuccess": "Link copied",
+    "copyLinkError": "Failed to copy link"
   },
   "notifications": {
     "milestoneCompletedTitle": "Congratulations",

@@ -31,7 +31,9 @@
     "email": "Email",
     "password": "Mật khẩu",
     "more": "Thêm",
-    "copyLink": "Sao chép liên kết"
+    "copyLink": "Sao chép liên kết",
+    "copyLinkSuccess": "Đã sao chép liên kết",
+    "copyLinkError": "Không thể sao chép liên kết"
   },
   "notifications": {
     "milestoneCompletedTitle": "Chúc mừng",

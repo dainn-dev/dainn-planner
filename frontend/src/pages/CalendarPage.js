@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
-import { eventsAPI, tasksAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import AddTaskModal from '../components/AddTaskModal';
 import { toast } from '../utils/toast';
 import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
@@ -404,12 +404,6 @@ const CalendarPage = () => {
       .catch(() => { });
   }, []);
 
-  useEffect(() => {
-    if (activeEventMenuId === null) return;
-    const handleOutsideClick = () => setActiveEventMenuId(null);
-    document.addEventListener('click', handleOutsideClick);
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, [activeEventMenuId]);
 
   // ── Event CRUD handlers ──
   const openCreateModal = () => {
@@ -775,6 +769,13 @@ const CalendarPage = () => {
   // ── Render ──
   return (
     <div className="bg-background-light dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display min-h-screen flex flex-row overflow-hidden">
+      {activeEventMenuId !== null && (
+        <div
+          className="fixed inset-0 z-[49]"
+          onClick={() => setActiveEventMenuId(null)}
+          aria-hidden="true"
+        />
+      )}
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
@@ -1272,7 +1273,7 @@ const CalendarPage = () => {
                           key={evt.id}
                           type="button"
                           onClick={() => { setSelectedEvent(evt); setSelectedTimelineTask(null); }}
-                          className={`absolute text-left overflow-hidden transition-all active:scale-[0.99] font-display antialiased ${type === 'casual'
+                          className={`absolute text-left ${activeEventMenuId === evt.id ? 'overflow-visible' : 'overflow-hidden'} transition-all active:scale-[0.99] font-display antialiased ${type === 'casual'
                               ? 'rounded-xl shadow-[0_1px_8px_rgba(38,50,56,0.08)] hover:shadow-[0_3px_14px_rgba(38,50,56,0.1)]'
                               : type === 'meeting'
                                 ? 'rounded-xl shadow-[0_2px_12px_rgba(44,62,80,0.12)] hover:shadow-[0_4px_18px_rgba(44,62,80,0.16)]'
@@ -1343,9 +1344,9 @@ const CalendarPage = () => {
                                           const url = `${window.location.origin}/calendar?date=${formatLocalDateIso(new Date(evt.startDate))}`;
                                           try {
                                             await navigator.clipboard.writeText(url);
-                                            toast.success(t('common.copyLink'));
+                                            toast.success(t('common.copyLinkSuccess'));
                                           } catch {
-                                            toast.error(t('common.copyLink'));
+                                            toast.error(t('common.copyLinkError'));
                                           }
                                         }}
                                       >
