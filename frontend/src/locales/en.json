@@ -929,7 +929,8 @@
     "googleSourceBadge": "Google",
     "connectGoogleBanner": "Connect Google Calendar to see your events here",
     "connectGoogleAction": "Connect",
-    "googleEventUpdated": "Google event updated"
+    "googleEventUpdated": "Google event updated",
+    "deleteEventFail": "Failed to delete event"
   },
   "userDashboard": {
     "title": "Overview",

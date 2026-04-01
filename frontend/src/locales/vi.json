@@ -929,7 +929,8 @@
     "googleSourceBadge": "Google",
     "connectGoogleBanner": "Kết nối Google Calendar để xem events của bạn trên lịch",
     "connectGoogleAction": "Kết nối",
-    "googleEventUpdated": "Đã cập nhật Google event"
+    "googleEventUpdated": "Đã cập nhật Google event",
+    "deleteEventFail": "Không thể xóa sự kiện"
   },
   "userDashboard": {
     "title": "Tổng quan",

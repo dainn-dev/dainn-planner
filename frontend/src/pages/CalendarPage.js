@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -267,6 +268,7 @@ function getMonthDays(year, month, wsDay) {
 
 const CalendarPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [weekStartDay] = useState(() => {
     try {
@@ -609,6 +611,7 @@ const CalendarPage = () => {
       } else if (editingEvent.source === 'Google') {
         if (!editingEvent.externalId) throw new Error(t('calendar.saveEventFail'));
         await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
+        toast.success(t('calendar.googleEventUpdated'));
       } else {
         await eventsAPI.updateEvent(editingEvent.id, payload);
       }
@@ -863,7 +866,7 @@ const CalendarPage = () => {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => { window.location.href = '/settings'; }}
+                  onClick={() => { navigate('/settings'); }}
                   className="px-3 py-1 rounded-lg text-xs font-semibold bg-[#4285F4] text-white hover:bg-[#3367d6] transition-colors"
                 >
                   {t('calendar.connectGoogleAction')}
@@ -1339,7 +1342,7 @@ const CalendarPage = () => {
                             <div className={`relative flex h-full w-full flex-col font-display antialiased ${isCompactEventCard ? 'p-2.5' : 'p-4 pt-3 pb-3'}`}>
                               {evt.source === 'Google' && !isCompactEventCard && (
                                 <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
-                                  G
+                                  {t('calendar.googleSourceBadge')}
                                 </span>
                               )}
                               <span
@@ -1419,7 +1422,7 @@ const CalendarPage = () => {
                             <div className={`relative flex h-full w-full flex-col ${isCompactEventCard ? 'p-2.5' : 'p-4 pr-14 pt-3.5'}`}>
                               {evt.source === 'Google' && !isCompactEventCard && (
                                 <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
-                                  G
+                                  {t('calendar.googleSourceBadge')}
                                 </span>
                               )}
                               {!isCompactEventCard && (
@@ -1527,7 +1530,7 @@ const CalendarPage = () => {
                             <div className="relative h-full w-full">
                               {evt.source === 'Google' && !isCompactEventCard && (
                                 <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
-                                  G
+                                  {t('calendar.googleSourceBadge')}
                                 </span>
                               )}
                               <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
@@ -1736,7 +1739,7 @@ const CalendarPage = () => {
                         if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
                         try {
                           if (selectedEvent.source === 'Google') {
-                            if (!selectedEvent.externalId) throw new Error('Failed to delete event');
+                            if (!selectedEvent.externalId) throw new Error(t('calendar.deleteEventFail'));
                             await googleEventsAPI.deleteGoogleEvent(selectedEvent.externalId);
                           } else {
                             await eventsAPI.deleteEvent(selectedEvent.id);
@@ -1744,7 +1747,7 @@ const CalendarPage = () => {
                           setSelectedEvent(null);
                           await loadEvents();
                         } catch (e) {
-                          toast.error(e?.message || 'Failed to delete event');
+                          toast.error(e?.message || t('calendar.deleteEventFail'));
                         }
                       }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
