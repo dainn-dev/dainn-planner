@@ -1334,6 +1334,11 @@ const CalendarPage = () => {
                           {/* Meeting — pastel card: title + meta, avatars bottom-left, menu centered right */}
                           {type === 'meeting' && (
                             <div className={`relative flex h-full w-full flex-col font-display antialiased ${isCompactEventCard ? 'p-2.5' : 'p-4 pt-3 pb-3'}`}>
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  G
+                                </span>
+                              )}
                               <span
                                 role="button"
                                 tabIndex={0}
@@ -1409,6 +1414,11 @@ const CalendarPage = () => {
                           {/* Deep focus — light card, teal top+left frame, grey tag pills, teal type */}
                           {type === 'deepfocus' && (
                             <div className={`relative flex h-full w-full flex-col ${isCompactEventCard ? 'p-2.5' : 'p-4 pr-14 pt-3.5'}`}>
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  G
+                                </span>
+                              )}
                               {!isCompactEventCard && (
                                 <span
                                   className="absolute right-3 top-3 shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
@@ -1511,47 +1521,54 @@ const CalendarPage = () => {
 
                           {/* Casual — lavender bar, white rounded icon tile, avatar + chevron */}
                           {type === 'casual' && (
-                            <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
-                              <span
-                                className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
-                                style={{ backgroundColor: CAL_THEME.casualIconTile }}
-                              >
-                                {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
-                                  <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
-                                ) : (
-                                  <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
-                                    local_cafe
-                                  </span>
-                                )}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                {isLongEventCard ? (
-                                  <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
-                                    {evt.title}
-                                  </h3>
-                                ) : (
-                                  <p
-                                    className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
-                                    style={{ color: accentColor }}
-                                  >
-                                    {evt.title}
-                                  </p>
-                                )}
-                                <p
-                                  className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
-                                  style={{ color: CAL_THEME.casualMeta }}
+                            <div className="relative h-full w-full">
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  G
+                                </span>
+                              )}
+                              <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
+                                <span
+                                  className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
+                                  style={{ backgroundColor: CAL_THEME.casualIconTile }}
                                 >
-                                  {startLabel}{endLabel ? ` – ${endLabel}` : ''}
-                                  {!isCompactEventCard && (
-                                    evt.location
-                                      ? ` • ${evt.location}`
-                                      : evt.description
-                                        ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
-                                        : ''
+                                  {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
+                                    <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
+                                  ) : (
+                                    <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
+                                      local_cafe
+                                    </span>
                                   )}
-                                </p>
-                              </div>
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  {isLongEventCard ? (
+                                    <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
+                                      {evt.title}
+                                    </h3>
+                                  ) : (
+                                    <p
+                                      className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
+                                      style={{ color: accentColor }}
+                                    >
+                                      {evt.title}
+                                    </p>
+                                  )}
+                                  <p
+                                    className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
+                                    style={{ color: CAL_THEME.casualMeta }}
+                                  >
+                                    {startLabel}{endLabel ? ` – ${endLabel}` : ''}
+                                    {!isCompactEventCard && (
+                                      evt.location
+                                        ? ` • ${evt.location}`
+                                        : evt.description
+                                          ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                          : ''
+                                    )}
+                                  </p>
+                                </div>
 
+                              </div>
                             </div>
                           )}
                         </button>
