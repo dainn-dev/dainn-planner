@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 
 /**
- * AdminRoute - Redirects to /daily if user is not an Admin
+ * AdminRoute - Redirects to /calendar if user is not an Admin
  */
 const AdminRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -17,9 +17,9 @@ const AdminRoute = ({ children }) => {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
     
-    // If user role is not Admin, redirect to /daily
+    // If user role is not Admin, redirect to /calendar
     if (!user || user.role !== 'Admin') {
-      return <Navigate to="/daily" replace />;
+      return <Navigate to="/calendar" replace />;
     }
   } catch (error) {
     // If error parsing user, redirect to home

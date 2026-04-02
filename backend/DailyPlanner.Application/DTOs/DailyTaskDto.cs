@@ -17,5 +17,6 @@ public class DailyTaskDto
     public DateTime CreatedAt { get; set; }
     public Guid? GoalMilestoneId { get; set; }
     public Guid? GoalId { get; set; }
+    public string? GoalName { get; set; }
 }
 

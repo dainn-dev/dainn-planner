@@ -862,14 +862,6 @@ const AdminUsersPage = () => {
             </>
           )}
           <Link 
-            to="/daily" 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="material-symbols-outlined">today</span>
-            <span>{t('sidebar.dailyPlan')}</span>
-          </Link>
-          <Link 
             to="/goals" 
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-[#111418] dark:hover:text-white font-medium transition-colors"
             onClick={() => setSidebarOpen(false)}

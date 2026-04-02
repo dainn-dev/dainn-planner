@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MaintenancePage from './pages/MaintenancePage';
 import ToastContainer from './components/ToastContainer';
 import HomePage from './pages/HomePage';
@@ -11,7 +11,6 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ContactPage from './pages/ContactPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import DailyPage from './pages/DailyPage';
 import GoalsPage from './pages/GoalsPage';
 import GoalDetailPage from './pages/GoalDetailPage';
 import CalendarPage from './pages/CalendarPage';
@@ -28,6 +27,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import CvPlatformAdminRoute from './components/CvPlatformAdminRoute';
+import { initPushNotificationsOnce } from './utils/pushNotifications';
 
 function applyDarkModeFromStorage() {
   try {
@@ -51,6 +51,9 @@ function App() {
     const settingsHandler = () => applyDarkModeFromStorage();
     const downHandler = () => setIsBackendDown(true);
     const upHandler = () => setIsBackendDown(false);
+
+    // Fire-and-forget; skips if not supported or permission denied.
+    initPushNotificationsOnce();
 
     window.addEventListener('userSettingsUpdated', settingsHandler);
     window.addEventListener('backendUnavailable', downHandler);
@@ -80,11 +83,7 @@ function App() {
         <Route path="/term" element={<TermsPage />} />
         <Route path="/conditions" element={<PrivacyPolicyPage />} />
         {/* Protected Routes - Require Authentication */}
-        <Route path="/daily" element={
-          <ProtectedRoute>
-            <DailyPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/daily" element={<Navigate to="/calendar" replace />} />
         <Route path="/goals" element={
           <ProtectedRoute>
             <GoalsPage />

@@ -21,6 +21,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<UserDevice> UserDevices { get; set; }
+    public DbSet<UserPushSubscription> UserPushSubscriptions { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<UserActivity> UserActivities { get; set; }
     public DbSet<ContactMessage> ContactMessages { get; set; }
@@ -187,6 +188,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => new { e.UserId, e.DeviceId });
             entity.HasOne(e => e.User)
                 .WithMany(u => u.UserDevices)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UserPushSubscription (Web Push subscriptions per device/browser)
+        builder.Entity<UserPushSubscription>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Endpoint).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.P256dh).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.Auth).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.DeviceLabel).HasMaxLength(100);
+            entity.HasIndex(e => new { e.UserId, e.Endpoint }).IsUnique();
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.PushSubscriptions)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

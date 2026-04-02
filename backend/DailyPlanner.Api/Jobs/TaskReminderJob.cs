@@ -2,6 +2,7 @@ using DailyPlanner.Domain.Entities;
 using DailyPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using DailyPlanner.Api.Services;
 
 namespace DailyPlanner.Api.Jobs;
 
@@ -14,11 +15,13 @@ public class TaskReminderJob
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<TaskReminderJob> _logger;
+    private readonly IWebPushService _webPushService;
 
-    public TaskReminderJob(ApplicationDbContext context, ILogger<TaskReminderJob> logger)
+    public TaskReminderJob(ApplicationDbContext context, ILogger<TaskReminderJob> logger, IWebPushService webPushService)
     {
         _context = context;
         _logger = logger;
+        _webPushService = webPushService;
     }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
@@ -95,6 +98,18 @@ public class TaskReminderJob
                 ReferenceId = task.Id,
             });
             _logger.LogInformation("Task reminder created for task {TaskId} at {ReminderUtc}", task.Id, reminderUtc);
+
+            try
+            {
+                if (task.User != null)
+                {
+                    await _webPushService.SendTaskReminderAsync(task.User, task, reminderUtc, cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Web push send failed for task {TaskId}", task.Id);
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -85,6 +85,7 @@ const AddTaskModal = ({
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+  const [isCreatingInstance, setIsCreatingInstance] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   taskFormRef.current = taskForm;
 
@@ -230,6 +231,43 @@ const AddTaskModal = ({
     }
   }, [open, editingTaskId]);
 
+  const handleDeleteInstance = useCallback(async (item, e) => {
+    e.stopPropagation();
+    if (!item?.id || isSubmitting) return;
+    try {
+      await tasksAPI.deleteTaskInstance(item.id);
+      setHistoryItems((prev) => prev.filter((h) => h.id !== item.id));
+      if (selectedHistoryDate && item.date?.slice(0, 10) === selectedHistoryDate) {
+        selectedHistoryItemRef.current = null;
+        setSelectedHistoryDate(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete instance:', err);
+    }
+  }, [isSubmitting, selectedHistoryDate]);
+
+  const handleCreateTodayInstance = useCallback(async () => {
+    if (!editingTaskId || isCreatingInstance) return;
+    const todayStr = formatLocalDateIso(new Date());
+    setIsCreatingInstance(true);
+    try {
+      const isoDate = new Date(`${todayStr}T12:00:00`).toISOString();
+      const res = await tasksAPI.upsertTaskInstance({ taskId: editingTaskId, date: isoDate, description: null, isCompleted: false });
+      const newItem = res?.data ?? res;
+      if (newItem?.id) {
+        setHistoryItems((prev) => {
+          const exists = prev.some((h) => h.id === newItem.id);
+          return exists ? prev : [newItem, ...prev];
+        });
+        handleHistoryDateClick(newItem);
+      }
+    } catch (err) {
+      console.error('Failed to create instance:', err);
+    } finally {
+      setIsCreatingInstance(false);
+    }
+  }, [editingTaskId, isCreatingInstance, handleHistoryDateClick]);
+
   const handleTagToggle = (tag) => {
     setTaskForm(prev => ({
       ...prev,
@@ -303,15 +341,26 @@ const AddTaskModal = ({
 
         await tasksAPI.updateTask(editingTaskId, templatePayload);
 
-        // Use the selected history instance's date and completion status if one is selected,
-        // otherwise fall back to the form's dueDate and the initial task's completion status.
+        // Always use datePayload (from taskForm.dueDate) as the instance date so that
+        // manually changing the due date field is respected. selectedItem is only used
+        // for the completion status of the matching instance.
         const selectedItem = selectedHistoryItemRef.current;
-        const instanceDate = selectedItem?.date
-          ? new Date(selectedItem.date).toISOString()
-          : (initialTask?.date ? new Date(initialTask.date).toISOString() : datePayload);
+        const instanceDate = datePayload;
         const instanceCompleted = selectedItem
           ? (selectedItem.isCompleted ?? false)
           : (initialTask?.isCompleted ?? initialTask?.completed ?? false);
+
+        // For non-recurring tasks: if the date changed, delete the old instance first
+        // so there's no stale instance left on the previous date.
+        const isNoRepeat = recurrence === 0;
+        const oldInstanceDate = selectedItem?.date ?? initialTask?.date;
+        const oldInstanceId = selectedItem?.id;
+        const dateChanged = oldInstanceDate &&
+          new Date(oldInstanceDate).toISOString().slice(0, 10) !== new Date(instanceDate).toISOString().slice(0, 10);
+
+        if (isNoRepeat && dateChanged && oldInstanceId) {
+          await tasksAPI.deleteTaskInstance(oldInstanceId);
+        }
 
         await tasksAPI.upsertTaskInstance({
           taskId: editingTaskId,
@@ -424,6 +473,7 @@ const AddTaskModal = ({
                   {t('daily.description')}
                 </label>
                 {editingTaskId && (
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0 pb-0.5" style={{ scrollbarWidth: 'none' }}>
                     {historyLoading && (
                       <span className="text-[10px] text-gray-400 dark:text-slate-500 shrink-0 italic">Loading…</span>
@@ -435,29 +485,58 @@ const AddTaskModal = ({
                         ? item.date.slice(0, 10) === selectedHistoryDate
                         : false;
                       return (
-                        <button
+                        <span
                           key={item.id ?? `${item.taskId}-${item.date}`}
-                          type="button"
-                          disabled={isSubmitting}
-                          title={done ? 'Completed' : 'Not completed'}
-                          onClick={() => handleHistoryDateClick(item)}
-                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] disabled:opacity-50 ${
+                          className={`group/pill shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition-colors text-[11px] ${isSubmitting ? 'opacity-50 pointer-events-none' : ''} ${
                             isSelected
                               ? 'border-primary bg-primary text-white dark:border-blue-400 dark:bg-blue-500 dark:text-white'
                               : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:border-primary dark:hover:border-blue-400 hover:bg-primary/5 dark:hover:bg-blue-900/20'
                           }`}
                         >
-                          <span className={`material-symbols-outlined text-[13px] ${
-                            isSelected
-                              ? 'text-white'
-                              : done ? 'text-green-500 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'
-                          }`}>
-                            {done ? 'check_circle' : 'radio_button_unchecked'}
-                          </span>
-                          {dateLabel}
-                        </button>
+                          <button
+                            type="button"
+                            title={done ? 'Completed' : 'Not completed'}
+                            onClick={() => handleHistoryDateClick(item)}
+                            className="inline-flex items-center gap-1 focus:outline-none"
+                          >
+                            <span className={`material-symbols-outlined text-[13px] ${
+                              isSelected
+                                ? 'text-white'
+                                : done ? 'text-green-500 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'
+                            }`}>
+                              {done ? 'check_circle' : 'radio_button_unchecked'}
+                            </span>
+                            {dateLabel}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={t('daily.deleteInstance')}
+                            onClick={(e) => handleDeleteInstance(item, e)}
+                            className="hidden group-hover/pill:inline-flex items-center justify-center ml-0.5 rounded-full text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 focus:outline-none transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">close</span>
+                          </button>
+                        </span>
                       );
                     })}
+                  </div>
+                  {/* Plus button — create instance for today */}
+                  {!historyLoading && (() => {
+                    const todayStr = formatLocalDateIso(new Date());
+                    const todayExists = historyItems.some((h) => h.date?.slice(0, 10) === todayStr);
+                    const plusDisabled = isSubmitting || isCreatingInstance || todayExists;
+                    return (
+                      <button
+                        type="button"
+                        aria-label={t('daily.addInstance')}
+                        disabled={plusDisabled}
+                        onClick={handleCreateTodayInstance}
+                        className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-300 dark:border-slate-600 text-gray-400 dark:text-slate-500 hover:border-primary hover:text-primary dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-400"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">add</span>
+                      </button>
+                    );
+                  })()}
                   </div>
                 )}
               </div>

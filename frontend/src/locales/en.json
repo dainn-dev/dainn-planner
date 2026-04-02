@@ -30,7 +30,10 @@
     "remove": "Remove",
     "email": "Email",
     "password": "Password",
-    "more": "More"
+    "more": "More",
+    "copyLink": "Copy link",
+    "copyLinkSuccess": "Link copied",
+    "copyLinkError": "Failed to copy link"
   },
   "notifications": {
     "milestoneCompletedTitle": "Congratulations",
@@ -655,6 +658,8 @@
     "markTaskComplete": "Mark complete: {{title}}",
     "editTaskLabel": "Edit task: {{title}}",
     "deleteTaskLabel": "Delete task: {{title}}",
+    "deleteInstance": "Delete data for this date",
+    "addInstance": "Add new date",
     "updating": "Updating",
     "editTaskTitle": "Edit task",
     "addTaskTitle": "Add Task",
@@ -923,7 +928,12 @@
     "deleteTaskFail": "Failed to delete task.",
     "overdue": "Overdue",
     "priority": "Priority",
-    "deepFocusPrefix": "Deep Focus: "
+    "deepFocusPrefix": "Deep Focus: ",
+    "googleSourceBadge": "Google",
+    "connectGoogleBanner": "Connect Google Calendar to see your events here",
+    "connectGoogleAction": "Connect",
+    "googleEventUpdated": "Google event updated",
+    "deleteEventFail": "Failed to delete event"
   },
   "userDashboard": {
     "title": "Overview",

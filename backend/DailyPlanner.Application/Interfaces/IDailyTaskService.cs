@@ -13,6 +13,7 @@ public interface IDailyTaskService
 
     // Per-day instance workflow (FE)
     Task<ApiResponse<TaskInstanceDto>> UpsertTaskInstanceAsync(string userId, UpsertTaskInstanceRequest request);
+    Task<ApiResponse<object>> DeleteTaskInstanceAsync(string userId, Guid instanceId);
     Task<ApiResponse<TaskHistoryResult>> GetTaskHistoryAsync(string userId, Guid taskId);
 }
 

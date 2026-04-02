@@ -30,7 +30,10 @@
     "remove": "Xóa",
     "email": "Email",
     "password": "Mật khẩu",
-    "more": "Thêm"
+    "more": "Thêm",
+    "copyLink": "Sao chép liên kết",
+    "copyLinkSuccess": "Đã sao chép liên kết",
+    "copyLinkError": "Không thể sao chép liên kết"
   },
   "notifications": {
     "milestoneCompletedTitle": "Chúc mừng",
@@ -655,6 +658,8 @@
     "markTaskComplete": "Đánh dấu hoàn thành: {{title}}",
     "editTaskLabel": "Chỉnh sửa nhiệm vụ: {{title}}",
     "deleteTaskLabel": "Xóa nhiệm vụ: {{title}}",
+    "deleteInstance": "Xóa dữ liệu ngày này",
+    "addInstance": "Thêm ngày mới",
     "updating": "Đang cập nhật",
     "editTaskTitle": "Chỉnh sửa nhiệm vụ",
     "addTaskTitle": "Thêm Nhiệm Vụ",
@@ -923,7 +928,12 @@
     "deleteTaskFail": "Không thể xóa nhiệm vụ.",
     "overdue": "Quá hạn",
     "priority": "Ưu tiên",
-    "deepFocusPrefix": "Tập trung: "
+    "deepFocusPrefix": "Tập trung: ",
+    "googleSourceBadge": "Google",
+    "connectGoogleBanner": "Kết nối Google Calendar để xem events của bạn trên lịch",
+    "connectGoogleAction": "Kết nối",
+    "googleEventUpdated": "Đã cập nhật Google event",
+    "deleteEventFail": "Không thể xóa sự kiện"
   },
   "userDashboard": {
     "title": "Tổng quan",

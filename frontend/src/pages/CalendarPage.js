@@ -1,15 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
-import { eventsAPI, tasksAPI, notificationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import AddTaskModal from '../components/AddTaskModal';
 import { toast } from '../utils/toast';
 import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+/** Format task display title, prepending goal name when available. */
+const taskDisplayTitle = (task) => {
+  const base = task?.title || task?.text || '';
+  return task?.goalName ? `[${task.goalName}] - ${base}` : base;
+};
 
 const TASK_SCHEDULE_KEY = 'task_schedule';
 
@@ -261,6 +268,7 @@ function getMonthDays(year, month, wsDay) {
 
 const CalendarPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [weekStartDay] = useState(() => {
     try {
@@ -289,6 +297,24 @@ const CalendarPage = () => {
   const workHourStart = workHours.start;
   const workHourEnd = workHours.end;
 
+  const [isGoogleConnected] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+      const stored = raw ? JSON.parse(raw) : {};
+      return !!stored?.plans?.googleCalendarConnected;
+    } catch {
+      return false;
+    }
+  });
+
+  const [googleNudgeDismissed, setGoogleNudgeDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('gcal_nudge_dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
@@ -310,6 +336,7 @@ const CalendarPage = () => {
   const [dragOverHour, setDragOverHour] = useState(null);
   const timelineRef = useRef(null);
   const timelineScrollRef = useRef(null);
+  const [activeEventMenuId, setActiveEventMenuId] = useState(null);
 
   // ── Event CRUD form state (unchanged) ──
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -354,11 +381,25 @@ const CalendarPage = () => {
 
   // ── Data loading ──
   const selectedDateIso = formatLocalDateIso(selectedDate);
+  const weekStart = useMemo(() => {
+    const d = new Date(currentDate);
+    d.setHours(0, 0, 0, 0);
+    const dow = d.getDay();
+    const delta = weekStartDay === 'sunday' ? -dow : -((dow + 6) % 7);
+    d.setDate(d.getDate() + delta);
+    return d;
+  }, [currentDate, weekStartDay]);
+  const weekStartIso = useMemo(() => formatLocalDateIso(weekStart), [weekStart]);
+  const weekEndIso = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
+    return formatLocalDateIso(d);
+  }, [weekStart]);
 
   const loadEvents = async () => {
     setEventsLoading(true);
     try {
-      const res = await eventsAPI.getEvents({ startDate: selectedDateIso, endDate: selectedDateIso });
+      const res = await eventsAPI.getEvents({ startDate: weekStartIso, endDate: weekEndIso });
       const list = res?.data ?? res?.items ?? res ?? [];
       setEvents(Array.isArray(list) ? list : []);
     } catch {
@@ -388,6 +429,10 @@ const CalendarPage = () => {
 
   useEffect(() => {
     loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStartIso]);
+
+  useEffect(() => {
     loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateIso]);
@@ -397,6 +442,7 @@ const CalendarPage = () => {
       .then((data) => setNotifications(Array.isArray(data) ? data : (data?.notifications ?? [])))
       .catch(() => { });
   }, []);
+
 
   // ── Event CRUD handlers ──
   const openCreateModal = () => {
@@ -583,6 +629,10 @@ const CalendarPage = () => {
     try {
       if (!editingEvent) {
         await eventsAPI.createEvent(payload);
+      } else if (editingEvent.source === 'Google') {
+        if (!editingEvent.externalId) throw new Error(t('calendar.saveEventFail'));
+        await googleEventsAPI.updateGoogleEvent(editingEvent.externalId, payload);
+        toast.success(t('calendar.googleEventUpdated'));
       } else {
         await eventsAPI.updateEvent(editingEvent.id, payload);
       }
@@ -694,10 +744,15 @@ const CalendarPage = () => {
     setSelectedDate(today);
   };
 
+  const handleDismissGoogleNudge = () => {
+    try { sessionStorage.setItem('gcal_nudge_dismissed', '1'); } catch { /* ignore */ }
+    setGoogleNudgeDismissed(true);
+  };
+
   // ── Derived values ──
   const weekDays = getWeekDays(currentDate, weekStartDay);
-  const timedEvents = events.filter((e) => !e.isAllDay);
-  const allDayEvents = events.filter((e) => e.isAllDay);
+  const timedEvents = events.filter((e) => !e.isAllDay && isSameDay(new Date(e.startDate), selectedDate));
+  const allDayEvents = events.filter((e) => e.isAllDay && isSameDay(new Date(e.startDate), selectedDate));
   const timedEventLayout = computeTimedEventColumns(timedEvents);
 
   // Earlier start time → higher z-index (earlier events render on top when overlapping)
@@ -762,6 +817,13 @@ const CalendarPage = () => {
   // ── Render ──
   return (
     <div className="bg-background-light dark:bg-[#101922] text-[#111418] dark:text-slate-100 font-display min-h-screen flex flex-row overflow-hidden">
+      {activeEventMenuId !== null && (
+        <div
+          className="fixed inset-0 z-[49]"
+          onClick={() => setActiveEventMenuId(null)}
+          aria-hidden="true"
+        />
+      )}
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
@@ -820,6 +882,35 @@ const CalendarPage = () => {
             </div>
           </div>
 
+          {/* ── Google Calendar connect nudge ── */}
+          {!isGoogleConnected && !googleNudgeDismissed && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-[#4285F4] shrink-0">calendar_month</span>
+                <span className="text-sm text-blue-700 dark:text-blue-300 truncate">
+                  {t('calendar.connectGoogleBanner')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { navigate('/settings'); }}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold bg-[#4285F4] text-white hover:bg-[#3367d6] transition-colors"
+                >
+                  {t('calendar.connectGoogleAction')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissGoogleNudge}
+                  className="p-1 rounded-lg text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"
+                  aria-label={t('common.close')}
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── M2: Day Selector + Task Strip ── */}
           {(() => {
             const incompleteTasks = tasksForDay.filter((t) => !(t.completed || t.isCompleted));
@@ -835,7 +926,8 @@ const CalendarPage = () => {
                 <div className="flex gap-1 sm:gap-2 p-2">
                   {weekDays.map((day) => {
                     const isSelected = isSameDay(day, selectedDate);
-                    const isTodayDay = isSameDay(day, new Date());
+                    const dayIso = formatLocalDateIso(day);
+                    const dayHasEvents = events.some((e) => formatLocalDateIso(new Date(e.startDate)) === dayIso);
                     return (
                       <button
                         key={day.toISOString()}
@@ -852,7 +944,7 @@ const CalendarPage = () => {
                         </span>
                         <span className="text-sm sm:text-base font-bold leading-none">{day.getDate()}</span>
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : isTodayDay ? 'bg-[#005EB8]' : 'invisible'}`}
+                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : dayHasEvents ? 'bg-[#005EB8]' : 'invisible'}`}
                         />
                       </button>
                     );
@@ -920,7 +1012,7 @@ const CalendarPage = () => {
                                 setSelectedTask((prev) => prev?.id === task.id ? null : task);
                                 setTaskDeleteConfirm(false);
                               }}
-                              title={task.title || task.text}
+                              title={taskDisplayTitle(task)}
                               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.97] shrink-0 cursor-grab active:cursor-grabbing ${
                                 isActive
                                   ? 'ring-2 ring-primary ring-offset-1'
@@ -942,7 +1034,7 @@ const CalendarPage = () => {
                                 : 'bg-gray-400'
                               }`} />
                               <span className={`max-w-[140px] truncate ${isCompleted ? 'line-through' : ''}`}>
-                                {task.title || task.text}
+                                {taskDisplayTitle(task)}
                               </span>
                               {isCompleted && (
                                 <span className="material-symbols-outlined text-[11px] shrink-0">check</span>
@@ -983,7 +1075,7 @@ const CalendarPage = () => {
                               {priorityLabel}
                             </span>
                             <p className={`min-w-0 text-sm font-semibold text-[#111418] dark:text-slate-100 leading-snug truncate ${isCompleted ? 'line-through opacity-60' : ''}`}>
-                              {t2.title || t2.text}
+                              {taskDisplayTitle(t2)}
                             </p>
                           </div>
                           <button
@@ -1259,7 +1351,7 @@ const CalendarPage = () => {
                           key={evt.id}
                           type="button"
                           onClick={() => { setSelectedEvent(evt); setSelectedTimelineTask(null); }}
-                          className={`absolute text-left overflow-hidden transition-all active:scale-[0.99] font-display antialiased ${type === 'casual'
+                          className={`absolute text-left ${activeEventMenuId === evt.id ? 'overflow-visible' : 'overflow-hidden'} transition-all active:scale-[0.99] font-display antialiased ${type === 'casual'
                               ? 'rounded-xl shadow-[0_1px_8px_rgba(38,50,56,0.08)] hover:shadow-[0_3px_14px_rgba(38,50,56,0.1)]'
                               : type === 'meeting'
                                 ? 'rounded-xl shadow-[0_2px_12px_rgba(44,62,80,0.12)] hover:shadow-[0_4px_18px_rgba(44,62,80,0.16)]'
@@ -1277,21 +1369,101 @@ const CalendarPage = () => {
                           {/* Meeting — pastel card: title + meta, avatars bottom-left, menu centered right */}
                           {type === 'meeting' && (
                             <div className={`relative flex h-full w-full flex-col font-display antialiased ${isCompactEventCard ? 'p-2.5' : 'p-4 pt-3 pb-3'}`}>
-                              <span
-                                role="button"
-                                tabIndex={0}
-                                onClick={(e) => { e.stopPropagation(); }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }
-                                }}
-                                className="absolute right-3 top-1/2 z-[1] -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-[#7F8C8D] transition-colors hover:bg-white/80 hover:text-[#2C3E50]"
-                                aria-label={t('common.more')}
-                                title={t('common.more')}
-                              >
-                              </span>
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  {t('calendar.googleSourceBadge')}
+                                </span>
+                              )}
+                              {!isCompactEventCard && (
+                                <div className="absolute right-2 top-1/2 z-[2] -translate-y-1/2">
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveEventMenuId((prev) => (prev === evt.id ? null : evt.id));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setActiveEventMenuId((prev) => (prev === evt.id ? null : evt.id));
+                                      }
+                                      if (e.key === 'Escape') {
+                                        e.stopPropagation();
+                                        setActiveEventMenuId(null);
+                                      }
+                                    }}
+                                    className="flex items-center justify-center cursor-pointer rounded-lg p-1.5 text-[#7F8C8D] transition-colors hover:bg-white/80 hover:text-[#2C3E50]"
+                                    aria-label={t('common.more')}
+                                    title={t('common.more')}
+                                  >
+                                    <span className="material-symbols-outlined text-[16px] leading-none">more_vert</span>
+                                  </span>
+
+                                  {activeEventMenuId === evt.id && (
+                                    <div
+                                      className="absolute right-0 top-full mt-1 z-50 min-w-[140px] rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg py-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveEventMenuId(null);
+                                          openEditModal(evt);
+                                        }}
+                                      >
+                                        <span className="material-symbols-outlined text-[15px]">edit</span>
+                                        {t('common.edit')}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setActiveEventMenuId(null);
+                                          const url = `${window.location.origin}/calendar?date=${formatLocalDateIso(new Date(evt.startDate))}`;
+                                          try {
+                                            await navigator.clipboard.writeText(url);
+                                            toast.success(t('common.copyLinkSuccess'));
+                                          } catch {
+                                            toast.error(t('common.copyLinkError'));
+                                          }
+                                        }}
+                                      >
+                                        <span className="material-symbols-outlined text-[15px]">link</span>
+                                        {t('common.copyLink')}
+                                      </button>
+                                      <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setActiveEventMenuId(null);
+                                          if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
+                                          try {
+                                            if (evt.source === 'Google') {
+                                              if (!evt.externalId) throw new Error(t('calendar.deleteEventFail'));
+                                              await googleEventsAPI.deleteGoogleEvent(evt.externalId);
+                                            } else {
+                                              await eventsAPI.deleteEvent(evt.id);
+                                            }
+                                            await loadEvents();
+                                          } catch (err) {
+                                            toast.error(err?.message || t('calendar.deleteEventFail'));
+                                          }
+                                        }}
+                                      >
+                                        <span className="material-symbols-outlined text-[15px]">delete</span>
+                                        {t('common.delete')}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
                               <div className={`min-w-0 flex-1 ${isCompactEventCard ? 'pr-0' : 'pr-10'}`}>
                                 {isLongEventCard ? (
@@ -1352,6 +1524,11 @@ const CalendarPage = () => {
                           {/* Deep focus — light card, teal top+left frame, grey tag pills, teal type */}
                           {type === 'deepfocus' && (
                             <div className={`relative flex h-full w-full flex-col ${isCompactEventCard ? 'p-2.5' : 'p-4 pr-14 pt-3.5'}`}>
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  {t('calendar.googleSourceBadge')}
+                                </span>
+                              )}
                               {!isCompactEventCard && (
                                 <span
                                   className="absolute right-3 top-3 shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm"
@@ -1454,47 +1631,54 @@ const CalendarPage = () => {
 
                           {/* Casual — lavender bar, white rounded icon tile, avatar + chevron */}
                           {type === 'casual' && (
-                            <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
-                              <span
-                                className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
-                                style={{ backgroundColor: CAL_THEME.casualIconTile }}
-                              >
-                                {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
-                                  <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
-                                ) : (
-                                  <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
-                                    local_cafe
-                                  </span>
-                                )}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                {isLongEventCard ? (
-                                  <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
-                                    {evt.title}
-                                  </h3>
-                                ) : (
-                                  <p
-                                    className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
-                                    style={{ color: accentColor }}
-                                  >
-                                    {evt.title}
-                                  </p>
-                                )}
-                                <p
-                                  className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
-                                  style={{ color: CAL_THEME.casualMeta }}
+                            <div className="relative h-full w-full">
+                              {evt.source === 'Google' && !isCompactEventCard && (
+                                <span className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white text-[#4285F4] border border-[#4285F4]/30 leading-none select-none">
+                                  {t('calendar.googleSourceBadge')}
+                                </span>
+                              )}
+                              <div className={`flex h-full w-full items-center ${isCompactEventCard ? 'gap-2 px-2.5 py-1.5' : 'gap-3 px-4 py-2.5'}`}>
+                                <span
+                                  className={`flex shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/[0.04] ${isCompactEventCard ? 'h-8 w-8' : 'h-10 w-10'}`}
+                                  style={{ backgroundColor: CAL_THEME.casualIconTile }}
                                 >
-                                  {startLabel}{endLabel ? ` – ${endLabel}` : ''}
-                                  {!isCompactEventCard && (
-                                    evt.location
-                                      ? ` • ${evt.location}`
-                                      : evt.description
-                                        ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
-                                        : ''
+                                  {evt.icon && /[\u{1F300}-\u{1FAD6}]|[\u2600-\u27BF]/u.test(String(evt.icon)) ? (
+                                    <span className={`${isCompactEventCard ? 'text-base' : 'text-xl'} leading-none`}>{evt.icon}</span>
+                                  ) : (
+                                    <span className={`material-symbols-outlined ${isCompactEventCard ? 'text-[18px]' : 'text-[22px]'}`} style={{ color: CAL_THEME.deepFocusTeal }}>
+                                      local_cafe
+                                    </span>
                                   )}
-                                </p>
-                              </div>
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  {isLongEventCard ? (
+                                    <h3 className="font-bold text-secondary font-['Manrope']" style={{ color: accentColor }}>
+                                      {evt.title}
+                                    </h3>
+                                  ) : (
+                                    <p
+                                      className="truncate text-[13px] font-bold leading-snug tracking-tight sm:text-[14px]"
+                                      style={{ color: accentColor }}
+                                    >
+                                      {evt.title}
+                                    </p>
+                                  )}
+                                  <p
+                                    className={`font-normal ${isCompactEventCard ? 'mt-0.5 text-[10px] leading-tight' : 'mt-1 text-[11px] leading-relaxed sm:text-[12px]'}`}
+                                    style={{ color: CAL_THEME.casualMeta }}
+                                  >
+                                    {startLabel}{endLabel ? ` – ${endLabel}` : ''}
+                                    {!isCompactEventCard && (
+                                      evt.location
+                                        ? ` • ${evt.location}`
+                                        : evt.description
+                                          ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                          : ''
+                                    )}
+                                  </p>
+                                </div>
 
+                              </div>
                             </div>
                           )}
                         </button>
@@ -1511,7 +1695,7 @@ const CalendarPage = () => {
                         >
                           <div className="mx-1 h-full rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-50/40 dark:bg-emerald-900/20 flex items-center px-3">
                             <span className="text-xs text-emerald-600 dark:text-emerald-300 font-medium">
-                              {String(dragOverHour.hour).padStart(2, '0')}:{String(dragOverHour.min).padStart(2, '0')} – {draggedTask.title || draggedTask.text}
+                              {String(dragOverHour.hour).padStart(2, '0')}:{String(dragOverHour.min).padStart(2, '0')} – {taskDisplayTitle(draggedTask)}
                             </span>
                           </div>
                         </div>
@@ -1571,7 +1755,7 @@ const CalendarPage = () => {
                                 : isOverdue ? 'text-red-600 dark:text-red-300'
                                 : 'text-emerald-700 dark:text-emerald-300'
                               }`}>
-                                {task.title || task.text}
+                                {taskDisplayTitle(task)}
                               </span>
                             </div>
                             <p className={`text-[10px] mt-0.5 ${isOverdue ? 'text-red-400 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400'}`}>
@@ -1658,11 +1842,16 @@ const CalendarPage = () => {
                       onClick={async () => {
                         if (!window.confirm(`${t('calendar.deleteEvent')}?`)) return;
                         try {
-                          await eventsAPI.deleteEvent(selectedEvent.id);
+                          if (selectedEvent.source === 'Google') {
+                            if (!selectedEvent.externalId) throw new Error(t('calendar.deleteEventFail'));
+                            await googleEventsAPI.deleteGoogleEvent(selectedEvent.externalId);
+                          } else {
+                            await eventsAPI.deleteEvent(selectedEvent.id);
+                          }
                           setSelectedEvent(null);
                           await loadEvents();
                         } catch (e) {
-                          toast.error(e?.message || 'Failed to delete event');
+                          toast.error(e?.message || t('calendar.deleteEventFail'));
                         }
                       }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
@@ -1700,7 +1889,7 @@ const CalendarPage = () => {
                         {isCompleted ? 'task_alt' : isOverdue ? 'warning' : 'radio_button_unchecked'}
                       </span>
                       <span className="text-sm font-semibold text-[#111418] dark:text-slate-100 truncate">
-                        {t2.title || t2.text}
+                        {taskDisplayTitle(t2)}
                       </span>
                     </div>
                     <button

@@ -30,11 +30,11 @@ const HomePage = () => {
         if (user) {
           navigate(getPostLoginPath(user), { replace: true });
         } else {
-          navigate('/daily', { replace: true });
+          navigate('/calendar', { replace: true });
         }
       } catch (error) {
-        // If error parsing user, redirect to daily page
-        navigate('/daily', { replace: true });
+        // If error parsing user, redirect to calendar
+        navigate('/calendar', { replace: true });
       }
     }
   }, [navigate]);

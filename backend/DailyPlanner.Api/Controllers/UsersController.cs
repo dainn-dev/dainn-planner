@@ -2,10 +2,13 @@ using System.Collections.Generic;
 using System.Text.Json;
 using DailyPlanner.Application.DTOs;
 using DailyPlanner.Application.Interfaces;
+using DailyPlanner.Infrastructure.Data;
+using DailyPlanner.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace DailyPlanner.Api.Controllers;
 
@@ -17,12 +20,14 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IConfiguration _configuration;
     private readonly IGoogleRecaptchaService _recaptchaService;
+    private readonly ApplicationDbContext _context;
 
-    public UsersController(IUserService userService, IConfiguration configuration, IGoogleRecaptchaService recaptchaService)
+    public UsersController(IUserService userService, IConfiguration configuration, IGoogleRecaptchaService recaptchaService, ApplicationDbContext context)
     {
         _userService = userService;
         _configuration = configuration;
         _recaptchaService = recaptchaService;
+        _context = context;
     }
 
     [HttpGet("me")]
@@ -197,6 +202,66 @@ public class UsersController : ControllerBase
         var result = await _userService.RevokeDeviceAsync(userId, id);
         if (!result.Success)
             return NotFound(result);
+        return NoContent();
+    }
+
+    public class SavePushSubscriptionRequest
+    {
+        public string? Endpoint { get; set; }
+        public KeysPayload? Keys { get; set; }
+        public DateTime? ExpirationTime { get; set; }
+        public string? DeviceLabel { get; set; }
+
+        public class KeysPayload
+        {
+            public string? P256dh { get; set; }
+            public string? Auth { get; set; }
+        }
+    }
+
+    [HttpPost("me/push-subscription")]
+    public async Task<ActionResult> SaveMyPushSubscription([FromBody] SavePushSubscriptionRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var endpoint = (request.Endpoint ?? "").Trim();
+        var p256dh = (request.Keys?.P256dh ?? "").Trim();
+        var auth = (request.Keys?.Auth ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(p256dh) || string.IsNullOrWhiteSpace(auth))
+        {
+            return BadRequest(new ApiResponse<object> { Success = false, Message = "Invalid push subscription" });
+        }
+
+        var existing = await _context.UserPushSubscriptions
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.Endpoint == endpoint, cancellationToken);
+
+        if (existing == null)
+        {
+            _context.UserPushSubscriptions.Add(new UserPushSubscription
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Endpoint = endpoint,
+                P256dh = p256dh,
+                Auth = auth,
+                ExpirationTime = request.ExpirationTime,
+                DeviceLabel = string.IsNullOrWhiteSpace(request.DeviceLabel) ? null : request.DeviceLabel.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
+        }
+        else
+        {
+            existing.P256dh = p256dh;
+            existing.Auth = auth;
+            existing.ExpirationTime = request.ExpirationTime;
+            existing.DeviceLabel = string.IsNullOrWhiteSpace(request.DeviceLabel) ? null : request.DeviceLabel.Trim();
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 }

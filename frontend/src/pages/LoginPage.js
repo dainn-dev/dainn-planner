@@ -63,9 +63,9 @@ const LoginPage = () => {
         const userStr = localStorage.getItem('user');
         const user = userStr ? JSON.parse(userStr) : null;
         if (user) navigate(getPostLoginPath(user), { replace: true });
-        else navigate('/daily', { replace: true });
+        else navigate('/calendar', { replace: true });
       } catch (error) {
-        navigate('/daily', { replace: true });
+        navigate('/calendar', { replace: true });
       }
     }
   }, [navigate]);
