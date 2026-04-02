@@ -370,7 +370,8 @@ const CalendarPage = () => {
 
   const loadTasks = async () => {
     try {
-      const res = await tasksAPI.getTasks({ date: selectedDateIso });
+      // Increase page size to show more tasks for the selected day.
+      const res = await tasksAPI.getTasks({ date: selectedDateIso, page: 1, pageSize: 30 });
       const list = res?.data ?? res?.items ?? res ?? [];
       const tasks = Array.isArray(list) ? list : [];
       const schedule = readTaskSchedule();
