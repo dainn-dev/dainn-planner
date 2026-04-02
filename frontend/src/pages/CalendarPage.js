@@ -618,6 +618,8 @@ const CalendarPage = () => {
       color: eventForm.color || undefined,
       isAllDay: !!eventForm.isAllDay,
       eventType: eventForm.eventType || undefined,
+      // Create/update from app only: don't mirror to Google Calendar.
+      pushToGoogle: false,
       icon: eventForm.eventType === 'casual' ? (eventForm.casualIcon || undefined) : undefined,
       dndEnabled: eventForm.eventType === 'deepfocus' ? !!eventForm.doNotDisturb : undefined,
       reminderMinutes: typeof eventForm.reminderMinutes === 'number' ? eventForm.reminderMinutes : undefined,

@@ -8,6 +8,8 @@ public class CreateCalendarEventRequest
     public DateTime EndDate { get; set; }
     public string? Location { get; set; }
     public string? Color { get; set; }
+    // When false, the event will be created only in the app (no Google Calendar sync).
+    public bool PushToGoogle { get; set; } = true;
     public bool IsAllDay { get; set; }
     public string? EventType { get; set; }
     public string? Icon { get; set; }
