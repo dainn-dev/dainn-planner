@@ -917,6 +917,43 @@ const CalendarPage = () => {
     ? Math.max(1, Math.round((new Date(nextEvent.startDate) - now) / 60000))
     : null;
 
+  const eventsOnSelectedDay = useMemo(
+    () => events.filter((e) => {
+      const start = new Date(e.startDate);
+      return !Number.isNaN(start.getTime()) && isSameDay(start, selectedDate);
+    }).length,
+    [events, selectedDate],
+  );
+
+  const headerDaySummary = useMemo(() => {
+    const te = eventsOnSelectedDay;
+    const tt = totalTasks;
+    if (te === 0 && tt === 0) {
+      return { key: 'calendar.todayNoPlansLine', params: {} };
+    }
+    if (te === 0) {
+      return {
+        key: 'calendar.todayTasksOnlySummary',
+        params: { totalTask: tt, taskS: tt === 1 ? '' : 's' },
+      };
+    }
+    if (tt === 0) {
+      return {
+        key: 'calendar.todayEventsOnlySummary',
+        params: { totalEvent: te, eventS: te === 1 ? '' : 's' },
+      };
+    }
+    return {
+      key: 'calendar.todayEventTaskSummary',
+      params: {
+        totalEvent: te,
+        totalTask: tt,
+        eventS: te === 1 ? '' : 's',
+        taskS: tt === 1 ? '' : 's',
+      },
+    };
+  }, [eventsOnSelectedDay, totalTasks]);
+
   // Use Thursday (index 3) as anchor to determine displayed month
   const anchorDay = weekDays[3] ?? weekDays[0];
   const anchorMonth = anchorDay ? anchorDay.getMonth() + 1 : currentDate.getMonth() + 1;
@@ -959,7 +996,7 @@ const CalendarPage = () => {
                 {monthLabel}
               </h2>
               <p className="text-gray-500 dark:text-slate-400 font-medium mt-1 text-sm">
-                {t('calendar.weekEventCount', { count: events.length })}
+                {t(headerDaySummary.key, headerDaySummary.params)}
               </p>
             </div>
 
