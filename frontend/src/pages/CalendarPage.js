@@ -19,6 +19,14 @@ const taskDisplayTitle = (task) => {
 };
 
 const TASK_SCHEDULE_KEY = 'task_schedule';
+/** MIME type so only app task drags activate calendar drop targets (not random text/links). */
+const TASK_DRAG_MIME = 'application/x-dainn-task-id';
+
+function dataTransferHasTaskDrag(e) {
+  const types = e?.dataTransfer?.types;
+  if (!types) return false;
+  return Array.from(types).includes(TASK_DRAG_MIME);
+}
 
 /** Read persisted schedule map: { [taskId]: { startTime, endTime } } */
 function readTaskSchedule() {
@@ -328,12 +336,15 @@ const CalendarPage = () => {
   const [hoveredEventId, setHoveredEventId] = useState(null);
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [showTaskStrip, setShowTaskStrip] = useState(false);
+  /** Task strip list: show incomplete-only vs completed-only. */
+  const [taskStripFilter, setTaskStripFilter] = useState('incomplete');
   const [selectedTask, setSelectedTask] = useState(null);
   const [taskDeleteConfirm, setTaskDeleteConfirm] = useState(false);
   const [taskEditModalOpen, setTaskEditModalOpen] = useState(false);
   const [selectedTimelineTask, setSelectedTimelineTask] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverHour, setDragOverHour] = useState(null);
+  const [dragOverWeekDayIso, setDragOverWeekDayIso] = useState(null);
   const timelineRef = useRef(null);
   const timelineScrollRef = useRef(null);
   const [activeEventMenuId, setActiveEventMenuId] = useState(null);
@@ -442,6 +453,17 @@ const CalendarPage = () => {
       .then((data) => setNotifications(Array.isArray(data) ? data : (data?.notifications ?? [])))
       .catch(() => { });
   }, []);
+
+  useEffect(() => {
+    setSelectedTask((st) => {
+      if (!st) return null;
+      const fresh = tasksForDay.find((x) => x.id === st.id);
+      if (!fresh) return null;
+      const done = !!(fresh.completed || fresh.isCompleted);
+      const visible = taskStripFilter === 'complete' ? done : !done;
+      return visible ? fresh : null;
+    });
+  }, [taskStripFilter, tasksForDay]);
 
 
   // ── Event CRUD handlers ──
@@ -678,10 +700,22 @@ const CalendarPage = () => {
   const handleTaskDragStart = (e, task) => {
     setDraggedTask(task);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(task.id));
+    const idStr = String(task.id);
+    e.dataTransfer.setData('text/plain', idStr);
+    e.dataTransfer.setData(TASK_DRAG_MIME, idStr);
+  };
+
+  const resolveDraggedTaskId = (e) =>
+    e.dataTransfer.getData(TASK_DRAG_MIME) || e.dataTransfer.getData('text/plain');
+
+  const handleTaskDragEnd = () => {
+    setDraggedTask(null);
+    setDragOverWeekDayIso(null);
+    setDragOverHour(null);
   };
 
   const handleTimelineDragOver = (e) => {
+    if (!draggedTask && !dataTransferHasTaskDrag(e)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (!timelineRef.current) return;
@@ -703,9 +737,10 @@ const CalendarPage = () => {
   const handleTimelineDrop = async (e) => {
     e.preventDefault();
     setDragOverHour(null);
+    setDragOverWeekDayIso(null);
     if (!timelineRef.current) return;
     // resolve task — prefer state, fall back to dataTransfer id lookup
-    const taskId = e.dataTransfer.getData('text/plain');
+    const taskId = resolveDraggedTaskId(e);
     const task = draggedTask ?? tasksForDay.find((t) => String(t.id) === taskId);
     setDraggedTask(null);
     if (!task) return;
@@ -728,6 +763,65 @@ const CalendarPage = () => {
     try {
       await tasksAPI.updateTask(task.id, { startTime, endTime });
     } catch {
+      await loadTasks();
+    }
+  };
+
+  /** Allow dropping tasks when the pointer is over event cards or task cards (they sit above the grid). */
+  const handleTaskTimelineDragOver = (e) => {
+    if (!draggedTask && !dataTransferHasTaskDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    handleTimelineDragOver(e);
+  };
+
+  const handleTaskTimelineDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleTimelineDrop(e);
+  };
+
+  const handleWeekDayDragOver = (e, day) => {
+    if (!draggedTask && !dataTransferHasTaskDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverWeekDayIso(formatLocalDateIso(day));
+  };
+
+  const handleWeekDayDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverWeekDayIso(null);
+    }
+  };
+
+  const handleWeekDayDrop = async (e, day) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverWeekDayIso(null);
+    setDragOverHour(null);
+    const taskId = resolveDraggedTaskId(e);
+    const task = draggedTask ?? tasksForDay.find((t) => String(t.id) === taskId);
+    setDraggedTask(null);
+    if (!task) return;
+    if (isSameDay(day, selectedDate)) return;
+
+    const prev = task.date ? new Date(task.date) : new Date(selectedDate);
+    const target = new Date(day);
+    target.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
+    const datePayload = target.toISOString();
+    const payload = { date: datePayload };
+    if (task.startTime) payload.startTime = task.startTime;
+    if (task.endTime) payload.endTime = task.endTime;
+
+    try {
+      await tasksAPI.updateTask(task.id, payload);
+      setSelectedTask(null);
+      setSelectedTimelineTask(null);
+      setTaskDeleteConfirm(false);
+      setSelectedDate(new Date(day));
+      toast.success(t('calendar.taskMovedToDay'));
+    } catch (err) {
+      toast.error(err?.message || t('calendar.taskMoveDayFail'));
       await loadTasks();
     }
   };
@@ -922,6 +1016,42 @@ const CalendarPage = () => {
               if (aC !== bC) return aC - bC; // incomplete first
               return (b.priority || 0) - (a.priority || 0); // high priority first
             });
+            const visibleTasks = sortedTasks.filter((task) => {
+              const done = !!(task.completed || task.isCompleted);
+              return taskStripFilter === 'complete' ? done : !done;
+            });
+            const taskStripModeToggle = (
+              <div
+                className="flex items-center rounded-full border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/80 p-0.5 shrink-0"
+                role="group"
+                aria-label={t('calendar.taskStripFilterAria')}
+              >
+                <button
+                  type="button"
+                  onClick={() => setTaskStripFilter('incomplete')}
+                  aria-pressed={taskStripFilter === 'incomplete'}
+                  className={`px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all whitespace-nowrap ${
+                    taskStripFilter === 'incomplete'
+                      ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
+                      : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t('daily.incomplete')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskStripFilter('complete')}
+                  aria-pressed={taskStripFilter === 'complete'}
+                  className={`px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all whitespace-nowrap ${
+                    taskStripFilter === 'complete'
+                      ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
+                      : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t('daily.completed')}
+                </button>
+              </div>
+            );
             return (
               <div className="bg-white dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-700 shrink-0 overflow-hidden">
                 {/* Day buttons row */}
@@ -930,15 +1060,19 @@ const CalendarPage = () => {
                     const isSelected = isSameDay(day, selectedDate);
                     const dayIso = formatLocalDateIso(day);
                     const dayHasEvents = events.some((e) => formatLocalDateIso(new Date(e.startDate)) === dayIso);
+                    const isDropTarget = dragOverWeekDayIso === dayIso && !isSelected;
                     return (
                       <button
                         key={day.toISOString()}
                         type="button"
                         onClick={() => setSelectedDate(new Date(day))}
+                        onDragOver={(e) => handleWeekDayDragOver(e, day)}
+                        onDragLeave={handleWeekDayDragLeave}
+                        onDrop={(e) => handleWeekDayDrop(e, day)}
                         className={`flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all duration-150 ${isSelected
                             ? 'text-white shadow-lg shadow-black/10 scale-[1.02]'
                             : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-[#111418] dark:text-slate-200'
-                          }`}
+                          } ${isDropTarget ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-800' : ''}`}
                         style={isSelected ? { backgroundColor: CAL_THEME.navy } : undefined}
                       >
                         <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSelected ? 'text-white/85' : 'opacity-70'}`}>
@@ -984,22 +1118,47 @@ const CalendarPage = () => {
                   {/* Pill list */}
                   <div className="border-t border-gray-100 dark:border-slate-700 px-3 py-2.5">
                     {sortedTasks.length === 0 ? (
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-400 dark:text-slate-500 py-1">
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <p className="text-xs text-gray-400 dark:text-slate-500 py-1 min-w-0 flex-1 pr-2">
                           {t('calendar.noTasksToday')}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedTask(null); setTaskEditModalOpen(true); }}
-                          className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all shrink-0"
-                          title={t('daily.addTask')}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">add</span>
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {taskStripFilter === 'incomplete' && (
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTask(null); setTaskEditModalOpen(true); }}
+                              className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all shrink-0"
+                              title={t('daily.addTask')}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">add</span>
+                            </button>
+                          )}
+                          {taskStripModeToggle}
+                        </div>
+                      </div>
+                    ) : visibleTasks.length === 0 ? (
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <p className="text-xs text-gray-400 dark:text-slate-500 py-1 min-w-0 flex-1 pr-2">
+                          {taskStripFilter === 'complete' ? t('calendar.taskStripNoCompleted') : t('calendar.taskStripNoIncomplete')}
+                        </p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {taskStripFilter === 'incomplete' && (
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedTask(null); setTaskEditModalOpen(true); }}
+                              className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all shrink-0"
+                              title={t('daily.addTask')}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">add</span>
+                            </button>
+                          )}
+                          {taskStripModeToggle}
+                        </div>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {sortedTasks.map((task) => {
+                      <div className="flex w-full items-center gap-2">
+                        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 items-center">
+                        {visibleTasks.map((task) => {
                           const isCompleted = task.completed || task.isCompleted;
                           const priority = task.priority || 0;
                           const isActive = selectedTask?.id === task.id;
@@ -1009,7 +1168,7 @@ const CalendarPage = () => {
                               type="button"
                               draggable="true"
                               onDragStart={(e) => handleTaskDragStart(e, task)}
-                              onDragEnd={() => setDraggedTask(null)}
+                              onDragEnd={handleTaskDragEnd}
                               onClick={() => {
                                 setSelectedTask((prev) => prev?.id === task.id ? null : task);
                                 setTaskDeleteConfirm(false);
@@ -1044,14 +1203,20 @@ const CalendarPage = () => {
                             </button>
                           );
                         })}
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedTask(null); setTaskEditModalOpen(true); }}
-                          className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all shrink-0 self-center"
-                          title={t('daily.addTask')}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">add</span>
-                        </button>
+                        {taskStripFilter === 'incomplete' && (
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedTask(null); setTaskEditModalOpen(true); }}
+                            className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all shrink-0 self-center"
+                            title={t('daily.addTask')}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">add</span>
+                          </button>
+                        )}
+                        </div>
+                        <div className="shrink-0 self-center">
+                          {taskStripModeToggle}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1366,6 +1531,8 @@ const CalendarPage = () => {
                           }}
                           onMouseEnter={() => setHoveredEventId(evt.id)}
                           onMouseLeave={() => setHoveredEventId(null)}
+                          onDragOver={handleTaskTimelineDragOver}
+                          onDrop={handleTaskTimelineDrop}
                           title={evt.title}
                         >
                           {/* Meeting — pastel card: title + meta, avatars bottom-left, menu centered right */}
@@ -1725,7 +1892,12 @@ const CalendarPage = () => {
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className="absolute left-0 right-0 pointer-events-auto"
+                          className="absolute left-0 right-0 pointer-events-auto cursor-grab active:cursor-grabbing"
+                          draggable
+                          onDragStart={(e) => handleTaskDragStart(e, task)}
+                          onDragEnd={handleTaskDragEnd}
+                          onDragOver={handleTaskTimelineDragOver}
+                          onDrop={handleTaskTimelineDrop}
                           onMouseEnter={() => setHoveredTaskId(task.id)}
                           onMouseLeave={() => setHoveredTaskId(null)}
                           style={{
