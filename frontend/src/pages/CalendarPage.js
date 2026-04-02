@@ -28,6 +28,26 @@ function dataTransferHasTaskDrag(e) {
   return Array.from(types).includes(TASK_DRAG_MIME);
 }
 
+/**
+ * Working hours for the day column: half-open range [start, end), end is exclusive.
+ * Settings “24:00” → end=24 → hour rows 08…23 (covers until midnight; last label is 23:00).
+ * e.g. end=23 → length 15, labeled hours 08…22 (exclusive end 23 hides the 23:00 row).
+ */
+function readCalendarWorkHoursFromStorage() {
+  try {
+    const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+    const stored = raw ? JSON.parse(raw) : {};
+    const s = Math.round(Number(stored?.workHourStart));
+    const e = Math.round(Number(stored?.workHourEnd));
+    const vs = Number.isFinite(s) && s >= 0 && s <= 23 ? s : 8;
+    let ve = Number.isFinite(e) && e > vs && e <= 24 ? e : 24;
+    if (ve <= vs) ve = Math.min(24, vs + 1);
+    return { start: vs, end: ve };
+  } catch {
+    return { start: 8, end: 24 };
+  }
+}
+
 /** Read persisted schedule map: { [taskId]: { startTime, endTime } } */
 function readTaskSchedule() {
   try { return JSON.parse(localStorage.getItem(TASK_SCHEDULE_KEY) || '{}'); } catch { return {}; }
@@ -289,19 +309,7 @@ const CalendarPage = () => {
     }
   });
 
-  const [workHours] = useState(() => {
-    try {
-      const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
-      const stored = raw ? JSON.parse(raw) : {};
-      const s = Number(stored?.workHourStart);
-      const e = Number(stored?.workHourEnd);
-      const vs = Number.isInteger(s) && s >= 0 && s <= 22 ? s : 8;
-      const ve = Number.isInteger(e) && e > vs && e <= 24 ? e : 23;
-      return { start: vs, end: ve };
-    } catch {
-      return { start: 8, end: 23 };
-    }
-  });
+  const [workHours, setWorkHours] = useState(() => readCalendarWorkHoursFromStorage());
   const workHourStart = workHours.start;
   const workHourEnd = workHours.end;
 
@@ -388,6 +396,12 @@ const CalendarPage = () => {
   useEffect(() => {
     timerRef.current = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timerRef.current);
+  }, []);
+
+  useEffect(() => {
+    const onSettingsUpdated = () => setWorkHours(readCalendarWorkHoursFromStorage());
+    window.addEventListener('userSettingsUpdated', onSettingsUpdated);
+    return () => window.removeEventListener('userSettingsUpdated', onSettingsUpdated);
   }, []);
 
   // ── Data loading ──

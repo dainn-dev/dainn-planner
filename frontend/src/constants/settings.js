@@ -21,7 +21,7 @@ export const INITIAL_GENERAL_SETTINGS = {
   timeFormat: '24',
   weekStartDay: 'monday',
   workHourStart: 8,
-  workHourEnd: 23,
+  workHourEnd: 24,
 };
 
 export const INITIAL_PLANS_SETTINGS = {

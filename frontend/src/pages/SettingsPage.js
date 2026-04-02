@@ -394,7 +394,7 @@ const SettingsPage = () => {
           publicProfile: settings.publicProfile,
           weekStartDay: settings.weekStartDay,
           workHourStart: generalSettings.workHourStart ?? 8,
-          workHourEnd: generalSettings.workHourEnd ?? 23,
+          workHourEnd: generalSettings.workHourEnd ?? 24,
         }));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('userSettingsUpdated'));
@@ -995,7 +995,7 @@ const SettingsPage = () => {
                       <span className="text-sm text-secondary dark:text-slate-400">{t('settings.workingHoursTo')}</span>
                       <select
                         className="appearance-none bg-white dark:bg-slate-700 border border-border-light dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer shadow-sm"
-                        value={generalSettings.workHourEnd ?? 23}
+                        value={generalSettings.workHourEnd ?? 24}
                         onChange={(e) => handleGeneralSettingChange('workHourEnd', Number(e.target.value))}
                       >
                         {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
