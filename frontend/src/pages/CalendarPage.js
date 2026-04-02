@@ -1975,7 +1975,7 @@ const CalendarPage = () => {
           </div>
 
           {/* ── M5: Bento Bottom ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+          <div className="grid gap-3 shrink-0 grid-flow-col auto-cols-[minmax(260px,1fr)] overflow-x-auto -mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3">
 
             {/* Productivity Peak */}
             <div
