@@ -9,6 +9,7 @@ import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, USER_SETTINGS_S
 import AddTaskModal from '../components/AddTaskModal';
 import { toast } from '../utils/toast';
 import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
+import { sanitizeTaskHtml } from '../utils/sanitizeTaskHtml';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -208,6 +209,14 @@ function htmlToPlainText(html) {
   } catch {
     return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   }
+}
+
+/** Plain snippet for subtitles / compact cards (Google Calendar HTML descriptions). */
+function eventDescriptionSnippet(description, maxLen = 40) {
+  const plain = htmlToPlainText(description);
+  if (!plain) return '';
+  const t = plain.trim();
+  return t.length > maxLen ? `${t.slice(0, maxLen)}…` : t;
 }
 
 function isSameDay(a, b) {
@@ -1707,7 +1716,7 @@ const CalendarPage = () => {
                                     evt.location
                                       ? ` • ${evt.location}`
                                       : evt.description
-                                        ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                        ? ` • ${eventDescriptionSnippet(evt.description)}`
                                         : ''
                                   )}
                                 </p>
@@ -1817,7 +1826,7 @@ const CalendarPage = () => {
                                   className="mt-3 flex-1 py-1 text-xs italic leading-relaxed line-clamp-3 sm:text-[13px]"
                                   style={{ color: CAL_THEME.deepFocusDesc }}
                                 >
-                                  {evt.description}
+                                  {htmlToPlainText(evt.description)}
                                 </p>
                               )}
 
@@ -1892,7 +1901,7 @@ const CalendarPage = () => {
                                       evt.location
                                         ? ` • ${evt.location}`
                                         : evt.description
-                                          ? ` • ${String(evt.description).replace(/\s+/g, ' ').trim().slice(0, 40)}${evt.description.length > 40 ? '…' : ''}`
+                                          ? ` • ${eventDescriptionSnippet(evt.description)}`
                                           : ''
                                     )}
                                   </p>
@@ -2045,11 +2054,14 @@ const CalendarPage = () => {
                     </div>
                   )}
 
-                  {/* Description */}
+                  {/* Description (Google Calendar often sends HTML; sanitize + render) */}
                   {selectedEvent.description && (
-                    <div className="text-gray-600 dark:text-slate-300 text-xs leading-relaxed border-t border-gray-100 dark:border-slate-700 pt-3">
-                      {selectedEvent.description}
-                    </div>
+                    <div
+                      className="text-gray-600 dark:text-slate-300 text-xs leading-relaxed border-t border-gray-100 dark:border-slate-700 pt-3 break-words [&_a]:text-primary [&_a]:underline [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:my-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:my-1"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeTaskHtml(selectedEvent.description),
+                      }}
+                    />
                   )}
 
                   {/* Actions */}
