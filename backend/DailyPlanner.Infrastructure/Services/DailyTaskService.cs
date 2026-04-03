@@ -88,8 +88,8 @@ public class DailyTaskService : IDailyTaskService
             Priority = x.task.Priority,
             Recurrence = x.task.Recurrence,
             ReminderTime = x.task.ReminderTime,
-            StartTime = x.task.StartTime,
-            EndTime = x.task.EndTime,
+            StartTime = x.inst.StartTime ?? x.task.StartTime,
+            EndTime = x.inst.EndTime ?? x.task.EndTime,
             Tags = x.task.Tags != null ? x.task.Tags.ToList() : new List<string>(),
             CreatedAt = x.task.CreatedAt,
             GoalMilestoneId = x.task.GoalMilestoneId,
@@ -144,7 +144,9 @@ public class DailyTaskService : IDailyTaskService
                 CompletedDate = request.IsCompleted ? completedAtUtc : null,
                 IsOverride = false,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = completedAtUtc
+                UpdatedAt = completedAtUtc,
+                StartTime = request.StartTime,
+                EndTime = request.EndTime
             };
             _context.TaskInstances.Add(instance);
         }
@@ -155,6 +157,10 @@ public class DailyTaskService : IDailyTaskService
                 instance.MarkCompleted(completedAtUtc);
             else
                 instance.MarkIncomplete();
+            if (request.StartTime != null)
+                instance.StartTime = request.StartTime;
+            if (request.EndTime != null)
+                instance.EndTime = request.EndTime;
         }
 
         await _context.SaveChangesAsync();
@@ -169,7 +175,9 @@ public class DailyTaskService : IDailyTaskService
                 Date = ToUtc(instance.InstanceDate),
                 Description = instance.Description,
                 IsCompleted = instance.IsCompleted,
-                CompletedDate = instance.CompletedDate.HasValue ? ToUtcFull(instance.CompletedDate.Value) : null
+                CompletedDate = instance.CompletedDate.HasValue ? ToUtcFull(instance.CompletedDate.Value) : null,
+                StartTime = instance.StartTime,
+                EndTime = instance.EndTime
             }
         };
     }

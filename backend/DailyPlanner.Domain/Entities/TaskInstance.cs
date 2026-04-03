@@ -30,6 +30,10 @@ public class TaskInstance
     // Added by a follow-up migration (needed to return `completedDate` to the UI).
     public DateTime? CompletedDate { get; set; }
 
+    // Per-instance time override (overrides DailyTask.StartTime / EndTime for this day only).
+    public string? StartTime { get; set; }
+    public string? EndTime { get; set; }
+
     // Convenience helper (not mapped).
     public bool IsCompleted => string.Equals(Status, StatusCompleted, StringComparison.OrdinalIgnoreCase);
 

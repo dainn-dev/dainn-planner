@@ -662,7 +662,7 @@ export const tasksAPI = {
     });
   },
 
-  upsertTaskInstance: async ({ taskId, date, description, isCompleted }) => {
+  upsertTaskInstance: async ({ taskId, date, description, isCompleted, startTime, endTime }) => {
     return await apiRequest('/task-instances', {
       method: 'POST',
       body: JSON.stringify({
@@ -670,6 +670,8 @@ export const tasksAPI = {
         date,
         description,
         isCompleted,
+        startTime,
+        endTime,
       }),
     });
   },

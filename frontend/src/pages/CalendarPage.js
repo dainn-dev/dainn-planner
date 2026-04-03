@@ -784,7 +784,12 @@ const CalendarPage = () => {
       prev.map((t) => t.id === task.id ? { ...t, startTime, endTime } : t),
     );
     try {
-      await tasksAPI.updateTask(task.id, { startTime, endTime });
+      await tasksAPI.upsertTaskInstance({
+        taskId: task.id,
+        date: selectedDate.toISOString(),
+        startTime,
+        endTime,
+      });
     } catch {
       await loadTasks();
     }

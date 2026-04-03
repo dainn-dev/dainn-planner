@@ -670,6 +670,12 @@ namespace DailyPlanner.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("StartTime")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EndTime")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TaskId", "InstanceDate")
