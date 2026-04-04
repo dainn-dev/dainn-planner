@@ -3,6 +3,7 @@ namespace DailyPlanner.Application.DTOs;
 public class DailyTaskDto
 {
     public Guid Id { get; set; }
+    public Guid? InstanceId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime Date { get; set; }

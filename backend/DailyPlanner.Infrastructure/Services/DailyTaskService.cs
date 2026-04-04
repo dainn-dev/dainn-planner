@@ -80,6 +80,7 @@ public class DailyTaskService : IDailyTaskService
         var dtos = rows.Select(x => new DailyTaskDto
         {
             Id = x.task.Id,
+            InstanceId = x.inst.Id,
             Title = x.task.Title,
             Description = x.inst.Description,
             Date = ToUtc(x.inst.InstanceDate),
