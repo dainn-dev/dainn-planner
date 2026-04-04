@@ -10,17 +10,8 @@ namespace DailyPlanner.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "StartTime",
-                table: "TaskInstances",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "EndTime",
-                table: "TaskInstances",
-                type: "text",
-                nullable: true);
+            migrationBuilder.Sql("ALTER TABLE \"TaskInstances\" ADD COLUMN IF NOT EXISTS \"StartTime\" text;");
+            migrationBuilder.Sql("ALTER TABLE \"TaskInstances\" ADD COLUMN IF NOT EXISTS \"EndTime\" text;");
         }
 
         /// <inheritdoc />
