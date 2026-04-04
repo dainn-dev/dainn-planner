@@ -357,13 +357,47 @@ public class DailyTaskService : IDailyTaskService
         if (request.Recurrence.HasValue)
             task.Recurrence = request.Recurrence.Value;
         if (request.Date.HasValue)
+        {
+            var newDateUtc = ToUtc(request.Date.Value);
+            if (request.InstanceId.HasValue)
+            {
+                var instanceToMove = await _context.TaskInstances
+                    .FirstOrDefaultAsync(i => i.Id == request.InstanceId.Value && i.TaskId == task.Id);
+                if (instanceToMove != null && instanceToMove.InstanceDate.Date != newDateUtc.Date)
+                {
+                    var hasConflict = await _context.TaskInstances
+                        .AnyAsync(i => i.TaskId == task.Id && i.InstanceDate.Date == newDateUtc.Date && i.Id != instanceToMove.Id);
+                    if (!hasConflict)
+                    {
+                        instanceToMove.InstanceDate = newDateUtc;
+                        instanceToMove.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+            }
             task.Date = ToUtcFull(request.Date.Value);
+        }
         if (request.ReminderTime != null)
             task.ReminderTime = request.ReminderTime;
-        if (request.StartTime != null)
-            task.StartTime = request.StartTime;
-        if (request.EndTime != null)
-            task.EndTime = request.EndTime;
+        if (request.StartTime != null || request.EndTime != null)
+        {
+            if (request.InstanceId.HasValue && !request.Date.HasValue)
+            {
+                // startTime/endTime from timeline drag — update instance only, not template
+                var inst = await _context.TaskInstances
+                    .FirstOrDefaultAsync(i => i.Id == request.InstanceId.Value && i.TaskId == task.Id);
+                if (inst != null)
+                {
+                    if (request.StartTime != null) inst.StartTime = request.StartTime;
+                    if (request.EndTime != null) inst.EndTime = request.EndTime;
+                    inst.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            else
+            {
+                if (request.StartTime != null) task.StartTime = request.StartTime;
+                if (request.EndTime != null) task.EndTime = request.EndTime;
+            }
+        }
         if (request.Tags != null)
             task.Tags = request.Tags.ToArray();
 

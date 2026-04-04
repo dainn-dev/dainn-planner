@@ -784,9 +784,8 @@ const CalendarPage = () => {
       prev.map((t) => t.id === task.id ? { ...t, startTime, endTime } : t),
     );
     try {
-      await tasksAPI.upsertTaskInstance({
-        taskId: task.id,
-        date: selectedDate.toISOString(),
+      await tasksAPI.updateTask(task.id, {
+        instanceId: task.instanceId,
         startTime,
         endTime,
       });
@@ -833,11 +832,9 @@ const CalendarPage = () => {
     if (!task) return;
     if (isSameDay(day, selectedDate)) return;
 
-    const prev = task.date ? new Date(task.date) : new Date(selectedDate);
-    const target = new Date(day);
-    target.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
-    const datePayload = target.toISOString();
+    const datePayload = utcDateInputToIso(formatLocalDateIso(day));
     const payload = { date: datePayload };
+    if (task.instanceId) payload.instanceId = task.instanceId;
     if (task.startTime) payload.startTime = task.startTime;
     if (task.endTime) payload.endTime = task.endTime;
 
