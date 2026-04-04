@@ -11,18 +11,6 @@ namespace DailyPlanner.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "EndTime",
-                table: "DailyTasks",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "StartTime",
-                table: "DailyTasks",
-                type: "text",
-                nullable: true);
-
             migrationBuilder.CreateTable(
                 name: "UserPushSubscriptions",
                 columns: table => new
@@ -60,14 +48,6 @@ namespace DailyPlanner.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "UserPushSubscriptions");
-
-            migrationBuilder.DropColumn(
-                name: "EndTime",
-                table: "DailyTasks");
-
-            migrationBuilder.DropColumn(
-                name: "StartTime",
-                table: "DailyTasks");
         }
     }
 }
