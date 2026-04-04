@@ -162,9 +162,9 @@ public class DailyTaskService : IDailyTaskService
                 else
                     instance.MarkIncomplete();
             }
-            if (request.StartTime != null)
+            if (request.UpdateTimes || request.StartTime != null)
                 instance.StartTime = request.StartTime;
-            if (request.EndTime != null)
+            if (request.UpdateTimes || request.EndTime != null)
                 instance.EndTime = request.EndTime;
         }
 

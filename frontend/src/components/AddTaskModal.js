@@ -367,6 +367,9 @@ const AddTaskModal = ({
           date: instanceDate,
           description: descriptionFromEditorSanitized ?? null,
           isCompleted: instanceCompleted,
+          startTime: taskForm.startTime || null,
+          endTime: taskForm.endTime || null,
+          updateTimes: true,
         });
       } else {
         await tasksAPI.createTask(payload);
