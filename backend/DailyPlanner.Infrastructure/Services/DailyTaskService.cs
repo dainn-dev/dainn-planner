@@ -140,8 +140,8 @@ public class DailyTaskService : IDailyTaskService
                 TaskId = request.TaskId,
                 InstanceDate = instanceDateUtc,
                 Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description),
-                Status = request.IsCompleted ? TaskInstance.StatusCompleted : TaskInstance.StatusIncomplete,
-                CompletedDate = request.IsCompleted ? completedAtUtc : null,
+                Status = request.IsCompleted == true ? TaskInstance.StatusCompleted : TaskInstance.StatusIncomplete,
+                CompletedDate = request.IsCompleted == true ? completedAtUtc : null,
                 IsOverride = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = completedAtUtc,
@@ -152,11 +152,15 @@ public class DailyTaskService : IDailyTaskService
         }
         else
         {
-            instance.Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description);
-            if (request.IsCompleted)
-                instance.MarkCompleted(completedAtUtc);
-            else
-                instance.MarkIncomplete();
+            if (request.Description != null)
+                instance.Description = DailyTaskRichTextSanitizer.SanitizeHtml(request.Description);
+            if (request.IsCompleted.HasValue)
+            {
+                if (request.IsCompleted.Value)
+                    instance.MarkCompleted(completedAtUtc);
+                else
+                    instance.MarkIncomplete();
+            }
             if (request.StartTime != null)
                 instance.StartTime = request.StartTime;
             if (request.EndTime != null)

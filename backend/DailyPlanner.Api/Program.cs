@@ -345,7 +345,8 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating or seeding the database.");
+        logger.LogCritical(ex, "Database migration or seeding failed. Application cannot start.");
+        throw; // fail fast — do not start with broken schema
     }
 }
 
