@@ -108,6 +108,12 @@ export const integrationsAPI = {
   getTodoistTasks: async () => apiRequest('/integrations/todoist/tasks'),
   closeTodoistTask: async (todoistTaskId) =>
     apiRequest(`/integrations/todoist/tasks/${encodeURIComponent(todoistTaskId)}/close`, { method: 'POST' }),
+  /** Update Todoist task content/due_string directly via Todoist API. */
+  updateTodoistTask: async (todoistTaskId, payload) =>
+    apiRequest(`/integrations/todoist/tasks/${encodeURIComponent(todoistTaskId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
 };
 
 /** Google Calendar event CRUD (for Google-sourced events only). */

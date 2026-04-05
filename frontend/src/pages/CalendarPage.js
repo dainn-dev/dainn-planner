@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import MobileSidebarDrawer from '../components/MobileSidebarDrawer';
 import ModalMutationProgressBar from '../components/ModalMutationProgressBar';
-import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
+import { eventsAPI, tasksAPI, notificationsAPI, googleEventsAPI, integrationsAPI, USER_SETTINGS_STORAGE_KEY } from '../services/api';
 import AddTaskModal from '../components/AddTaskModal';
 import { toast } from '../utils/toast';
 import { formatLocalDateIso, formatLocalTimeHHmm } from '../utils/dateFormat';
@@ -46,6 +46,17 @@ function readCalendarWorkHoursFromStorage() {
     return { start: vs, end: ve };
   } catch {
     return { start: 8, end: 24 };
+  }
+}
+
+/** Todoist link flag from cached user settings (updates on `userSettingsUpdated`). */
+function readTodoistConnectedFromStorage() {
+  try {
+    const raw = typeof window !== 'undefined' && localStorage.getItem(USER_SETTINGS_STORAGE_KEY);
+    const stored = raw ? JSON.parse(raw) : {};
+    return !!stored?.plans?.todoistConnected;
+  } catch {
+    return false;
   }
 }
 
@@ -340,6 +351,16 @@ const CalendarPage = () => {
     }
   });
 
+  const [isTodoistConnected, setIsTodoistConnected] = useState(() => readTodoistConnectedFromStorage());
+
+  // ── Todoist state ──
+  const [todoistTasks, setTodoistTasks] = useState([]);
+  const [todoistLoading, setTodoistLoading] = useState(false);
+  const [selectedTodoistTask, setSelectedTodoistTask] = useState(null);
+  const [todoistEditMode, setTodoistEditMode] = useState(false);
+  const [todoistEditForm, setTodoistEditForm] = useState({ content: '', due_string: '' });
+  const [todoistActionLoading, setTodoistActionLoading] = useState(false);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
@@ -408,7 +429,10 @@ const CalendarPage = () => {
   }, []);
 
   useEffect(() => {
-    const onSettingsUpdated = () => setWorkHours(readCalendarWorkHoursFromStorage());
+    const onSettingsUpdated = () => {
+      setWorkHours(readCalendarWorkHoursFromStorage());
+      setIsTodoistConnected(readTodoistConnectedFromStorage());
+    };
     window.addEventListener('userSettingsUpdated', onSettingsUpdated);
     return () => window.removeEventListener('userSettingsUpdated', onSettingsUpdated);
   }, []);
@@ -470,6 +494,68 @@ const CalendarPage = () => {
     loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateIso]);
+
+  // ── Todoist: live sync via backend → Todoist API only (no planner DB / no localStorage list) ──
+  const loadTodoistTasks = async () => {
+    if (!isTodoistConnected) return;
+    setTodoistLoading(true);
+    try {
+      const res = await integrationsAPI.getTodoistTasks();
+      const list = Array.isArray(res) ? res : (res?.tasks ?? res?.data ?? []);
+      // Show tasks whose Todoist due.date falls on the selected calendar day
+      const filtered = list.filter((task) => {
+        const due = task?.due?.date;
+        if (!due) return false;
+        // due.date is "YYYY-MM-DD" for all-day or "YYYY-MM-DDTHH:mm:ssZ" for timed
+        return due.startsWith(selectedDateIso);
+      });
+      setTodoistTasks(filtered);
+    } catch {
+      setTodoistTasks([]);
+    } finally {
+      setTodoistLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTodoistTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDateIso, isTodoistConnected]);
+
+  const handleTodoistComplete = async (task) => {
+    if (todoistActionLoading) return;
+    setTodoistActionLoading(true);
+    try {
+      await integrationsAPI.closeTodoistTask(task.id);
+      toast.success(t('calendar.todoistCompleteSuccess'));
+      setSelectedTodoistTask(null);
+      setTodoistTasks((prev) => prev.filter((x) => x.id !== task.id));
+    } catch (err) {
+      toast.error(err?.message || t('calendar.todoistCompleteFail'));
+    } finally {
+      setTodoistActionLoading(false);
+    }
+  };
+
+  const handleTodoistUpdate = async (task) => {
+    if (todoistActionLoading) return;
+    const content = todoistEditForm.content.trim();
+    if (!content) return;
+    setTodoistActionLoading(true);
+    try {
+      const payload = { content };
+      if (todoistEditForm.due_string.trim()) payload.due_string = todoistEditForm.due_string.trim();
+      await integrationsAPI.updateTodoistTask(task.id, payload);
+      toast.success(t('calendar.todoistUpdateSuccess'));
+      setTodoistEditMode(false);
+      await loadTodoistTasks();
+      setSelectedTodoistTask(null);
+    } catch (err) {
+      toast.error(err?.message || t('calendar.todoistUpdateFail'));
+    } finally {
+      setTodoistActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     notificationsAPI.getNotifications({ limit: 20 })

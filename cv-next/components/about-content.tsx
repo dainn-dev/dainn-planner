@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 export default function AboutContent() {
   const apiCv = useCvContentFromApi()
@@ -61,7 +62,14 @@ export default function AboutContent() {
 
   return (
     <>
-      <p className="text-sm text-gray-600 mb-8">{profileData.about}</p>
+      <div
+        className="text-sm text-gray-600 mb-8 cv-about-prose prose prose-sm max-w-none dark:prose-invert"
+        dangerouslySetInnerHTML={{
+          __html: sanitizeCvHtml(
+            typeof profileData.about === "string" ? profileData.about : ""
+          ),
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-12 pt-4 lg:pt-0" data-aos="fade-left">

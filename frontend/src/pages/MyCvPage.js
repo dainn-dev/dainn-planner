@@ -1032,25 +1032,34 @@ const MyCvPage = () => {
     const isCertificatesSection = section === 'certificates';
     const profileDraft = isProfileSection ? getParsedSectionDraft('profile') : null;
     const profileSocials = Array.isArray(profileDraft?.socials) ? profileDraft.socials : [];
-    const profileTextAreaFields = new Set(['about']);
+    /** Rich HTML via Lexical (same as other CV sections) */
+    const profileRichHtmlFields = new Set(['about']);
 
     const renderProfileFieldRow = (field, { topRow = false } = {}) => {
       const colClass =
-        profileTextAreaFields.has(field) || PROFILE_FIELDS_GRID_FULL_WIDTH.has(field) ? 'md:col-span-2' : '';
+        profileRichHtmlFields.has(field) || PROFILE_FIELDS_GRID_FULL_WIDTH.has(field) ? 'md:col-span-2' : '';
       const inputClass = topRow ? CV_INPUT_TOP : CV_INPUT;
       return (
         <div key={field} className={colClass}>
           <label className={CV_LABEL} htmlFor={`cv-profile-${field}`}>
             {t(`myCv.profileFields.${field}`)}
           </label>
-          {profileTextAreaFields.has(field) ? (
-            <textarea
-              id={`cv-profile-${field}`}
-              value={typeof profileDraft?.[field] === 'string' ? profileDraft[field] : ''}
-              onChange={(e) => handleProfileFieldChange(field, e.target.value)}
-              rows={field === 'about' ? 5 : 3}
-              className={CV_TEXTAREA}
-            />
+          {profileRichHtmlFields.has(field) ? (
+            <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
+              <DefaultTemplate
+                key={`cv-profile-${field}`}
+                className="cv-lexkit-html-field"
+                placeholder={t('myCv.profileFields.aboutPlaceholder')}
+                onReady={(methods) => {
+                  const aboutHtml = typeof profileDraft?.about === 'string' ? profileDraft.about : '';
+                  const legacyMainIntro =
+                    typeof profileDraft?.mainIntro === 'string' ? profileDraft.mainIntro : '';
+                  const html = aboutHtml || legacyMainIntro;
+                  if (html) methods.injectHTML(html);
+                }}
+                onHtmlChange={(html) => handleProfileFieldChange('about', html)}
+              />
+            </div>
           ) : field === 'freelance' ? (() => {
             const raw = typeof profileDraft?.freelance === 'string' ? profileDraft.freelance : '';
             const known = FREELANCE_STATUS_OPTIONS.some((o) => o.value === raw);
@@ -1268,24 +1277,6 @@ const MyCvPage = () => {
               </div>
 
               {renderProfileBgImageCard()}
-
-              <div className={CV_SECTION_BLOCK}>
-                <label className={CV_LABEL}>
-                  {t('myCv.profileFields.mainIntro')}
-                </label>
-                <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                  <DefaultTemplate
-                    key="profile-main-intro"
-                    className="cv-lexkit-html-field"
-                    placeholder={t('myCv.profileFields.mainIntroPlaceholder')}
-                    onReady={(methods) => {
-                      const html = typeof profileDraft?.mainIntro === 'string' ? profileDraft.mainIntro : '';
-                      if (html) methods.injectHTML(html);
-                    }}
-                    onHtmlChange={(html) => handleProfileFieldChange('mainIntro', html)}
-                  />
-                </div>
-              </div>
 
               <div className={CV_SECTION_BLOCK}>
                 <div className="flex items-center justify-between gap-3 mb-3">
