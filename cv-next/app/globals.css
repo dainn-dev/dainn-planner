@@ -193,3 +193,9 @@ body {
   background: var(--primary-color);
   color: #fff;
 }
+
+/* Fix: <li> chỉ chứa <ol> hoặc <ul> (không có text trực tiếp) — ẩn bullet marker */
+.prose ul > li:has(> ol:only-child),
+.prose ul > li:has(> ul:only-child) {
+  list-style-type: none;
+}

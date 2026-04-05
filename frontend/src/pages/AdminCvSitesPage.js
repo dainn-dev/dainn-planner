@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { cvPlatformAPI } from '../services/api';
+import { cvPlatformAPI, adminAPI } from '../services/api';
 
 const STATUS_OPTIONS = [
   { value: 'all', labelKey: 'admin.cvSitesStatusAll' },
@@ -26,10 +26,13 @@ const AdminCvSitesPage = () => {
   const [createSlug, setCreateSlug] = useState('');
   const [createUserEmail, setCreateUserEmail] = useState('');
   const [creating, setCreating] = useState(false);
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [rejectId, setRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const qRef = useRef(q);
   qRef.current = q;
+  const suggestTimerRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +73,15 @@ const AdminCvSitesPage = () => {
     }
   };
 
+  const unsuspend = async (id) => {
+    try {
+      await cvPlatformAPI.unsuspendCvSite(id);
+      void load();
+    } catch {
+      /* toast */
+    }
+  };
+
   const confirmReject = async () => {
     if (!rejectId || !rejectReason.trim()) return;
     try {
@@ -82,6 +94,33 @@ const AdminCvSitesPage = () => {
     }
   };
 
+  const handleEmailInput = (value) => {
+    setCreateUserEmail(value);
+    clearTimeout(suggestTimerRef.current);
+    if (value.length < 3) {
+      setUserSuggestions([]);
+      setSuggestOpen(false);
+      return;
+    }
+    suggestTimerRef.current = setTimeout(async () => {
+      try {
+        const data = await adminAPI.getUsers({ search: value, pageSize: 8 });
+        const list = Array.isArray(data?.items) ? data.items : [];
+        setUserSuggestions(list);
+        setSuggestOpen(list.length > 0);
+      } catch {
+        setUserSuggestions([]);
+        setSuggestOpen(false);
+      }
+    }, 300);
+  };
+
+  const pickUser = (user) => {
+    setCreateUserEmail(user.email);
+    setSuggestOpen(false);
+    setUserSuggestions([]);
+  };
+
   const submitCreate = async () => {
     const slug = createSlug.trim().toLowerCase();
     const userEmail = createUserEmail.trim();
@@ -92,6 +131,8 @@ const AdminCvSitesPage = () => {
       setCreateOpen(false);
       setCreateSlug('');
       setCreateUserEmail('');
+      setUserSuggestions([]);
+      setSuggestOpen(false);
       void load();
     } catch {
       /* toast from api */
@@ -242,6 +283,15 @@ const AdminCvSitesPage = () => {
                                 {t('admin.cvSitesSuspend')}
                               </button>
                             )}
+                            {s.status === 'suspended' && (
+                              <button
+                                type="button"
+                                onClick={() => void unsuspend(s.id)}
+                                className="inline-flex items-center px-2 py-1 rounded-md bg-green-600 text-white text-xs font-medium hover:opacity-90"
+                              >
+                                {t('admin.cvSitesUnsuspend')}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -292,14 +342,30 @@ const AdminCvSitesPage = () => {
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-slate-700">
             <h2 className="text-lg font-bold text-[#111418] dark:text-white mb-4">{t('admin.cvSitesAddSiteTitle')}</h2>
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 relative">
                 <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('admin.cvSitesAddSiteUserEmail')}</label>
                 <input
                   className="rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-[#0d141b] dark:text-white"
                   value={createUserEmail}
-                  onChange={(e) => setCreateUserEmail(e.target.value)}
+                  onChange={(e) => handleEmailInput(e.target.value)}
+                  onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
                   placeholder={t('admin.cvSitesAddSiteUserEmailPlaceholder')}
+                  autoComplete="off"
                 />
+                {suggestOpen && (
+                  <ul className="absolute top-full left-0 right-0 z-10 mt-1 rounded-lg border border-[#cfdbe7] dark:border-slate-600 bg-white dark:bg-slate-900 shadow-lg max-h-48 overflow-y-auto">
+                    {userSuggestions.map((u) => (
+                      <li
+                        key={u.id}
+                        onMouseDown={() => pickUser(u)}
+                        className="flex flex-col px-3 py-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
+                      >
+                        <span className="text-[#0d141b] dark:text-white font-medium">{u.fullName || u.email}</span>
+                        {u.fullName && <span className="text-gray-400 dark:text-slate-500 text-xs">{u.email}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 dark:text-slate-400">{t('admin.cvSitesColSlug')}</label>
@@ -319,6 +385,8 @@ const AdminCvSitesPage = () => {
                   setCreateOpen(false);
                   setCreateSlug('');
                   setCreateUserEmail('');
+                  setUserSuggestions([]);
+                  setSuggestOpen(false);
                 }}
                 className="px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-sm font-medium"
               >

@@ -578,6 +578,53 @@ public class CvService : ICvService
         }
     }
 
+    public async Task<CvEnvelope<object?>> AdminUnsuspendSiteAsync(string reviewerUserId, Guid siteId, CancellationToken ct = default)
+    {
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            var site = await _db.CvSites.FirstOrDefaultAsync(s => s.Id == siteId, ct);
+            if (site == null)
+            {
+                await tx.RollbackAsync(ct);
+                return new CvEnvelope<object?> { StatusCode = 404, Body = new { error = "Not found" } };
+            }
+
+            site.Status = "approved";
+            site.ReviewedAt = DateTime.UtcNow;
+            site.ReviewedByUserId = reviewerUserId;
+            site.UpdatedAt = DateTime.UtcNow;
+
+            var idempotencyKey = $"{site.Id}:unsuspended:{DateTime.UtcNow:yyyyMMddHH}";
+            var exists = await _db.Notifications.AnyAsync(n => n.IdempotencyKey == idempotencyKey, ct);
+            if (!exists)
+            {
+                _db.Notifications.Add(new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = site.OwnerUserId,
+                    Type = "site_reactivated",
+                    Title = "Site reactivated",
+                    Message = $"Your CV site \"{site.Slug}\" has been reactivated.",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow,
+                    PayloadJson = JsonSerializer.Serialize(new { siteId = site.Id, slug = site.Slug }),
+                    IdempotencyKey = idempotencyKey,
+                });
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return Ok(new { ok = true });
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
     public async Task<CvEnvelope<object?>> SubmitContactAsync(CvContactRequest request, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email) ||

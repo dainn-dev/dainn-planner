@@ -1037,6 +1037,8 @@ export const cvPlatformAPI = {
     }),
   suspendCvSite: (id) =>
     apiRequest(`/v1/cv/admin/sites/${encodeURIComponent(id)}/suspend`, { method: 'POST' }),
+  unsuspendCvSite: (id) =>
+    apiRequest(`/v1/cv/admin/sites/${encodeURIComponent(id)}/unsuspend`, { method: 'POST' }),
 };
 
 /** CV owner API — any authenticated user can manage their own CV site. */

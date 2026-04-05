@@ -60,4 +60,11 @@ public class CvAdminSitesController : ControllerBase
         var r = await _cv.AdminSuspendSiteAsync(UserId, id, ct);
         return StatusCode(r.StatusCode, r.Body);
     }
+
+    [HttpPost("{id:guid}/unsuspend")]
+    public async Task<IActionResult> Unsuspend([FromRoute] Guid id, CancellationToken ct)
+    {
+        var r = await _cv.AdminUnsuspendSiteAsync(UserId, id, ct);
+        return StatusCode(r.StatusCode, r.Body);
+    }
 }

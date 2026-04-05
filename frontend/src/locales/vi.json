@@ -1023,6 +1023,7 @@
     "cvSitesApprove": "Duyệt",
     "cvSitesReject": "Từ chối",
     "cvSitesSuspend": "Tạm ngưng",
+    "cvSitesUnsuspend": "Kích hoạt lại",
     "cvSitesRejectTitle": "Từ chối site",
     "cvSitesRejectPlaceholder": "Lý do (hiển thị cho người dùng)",
     "cvSitesAddSite": "Thêm site",

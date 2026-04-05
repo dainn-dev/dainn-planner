@@ -1023,6 +1023,7 @@
     "cvSitesApprove": "Approve",
     "cvSitesReject": "Reject",
     "cvSitesSuspend": "Suspend",
+    "cvSitesUnsuspend": "Reactivate",
     "cvSitesRejectTitle": "Reject site",
     "cvSitesRejectPlaceholder": "Reason (shown to the user)",
     "cvSitesAddSite": "Add site",

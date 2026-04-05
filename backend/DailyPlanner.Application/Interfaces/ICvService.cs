@@ -22,6 +22,7 @@ public interface ICvService
     Task<CvEnvelope<object?>> AdminApproveSiteAsync(string reviewerUserId, Guid siteId, CancellationToken ct = default);
     Task<CvEnvelope<object?>> AdminRejectSiteAsync(string reviewerUserId, Guid siteId, string reason, CancellationToken ct = default);
     Task<CvEnvelope<object?>> AdminSuspendSiteAsync(string reviewerUserId, Guid siteId, CancellationToken ct = default);
+    Task<CvEnvelope<object?>> AdminUnsuspendSiteAsync(string reviewerUserId, Guid siteId, CancellationToken ct = default);
 
     Task<CvEnvelope<object?>> SubmitContactAsync(CvContactRequest request, CancellationToken ct = default);
 
