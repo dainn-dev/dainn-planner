@@ -199,3 +199,12 @@ body {
 .prose ul > li:has(> ul:only-child) {
   list-style-type: none;
 }
+
+/* Lexical HTML export dùng <b>/<i>; @tailwindcss/typography chỉ style strong/em */
+.prose b {
+  color: var(--tw-prose-bold);
+  font-weight: 600;
+}
+.prose i {
+  font-style: italic;
+}
