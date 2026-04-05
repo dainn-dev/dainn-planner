@@ -196,8 +196,20 @@ public class DailyTaskService : IDailyTaskService
         if (instance == null)
             return new ApiResponse<object> { Success = false, Message = "Task instance not found" };
 
+        var taskId = instance.TaskId;
         _context.TaskInstances.Remove(instance);
         await _context.SaveChangesAsync();
+
+        var hasOtherInstances = await _context.TaskInstances.AnyAsync(i => i.TaskId == taskId);
+        if (!hasOtherInstances)
+        {
+            var task = await _context.DailyTasks.FindAsync(taskId);
+            if (task != null)
+            {
+                _context.DailyTasks.Remove(task);
+                await _context.SaveChangesAsync();
+            }
+        }
 
         return new ApiResponse<object> { Success = true, Message = "Task instance deleted successfully" };
     }

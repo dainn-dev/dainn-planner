@@ -695,7 +695,7 @@ const CalendarPage = () => {
 
   const handleDeleteTask = async (task) => {
     try {
-      await tasksAPI.deleteTask(task.id);
+      await tasksAPI.deleteTaskInstance(task.instanceId);
       setTasksForDay((prev) => prev.filter((t) => t.id !== task.id));
       setSelectedTask(null);
       setTaskDeleteConfirm(false);
