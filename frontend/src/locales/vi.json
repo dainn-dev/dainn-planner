@@ -196,6 +196,8 @@
       "degree": "Bằng cấp",
       "location": "Địa chỉ",
       "about": "Giới thiệu chính",
+      "mainIntro": "Nội dung giới thiệu chi tiết",
+      "mainIntroPlaceholder": "Viết phần giới thiệu chi tiết về bản thân…",
       "socials": "Mạng xã hội",
       "addSocial": "Thêm mạng xã hội",
       "noSocials": "Chưa có liên kết mạng xã hội.",

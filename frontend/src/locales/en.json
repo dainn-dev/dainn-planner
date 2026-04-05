@@ -196,6 +196,8 @@
       "degree": "Degree",
       "location": "Address",
       "about": "Main intro",
+      "mainIntro": "Detailed intro",
+      "mainIntroPlaceholder": "Write a detailed introduction about yourself…",
       "socials": "Social links",
       "addSocial": "Add social link",
       "noSocials": "No social links yet.",

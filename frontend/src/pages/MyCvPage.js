@@ -1270,6 +1270,24 @@ const MyCvPage = () => {
               {renderProfileBgImageCard()}
 
               <div className={CV_SECTION_BLOCK}>
+                <label className={CV_LABEL}>
+                  {t('myCv.profileFields.mainIntro')}
+                </label>
+                <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
+                  <DefaultTemplate
+                    key="profile-main-intro"
+                    className="cv-lexkit-html-field"
+                    placeholder={t('myCv.profileFields.mainIntroPlaceholder')}
+                    onReady={(methods) => {
+                      const html = typeof profileDraft?.mainIntro === 'string' ? profileDraft.mainIntro : '';
+                      if (html) methods.injectHTML(html);
+                    }}
+                    onHtmlChange={(html) => handleProfileFieldChange('mainIntro', html)}
+                  />
+                </div>
+              </div>
+
+              <div className={CV_SECTION_BLOCK}>
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <h3 className="text-sm font-semibold text-zinc-800 dark:text-slate-200">
                     {t('myCv.profileFields.socials')}
