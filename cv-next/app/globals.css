@@ -208,3 +208,20 @@ body {
 .prose i {
   font-style: italic;
 }
+
+/* Lexical headings include h5/h6; default typography theme only styles h1–h4 */
+.prose h5,
+.prose h6 {
+  color: var(--tw-prose-headings);
+  font-weight: 600;
+  margin-top: 0.75em;
+  margin-bottom: 0.35em;
+  line-height: 1.35;
+}
+.prose h5 strong,
+.prose h5 b,
+.prose h6 strong,
+.prose h6 b {
+  font-weight: 700;
+  color: inherit;
+}

@@ -8,6 +8,7 @@ internal static class CvRichTextSanitizer
 {
     // Keep this allowlist aligned with `cv-next/lib/sanitize-html.ts`.
     // The goal is to prevent XSS when CV rich-text is rendered with `dangerouslySetInnerHTML`.
+    // Lexical (DefaultTemplate) exports bold/italic as <b>/<i> and supports heading tags through <h6>.
     private static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
 
     private static HtmlSanitizer CreateSanitizer()
@@ -33,6 +34,8 @@ internal static class CvRichTextSanitizer
                      "h2",
                      "h3",
                      "h4",
+                     "h5",
+                     "h6",
                      "blockquote",
                      "code",
                      "pre",
