@@ -12,13 +12,15 @@
 
 services:
   dailyplanner-api:
-    image: dainndev/dailyplanner-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: dailyplanner-api
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:8080
 
-      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=ep-gentle-firefly-ajfcsrrr-pooler.c-3.us-east-2.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_LRfDYB7rp6AU;SSL Mode=Require}
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-}
 
       Jwt__Key: ${JWT_KEY:-9675bbe42bc6ecfcaf6fba0539afc302913d159a7d9800b065bc3e11b62f4526}
       Jwt__Issuer: ${JWT_ISSUER:-DailyPlanner}
@@ -66,14 +68,19 @@ services:
       - "${API_PORT:-8080}:8080"
 
     volumes:
-      - ./logs:/app/wwwroot/logs
-      - ./uploads/avatars:/app/wwwroot/uploads/avatars
-      - ./uploads/cv-images:/app/wwwroot/uploads/cv-images
+      - dailyplanner_logs:/app/wwwroot/logs
+      - dailyplanner_uploads:/app/wwwroot/uploads
 
     networks:
       - dailyplanner-network
 
     restart: unless-stopped
+
+volumes:
+  dailyplanner_logs:
+    driver: local
+  dailyplanner_uploads:
+    driver: local
 
 networks:
   dailyplanner-network:
