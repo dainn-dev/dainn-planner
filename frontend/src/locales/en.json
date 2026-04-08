@@ -956,7 +956,10 @@
     "todoistEditDue": "Due date",
     "todoistEditDuePlaceholder": "e.g. today, tomorrow, 2026-04-10",
     "todoistSave": "Save",
-    "todoistMarkDone": "Mark done"
+    "todoistMarkDone": "Mark done",
+    "todoistDeleteConfirm": "Delete Todoist task",
+    "todoistDeleteSuccess": "Todoist task deleted",
+    "todoistDeleteFail": "Failed to delete Todoist task"
   },
   "userDashboard": {
     "title": "Overview",

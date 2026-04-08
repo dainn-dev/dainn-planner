@@ -114,6 +114,9 @@ export const integrationsAPI = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  /** Delete (permanently remove) a Todoist task. */
+  deleteTodoistTask: async (todoistTaskId) =>
+    apiRequest(`/integrations/todoist/tasks/${encodeURIComponent(todoistTaskId)}`, { method: 'DELETE' }),
 };
 
 /** Google Calendar event CRUD (for Google-sourced events only). */

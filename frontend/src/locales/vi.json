@@ -956,7 +956,10 @@
     "todoistEditDue": "Ngày hết hạn",
     "todoistEditDuePlaceholder": "vd: hôm nay, ngày mai, 2026-04-10",
     "todoistSave": "Lưu",
-    "todoistMarkDone": "Hoàn thành"
+    "todoistMarkDone": "Hoàn thành",
+    "todoistDeleteConfirm": "Xóa task Todoist",
+    "todoistDeleteSuccess": "Đã xóa task Todoist",
+    "todoistDeleteFail": "Không thể xóa task Todoist"
   },
   "userDashboard": {
     "title": "Tổng quan",

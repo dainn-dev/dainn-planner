@@ -557,6 +557,22 @@ const CalendarPage = () => {
     }
   };
 
+  const handleTodoistDelete = async (task) => {
+    if (todoistActionLoading) return;
+    if (!window.confirm(`${t('calendar.todoistDeleteConfirm')} "${task.content}"?`)) return;
+    setTodoistActionLoading(true);
+    try {
+      await integrationsAPI.deleteTodoistTask(task.id);
+      toast.success(t('calendar.todoistDeleteSuccess'));
+      setSelectedTodoistTask(null);
+      setTodoistTasks((prev) => prev.filter((x) => x.id !== task.id));
+    } catch (err) {
+      toast.error(err?.message || t('calendar.todoistDeleteFail'));
+    } finally {
+      setTodoistActionLoading(false);
+    }
+  };
+
   useEffect(() => {
     notificationsAPI.getNotifications({ limit: 20 })
       .then((data) => setNotifications(Array.isArray(data) ? data : (data?.notifications ?? [])))
@@ -614,6 +630,7 @@ const CalendarPage = () => {
 
   const openEditModal = (evt) => {
     if (eventFormSubmitting) return;
+    if (evt?.startDate && new Date(evt.startDate) < new Date(new Date().setHours(0, 0, 0, 0))) return;
     const allDay = !!evt?.isAllDay;
     let date = '';
     let startTime = '09:00';
@@ -825,6 +842,7 @@ const CalendarPage = () => {
 
   const handleTimelineDragOver = (e) => {
     if (!draggedTask && !dataTransferHasTaskDrag(e)) return;
+    if (selectedDate < new Date(new Date().setHours(0, 0, 0, 0))) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (!timelineRef.current) return;
@@ -847,6 +865,10 @@ const CalendarPage = () => {
     e.preventDefault();
     setDragOverHour(null);
     setDragOverWeekDayIso(null);
+    if (selectedDate < new Date(new Date().setHours(0, 0, 0, 0))) {
+      setDraggedTask(null);
+      return;
+    }
     if (!timelineRef.current) return;
     // resolve task — prefer state, fall back to dataTransfer id lookup
     const taskId = resolveDraggedTaskId(e);
@@ -896,6 +918,7 @@ const CalendarPage = () => {
 
   const handleWeekDayDragOver = (e, day) => {
     if (!draggedTask && !dataTransferHasTaskDrag(e)) return;
+    if (day < new Date(new Date().setHours(0, 0, 0, 0))) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverWeekDayIso(formatLocalDateIso(day));
@@ -912,6 +935,10 @@ const CalendarPage = () => {
     e.stopPropagation();
     setDragOverWeekDayIso(null);
     setDragOverHour(null);
+    if (day < new Date(new Date().setHours(0, 0, 0, 0))) {
+      setDraggedTask(null);
+      return;
+    }
     const taskId = resolveDraggedTaskId(e);
     const task = draggedTask ?? tasksForDay.find((t) => String(t.id) === taskId);
     setDraggedTask(null);
@@ -1208,6 +1235,7 @@ const CalendarPage = () => {
                     const isSelected = isSameDay(day, selectedDate);
                     const dayIso = formatLocalDateIso(day);
                     const dayHasEvents = events.some((e) => formatLocalDateIso(new Date(e.startDate)) === dayIso);
+                    const isFutureDay = day > new Date(new Date().setHours(23, 59, 59, 999));
                     const isDropTarget = dragOverWeekDayIso === dayIso && !isSelected;
                     return (
                       <button
@@ -1228,7 +1256,7 @@ const CalendarPage = () => {
                         </span>
                         <span className="text-sm sm:text-base font-bold leading-none">{day.getDate()}</span>
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : dayHasEvents ? 'bg-[#005EB8]' : 'invisible'}`}
+                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : (dayHasEvents && !isFutureDay) ? 'bg-[#005EB8]' : 'invisible'}`}
                         />
                       </button>
                     );
@@ -1483,6 +1511,131 @@ const CalendarPage = () => {
               </div>
             );
           })()}
+
+          {/* ── Todoist Tasks Panel ── */}
+          {isTodoistConnected && (
+            <div className="bg-white dark:bg-slate-800/60 rounded-xl border border-gray-200 dark:border-slate-700 shrink-0 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 dark:border-slate-700">
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#DB4035" aria-hidden="true">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-7.14 7.142a.75.75 0 01-1.06 0L6.106 11.78a.75.75 0 011.06-1.061l3.057 3.058 6.61-6.614a.75.75 0 011.061 1.058z"/>
+                </svg>
+                <span className="text-sm font-semibold text-[#111418] dark:text-slate-100 flex-1">
+                  {t('calendar.todoistSectionTitle')}
+                </span>
+                {todoistLoading && (
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-[#DB4035] border-t-transparent animate-spin shrink-0" />
+                )}
+                {!todoistLoading && todoistTasks.length > 0 && (
+                  <span className="text-[10px] font-bold text-white bg-[#DB4035] rounded-full px-1.5 py-0.5 leading-none shrink-0">
+                    {todoistTasks.length}
+                  </span>
+                )}
+              </div>
+
+              {/* Empty state */}
+              {!todoistLoading && todoistTasks.length === 0 && (
+                <div className="px-3 py-2.5 text-xs text-gray-400 dark:text-slate-500">
+                  {t('calendar.todoistNoTasksDay')}
+                </div>
+              )}
+
+              {/* Task list */}
+              {todoistTasks.map((task) => {
+                const isSelected = selectedTodoistTask?.id === task.id;
+                return (
+                  <div key={task.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTodoistTask((prev) => prev?.id === task.id ? null : task);
+                        setTodoistEditMode(false);
+                        setTodoistEditForm({ content: task.content, due_string: task.due?.date?.slice(0, 10) ?? '' });
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-700/40 transition-colors ${isSelected ? 'bg-red-50/40 dark:bg-red-900/10' : ''}`}
+                    >
+                      <span className="material-symbols-outlined text-[16px] text-[#DB4035] shrink-0">radio_button_unchecked</span>
+                      <span className="flex-1 min-w-0 text-sm text-[#111418] dark:text-slate-100 truncate">{task.content}</span>
+                      {task.due?.date && (
+                        <span className="text-[11px] text-gray-400 dark:text-slate-500 shrink-0">{task.due.date.slice(0, 10)}</span>
+                      )}
+                      <span className={`material-symbols-outlined text-[14px] text-gray-300 dark:text-slate-600 shrink-0 transition-transform ${isSelected ? 'rotate-180' : ''}`}>expand_more</span>
+                    </button>
+
+                    {isSelected && (
+                      <div className="px-3 pb-3 pt-2 flex flex-col gap-2 bg-gray-50/50 dark:bg-slate-800/40 border-t border-gray-100 dark:border-slate-700">
+                        {todoistEditMode ? (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="text"
+                              value={todoistEditForm.content}
+                              onChange={(e) => setTodoistEditForm((f) => ({ ...f, content: e.target.value }))}
+                              placeholder={t('calendar.todoistEditTitle')}
+                              className="text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-[#111418] dark:text-slate-100 outline-none focus:ring-2 focus:ring-[#DB4035]/30"
+                            />
+                            <input
+                              type="text"
+                              value={todoistEditForm.due_string}
+                              onChange={(e) => setTodoistEditForm((f) => ({ ...f, due_string: e.target.value }))}
+                              placeholder={t('calendar.todoistEditDuePlaceholder')}
+                              className="text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-[#111418] dark:text-slate-100 outline-none focus:ring-2 focus:ring-[#DB4035]/30"
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={todoistActionLoading}
+                                onClick={() => handleTodoistUpdate(task)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#DB4035] text-white hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">save</span>
+                                {t('calendar.todoistSave')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTodoistEditMode(false)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                              >
+                                {t('common.cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={todoistActionLoading}
+                              onClick={() => handleTodoistComplete(task)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              {t('calendar.todoistMarkDone')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTodoistEditMode(true)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary dark:text-blue-400 hover:bg-primary/10 dark:hover:bg-blue-400/10 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">edit</span>
+                              {t('common.edit')}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={todoistActionLoading}
+                              onClick={() => handleTodoistDelete(task)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-50 transition-colors ml-auto"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">delete</span>
+                              {t('common.delete')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── M3 + M4: Timeline + Event Drawer ── */}
           <div className="flex gap-4 flex-1 min-h-0">
