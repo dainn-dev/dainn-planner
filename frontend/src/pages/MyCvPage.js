@@ -87,6 +87,43 @@ const SERVICE_ICON_TO_MATERIAL = {
   Sun: 'wb_sunny',
   Calendar: 'calendar_today',
 };
+/** Map fact icon names to Material Symbols font names */
+const FACT_ICON_TO_MATERIAL = {
+  Smile: 'sentiment_satisfied',
+  FileText: 'description',
+  Headphones: 'headphones',
+  User: 'person',
+  Star: 'star',
+  Heart: 'favorite',
+  Camera: 'photo_camera',
+  Coffee: 'local_cafe',
+  Book: 'book',
+  Code: 'code',
+  Briefcase: 'work',
+  Award: 'emoji_events',
+  Check: 'check',
+  Clock: 'schedule',
+  Cloud: 'cloud',
+  Download: 'download',
+  Edit: 'edit',
+  Eye: 'visibility',
+  Gift: 'card_giftcard',
+  Globe: 'public',
+  Key: 'key',
+  Lock: 'lock',
+  Mail: 'mail',
+  Map: 'map',
+  Music: 'music_note',
+  Phone: 'phone',
+  Search: 'search',
+  Settings: 'settings',
+  Shield: 'shield',
+  ShoppingCart: 'shopping_cart',
+  Tag: 'sell',
+  Trash2: 'delete',
+  Upload: 'upload',
+  Zap: 'bolt',
+};
 /** `id` is stored on each item but hidden in the Education form */
 const EDUCATION_ITEM_FIELDS = ['degree', 'school', 'startYear', 'endYear', 'location', 'description'];
 /** `id` is stored on each item (see handleAddExperience) but not shown in the form */
@@ -139,6 +176,9 @@ const MyCvPage = () => {
   const [testimonialModal, setTestimonialModal] = useState({ open: false, mode: 'add', index: null, draft: null });
   const [uploadingTestimonialModalImage, setUploadingTestimonialModalImage] = useState(false);
   const [certificateModal, setCertificateModal] = useState({ open: false, mode: 'add', index: null, draft: null });
+  const [factModal, setFactModal] = useState({ open: false, mode: 'add', index: null, draft: null });
+  const [technicalSkillModal, setTechnicalSkillModal] = useState({ open: false, mode: 'add', index: null, draft: null });
+  const [projectModal, setProjectModal] = useState({ open: false, mode: 'add', index: null, draft: null, experienceIndex: null });
   const cvAvatarFileRef = useRef(null);
   const cvBgImageFileRef = useRef(null);
   const testimonialImageFileRefs = useRef({});
@@ -671,21 +711,46 @@ const MyCvPage = () => {
     }));
   };
 
-  const handleTechnicalSkillChange = (index, key, value) => {
-    updateSkillsDraft((current) => {
-      const technicalSkills = Array.isArray(current.technicalSkills) ? [...current.technicalSkills] : [];
-      const target = technicalSkills[index] && typeof technicalSkills[index] === 'object' ? technicalSkills[index] : {};
-      technicalSkills[index] = { ...target, [key]: value };
-      return { ...current, technicalSkills };
-    });
+  const handleAddTechnicalSkill = () => {
+    const newItem = { id: `tech-${Date.now()}`, category: '', details: '' };
+    setTechnicalSkillModal({ open: true, mode: 'add', index: null, draft: newItem });
   };
 
-  const handleAddTechnicalSkill = () => {
+  const handleEditTechnicalSkill = (index) => {
+    const skillsParsed = getParsedSectionDraft('skills');
+    const items = Array.isArray(skillsParsed?.technicalSkills) ? skillsParsed.technicalSkills : [];
+    const item = items[index];
+    if (item) {
+      setTechnicalSkillModal({ open: true, mode: 'edit', index, draft: { ...item } });
+    }
+  };
+
+  const handleSaveTechnicalSkillModal = () => {
+    const { mode, index, draft } = technicalSkillModal;
+    if (!draft) return;
+
     updateSkillsDraft((current) => {
       const technicalSkills = Array.isArray(current.technicalSkills) ? [...current.technicalSkills] : [];
-      technicalSkills.push({ category: '', details: '' });
+      if (mode === 'add') {
+        technicalSkills.push(draft);
+      } else if (mode === 'edit' && index !== null) {
+        technicalSkills[index] = draft;
+      }
       return { ...current, technicalSkills };
     });
+
+    setTechnicalSkillModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleCloseTechnicalSkillModal = () => {
+    setTechnicalSkillModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleTechnicalSkillModalFieldChange = (key, value) => {
+    setTechnicalSkillModal((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, [key]: value },
+    }));
   };
 
   const handleRemoveTechnicalSkill = (index) => {
@@ -878,11 +943,37 @@ const MyCvPage = () => {
   };
 
   const handleAddFact = () => {
-    updateFactsDraft((current) => {
-      const facts = Array.isArray(current.facts) ? [...current.facts] : [];
-      facts.push({ icon: '', count: 0, title: '', description: '' });
-      return { ...current, facts };
-    });
+    const newItem = { id: `fact-${Date.now()}`, icon: '', count: 0, title: '', description: '' };
+    setFactModal({ open: true, mode: 'add', index: null, draft: newItem });
+  };
+
+  const handleEditFact = (index) => {
+    const factsDraft = getParsedSectionDraft('facts');
+    const items = Array.isArray(factsDraft?.facts) ? factsDraft.facts : [];
+    const item = items[index];
+    if (item) setFactModal({ open: true, mode: 'edit', index, draft: { ...item } });
+  };
+
+  const handleSaveFactModal = () => {
+    if (!factModal.draft) return;
+    const factsDraft = getParsedSectionDraft('facts');
+    const items = Array.isArray(factsDraft?.facts) ? [...factsDraft.facts] : [];
+    const draftToSave = { ...factModal.draft, count: Number(factModal.draft.count) || 0 };
+    if (factModal.mode === 'add') {
+      items.push(draftToSave);
+    } else if (factModal.mode === 'edit' && factModal.index !== null) {
+      items[factModal.index] = draftToSave;
+    }
+    updateSectionDraft('facts', { ...factsDraft, facts: items });
+    handleCloseFactModal();
+  };
+
+  const handleCloseFactModal = () => {
+    setFactModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleFactModalFieldChange = (key, value) => {
+    setFactModal((prev) => ({ ...prev, draft: { ...prev.draft, [key]: value } }));
   };
 
   const handleRemoveFact = (index) => {
@@ -1011,7 +1102,6 @@ const MyCvPage = () => {
         startYear: '',
         endYear: '',
         location: '',
-        description: '',
       },
     ]);
   };
@@ -1020,6 +1110,74 @@ const MyCvPage = () => {
     updateExperienceDraft((list) => {
       const next = [...list];
       next.splice(index, 1);
+      return next;
+    });
+  };
+
+  const handleAddProject = (experienceIndex) => {
+    const newItem = {
+      id: `proj-${Date.now()}`,
+      name: '',
+      role: '',
+      summary: '',
+      teamSize: '',
+      techStack: '',
+      responsibilities: '',
+      startDate: '',
+      endDate: '',
+    };
+    setProjectModal({ open: true, mode: 'add', index: null, draft: newItem, experienceIndex });
+  };
+
+  const handleEditProject = (experienceIndex, index) => {
+    const expParsed = getParsedSectionDraft('experience');
+    const list = Array.isArray(expParsed) ? expParsed : [];
+    const exp = list[experienceIndex];
+    const projects = Array.isArray(exp?.projects) ? exp.projects : [];
+    const item = projects[index];
+    if (item) {
+      setProjectModal({ open: true, mode: 'edit', index, draft: { ...item }, experienceIndex });
+    }
+  };
+
+  const handleSaveProjectModal = () => {
+    const { mode, index, draft, experienceIndex } = projectModal;
+    if (!draft || experienceIndex === null || experienceIndex === undefined) return;
+
+    updateExperienceDraft((list) => {
+      const next = [...list];
+      const target = next[experienceIndex] && typeof next[experienceIndex] === 'object' ? next[experienceIndex] : {};
+      const projects = Array.isArray(target.projects) ? [...target.projects] : [];
+      if (mode === 'add') {
+        projects.push(draft);
+      } else if (mode === 'edit' && index !== null) {
+        projects[index] = draft;
+      }
+      next[experienceIndex] = { ...target, projects };
+      return next;
+    });
+
+    setProjectModal({ open: false, mode: 'add', index: null, draft: null, experienceIndex: null });
+  };
+
+  const handleCloseProjectModal = () => {
+    setProjectModal({ open: false, mode: 'add', index: null, draft: null, experienceIndex: null });
+  };
+
+  const handleProjectModalFieldChange = (key, value) => {
+    setProjectModal((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, [key]: value },
+    }));
+  };
+
+  const handleRemoveProject = (experienceIndex, index) => {
+    updateExperienceDraft((list) => {
+      const next = [...list];
+      const target = next[experienceIndex] && typeof next[experienceIndex] === 'object' ? next[experienceIndex] : {};
+      const projects = Array.isArray(target.projects) ? [...target.projects] : [];
+      projects.splice(index, 1);
+      next[experienceIndex] = { ...target, projects };
       return next;
     });
   };
@@ -1802,49 +1960,129 @@ const MyCvPage = () => {
                     {t('myCv.skillsFields.addTechnicalSkill')}
                   </button>
                 </div>
-                <div className="flex flex-col gap-3">
-                  {technicalSkills.length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.skillsFields.noTechnicalSkills')}</p>
-                  )}
-                  {technicalSkills.map((item, index) => (
-                    <div key={`technical-skill-${index}`} className={CV_ITEM_CARD}>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap items-end gap-2 sm:gap-3">
-                          <div className="min-w-0 flex-1">
-                            <label className={CV_LABEL}>
-                              {t('myCv.skillsFields.category')}
-                            </label>
-                            <input
-                              type="text"
-                              value={typeof item?.category === 'string' ? item.category : ''}
-                              onChange={(e) => handleTechnicalSkillChange(index, 'category', e.target.value)}
-                              className={CV_INPUT_NESTED}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTechnicalSkill(index)}
-                            className={`${CV_BTN_REMOVE} shrink-0`}
-                          >
-                            {t('common.remove')}
-                          </button>
-                        </div>
-                        <div className="w-full">
-                          <label className={CV_LABEL}>
-                            {t('myCv.skillsFields.details')}
-                          </label>
-                          <input
-                            type="text"
-                            value={typeof item?.details === 'string' ? item.details : ''}
-                            onChange={(e) => handleTechnicalSkillChange(index, 'details', e.target.value)}
-                            className={CV_INPUT_NESTED}
-                          />
-                        </div>
+                {technicalSkills.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.skillsFields.noTechnicalSkills')}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.skillsFields.tableHeaderCategory')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.skillsFields.tableHeaderDetails')}
+                          </th>
+                          <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.skillsFields.tableHeaderActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                        {technicalSkills.map((item, index) => (
+                          <tr key={item?.id || `technical-skill-${index}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                              {item?.category || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                              {item?.details || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditTechnicalSkill(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                  aria-label={t('common.edit')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                  {t('common.edit')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTechnicalSkill(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                  aria-label={t('common.remove')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                  {t('common.remove')}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Technical Skill Modal */}
+              {technicalSkillModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseTechnicalSkillModal}
+                >
+                  <div
+                    className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {technicalSkillModal.mode === 'add' ? t('myCv.skillsFields.modalTitleAdd') : t('myCv.skillsFields.modalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseTechnicalSkillModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.skillsFields.category')}
+                        </label>
+                        <input
+                          type="text"
+                          value={typeof technicalSkillModal.draft?.category === 'string' ? technicalSkillModal.draft.category : ''}
+                          onChange={(e) => handleTechnicalSkillModalFieldChange('category', e.target.value)}
+                          className={CV_INPUT}
+                        />
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.skillsFields.details')}
+                        </label>
+                        <textarea
+                          value={typeof technicalSkillModal.draft?.details === 'string' ? technicalSkillModal.draft.details : ''}
+                          onChange={(e) => handleTechnicalSkillModalFieldChange('details', e.target.value)}
+                          rows={4}
+                          className={CV_TEXTAREA}
+                        />
                       </div>
                     </div>
-                  ))}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleCloseTechnicalSkillModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveTechnicalSkillModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className={CV_SECTION_BLOCK}>
                 <div className="flex items-center justify-between gap-3 mb-3">
@@ -2158,76 +2396,172 @@ const MyCvPage = () => {
                     {t('myCv.factsFields.addItem')}
                   </button>
                 </div>
-                <div className="flex flex-col gap-4">
-                  {factsItems.length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.factsFields.noItems')}</p>
-                  )}
-                  {factsItems.map((item, index) => (
-                    <div key={`fact-${index}`} className={CV_ITEM_CARD}>
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="text-sm font-semibold text-zinc-800 dark:text-slate-200">
-                          {t('myCv.factsFields.itemTitle', { index: index + 1 })}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFact(index)}
-                          className={CV_BTN_REMOVE}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {FACT_ITEM_FIELDS.map((field) => (
-                          <div
-                            key={`${field}-${index}`}
-                            className={field === 'description' || field === 'title' ? 'md:col-span-2' : ''}
-                          >
-                            <label className={CV_LABEL}>
-                              {t(`myCv.factsFields.${field}`)}
-                            </label>
-                            {field === 'icon' ? (
-                              <CvIconPicker
-                                value={typeof item?.icon === 'string' ? item.icon : ''}
-                                onChange={(next) => handleFactChange(index, 'icon', next)}
-                                optionNames={FACT_ICON_OPTIONS}
-                                placeholder={t('myCv.factsFields.iconPlaceholder')}
-                                className={CV_INPUT_NESTED}
-                              />
-                            ) : field === 'count' ? (
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                value={(() => {
-                                  const c = item?.count;
-                                  if (c === undefined || c === null || c === '') return '';
-                                  const n = Number(c);
-                                  return Number.isNaN(n) ? '' : n;
-                                })()}
-                                onChange={(e) => handleFactChange(index, 'count', e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            ) : field === 'description' ? (
-                              <textarea
-                                value={typeof item?.[field] === 'string' ? item[field] : ''}
-                                onChange={(e) => handleFactChange(index, field, e.target.value)}
-                                rows={3}
-                                className={CV_TEXTAREA_NESTED}
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                value={typeof item?.[field] === 'string' ? item[field] : ''}
-                                onChange={(e) => handleFactChange(index, field, e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            )}
-                          </div>
+                {factsItems.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.factsFields.noItems')}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.factsFields.tableHeaderIcon')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.factsFields.tableHeaderCount')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.factsFields.tableHeaderTitle')}
+                          </th>
+                          <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.factsFields.tableHeaderActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                        {factsItems.map((item, index) => (
+                          <tr key={item?.id || `fact-item-${index}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400">
+                                {item?.icon ? (
+                                  <span className="material-symbols-outlined text-xl">{FACT_ICON_TO_MATERIAL[item.icon] || 'help'}</span>
+                                ) : (
+                                  <span className="material-symbols-outlined text-xl">help</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                              {item?.count ?? '—'}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                              {item?.title || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditFact(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                  aria-label={t('common.edit')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                  {t('common.edit')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFact(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                  aria-label={t('common.remove')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                  {t('common.remove')}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Fact Modal */}
+              {factModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseFactModal}
+                >
+                  <div
+                    className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {factModal.mode === 'add' ? t('myCv.factsFields.modalTitleAdd') : t('myCv.factsFields.modalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseFactModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.factsFields.icon')}
+                          </label>
+                          <CvIconPicker
+                            value={typeof factModal.draft?.icon === 'string' ? factModal.draft.icon : ''}
+                            onChange={(next) => handleFactModalFieldChange('icon', next)}
+                            optionNames={FACT_ICON_OPTIONS}
+                            placeholder={t('myCv.factsFields.iconPlaceholder')}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.factsFields.count')}
+                          </label>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={(() => {
+                              const c = factModal.draft?.count;
+                              if (c === undefined || c === null || c === '') return '';
+                              const n = Number(c);
+                              return Number.isNaN(n) ? '' : n;
+                            })()}
+                            onChange={(e) => handleFactModalFieldChange('count', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.factsFields.title')}
+                        </label>
+                        <input
+                          type="text"
+                          value={typeof factModal.draft?.title === 'string' ? factModal.draft.title : ''}
+                          onChange={(e) => handleFactModalFieldChange('title', e.target.value)}
+                          className={CV_INPUT}
+                        />
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.factsFields.description')}
+                        </label>
+                        <textarea
+                          value={typeof factModal.draft?.description === 'string' ? factModal.draft.description : ''}
+                          onChange={(e) => handleFactModalFieldChange('description', e.target.value)}
+                          rows={4}
+                          className={CV_TEXTAREA}
+                        />
                       </div>
                     </div>
-                  ))}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleCloseFactModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveFactModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : isServicesSection ? (
             <div className="flex flex-col gap-5">
@@ -2520,27 +2854,242 @@ const MyCvPage = () => {
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <label className={CV_LABEL}>
-                            {t('myCv.experienceFields.description')}
-                          </label>
-                          <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                            <DefaultTemplate
-                              key={item?.id ? `exp-desc-${item.id}` : `exp-desc-${index}`}
-                              className="cv-lexkit-html-field"
-                              placeholder={t('myCv.experienceFields.descriptionPlaceholder')}
-                              onReady={(methods) => {
-                                const html = typeof item?.description === 'string' ? item.description : '';
-                                if (html) methods.injectHTML(html);
-                              }}
-                              onHtmlChange={(html) => handleExperienceChange(index, 'description', html)}
-                            />
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <label className={CV_LABEL}>
+                              {t('myCv.experienceFields.projects')}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleAddProject(index)}
+                              className={CV_BTN_ADD}
+                            >
+                              <span className="material-symbols-outlined text-sm">add</span>
+                              {t('myCv.experienceFields.addProject')}
+                            </button>
                           </div>
+                          {(() => {
+                            const projects = Array.isArray(item?.projects) ? item.projects : [];
+                            if (projects.length === 0) {
+                              return (
+                                <p className="text-xs text-gray-500 dark:text-slate-400">
+                                  {t('myCv.experienceFields.noProjects')}
+                                </p>
+                              );
+                            }
+                            return (
+                              <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                                    <tr>
+                                      <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                                        {t('myCv.experienceFields.tableHeaderProjectName')}
+                                      </th>
+                                      <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                                        {t('myCv.experienceFields.tableHeaderProjectRole')}
+                                      </th>
+                                      <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                                        {t('myCv.experienceFields.tableHeaderProjectDuration')}
+                                      </th>
+                                      <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                                        {t('myCv.experienceFields.tableHeaderProjectActions')}
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                                    {projects.map((proj, projIndex) => {
+                                      const start = typeof proj?.startDate === 'string' ? proj.startDate : '';
+                                      const end = typeof proj?.endDate === 'string' ? proj.endDate : '';
+                                      const duration = start || end ? `${start || '—'} → ${end || '—'}` : '—';
+                                      return (
+                                        <tr key={proj?.id || `project-${index}-${projIndex}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                          <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                                            {proj?.name || '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                                            {proj?.role || '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-zinc-600 dark:text-slate-400 whitespace-nowrap">
+                                            {duration}
+                                          </td>
+                                          <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleEditProject(index, projIndex)}
+                                                className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                                aria-label={t('common.edit')}
+                                              >
+                                                <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                                {t('common.edit')}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveProject(index, projIndex)}
+                                                className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                                aria-label={t('common.remove')}
+                                              >
+                                                <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                                {t('common.remove')}
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+
+              {/* Project Modal */}
+              {projectModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseProjectModal}
+                >
+                  <div
+                    className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {projectModal.mode === 'add' ? t('myCv.experienceFields.projectModalTitleAdd') : t('myCv.experienceFields.projectModalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseProjectModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.experienceFields.projectName')}
+                          </label>
+                          <input
+                            type="text"
+                            value={typeof projectModal.draft?.name === 'string' ? projectModal.draft.name : ''}
+                            onChange={(e) => handleProjectModalFieldChange('name', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.experienceFields.projectRole')}
+                          </label>
+                          <input
+                            type="text"
+                            value={typeof projectModal.draft?.role === 'string' ? projectModal.draft.role : ''}
+                            onChange={(e) => handleProjectModalFieldChange('role', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.experienceFields.projectTeamSize')}
+                          </label>
+                          <input
+                            type="text"
+                            value={typeof projectModal.draft?.teamSize === 'string' ? projectModal.draft.teamSize : ''}
+                            onChange={(e) => handleProjectModalFieldChange('teamSize', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.experienceFields.projectTechStack')}
+                          </label>
+                          <input
+                            type="text"
+                            value={typeof projectModal.draft?.techStack === 'string' ? projectModal.draft.techStack : ''}
+                            onChange={(e) => handleProjectModalFieldChange('techStack', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL} htmlFor="cv-project-start-date">
+                            {t('myCv.experienceFields.projectStartDate')}
+                          </label>
+                          <CvDdMmDateField
+                            key={`proj-${projectModal.draft?.id || 'new'}-start`}
+                            inputId="cv-project-start-date"
+                            value={typeof projectModal.draft?.startDate === 'string' ? projectModal.draft.startDate : ''}
+                            onChange={(v) => handleProjectModalFieldChange('startDate', v)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL} htmlFor="cv-project-end-date">
+                            {t('myCv.experienceFields.projectEndDate')}
+                          </label>
+                          <CvDdMmDateField
+                            key={`proj-${projectModal.draft?.id || 'new'}-end`}
+                            inputId="cv-project-end-date"
+                            value={typeof projectModal.draft?.endDate === 'string' ? projectModal.draft.endDate : ''}
+                            onChange={(v) => handleProjectModalFieldChange('endDate', v)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.experienceFields.projectSummary')}
+                        </label>
+                        <textarea
+                          value={typeof projectModal.draft?.summary === 'string' ? projectModal.draft.summary : ''}
+                          onChange={(e) => handleProjectModalFieldChange('summary', e.target.value)}
+                          rows={3}
+                          className={CV_TEXTAREA}
+                        />
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.experienceFields.projectResponsibilities')}
+                        </label>
+                        <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
+                          <DefaultTemplate
+                            key={projectModal.draft?.id ? `modal-proj-resp-${projectModal.draft.id}` : 'modal-proj-resp-new'}
+                            className="cv-lexkit-html-field"
+                            placeholder={t('myCv.experienceFields.projectResponsibilitiesPlaceholder')}
+                            onReady={(methods) => {
+                              const html = typeof projectModal.draft?.responsibilities === 'string' ? projectModal.draft.responsibilities : '';
+                              if (html) methods.injectHTML(html);
+                            }}
+                            onHtmlChange={(html) => handleProjectModalFieldChange('responsibilities', html)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleCloseProjectModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveProjectModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : isEducationSection ? (
             <div className="flex flex-col gap-5">

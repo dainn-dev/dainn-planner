@@ -45,17 +45,47 @@ export default function Resume() {
               <p className="text-gray-500 italic text-sm">No experience added yet.</p>
             ) : (
               experience.map((exp, index) => (
-                <div key={exp.id || index} className="mb-6">
+                <div key={exp.id || index} className="mb-8">
                   <h4 className="text-base font-bold text-[#173b6c]">{exp.title}</h4>
                   <h5 className="text-sm text-[#149ddd] font-semibold mb-1">{exp.company}</h5>
                   <p className="text-sm text-gray-500 mb-1">
                     {exp.startYear}{exp.endYear ? ` - ${exp.endYear}` : ""}
                   </p>
-                  {exp.location ? <p className="italic text-sm text-gray-500 mb-2">{exp.location}</p> : null}
-                  <div
-                    className="text-gray-600 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(exp.description || "") }}
-                  />
+                  {exp.location ? <p className="italic text-sm text-gray-500 mb-3">{exp.location}</p> : null}
+
+                  {!exp.projects || exp.projects.length === 0 ? (
+                    <p className="text-gray-500 italic text-sm">No projects</p>
+                  ) : (
+                    <div className="space-y-4 mt-3">
+                      {exp.projects.map((project: any, pIndex: number) => (
+                        <div key={project.id || pIndex} className="pl-4 border-l-2 border-gray-200">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h6 className="text-sm font-semibold text-[#173b6c]">{project.name}</h6>
+                            {project.role ? <span className="text-xs text-gray-500 italic whitespace-nowrap">{project.role}</span> : null}
+                          </div>
+                          {(project.startDate || project.endDate) ? (
+                            <p className="text-xs text-gray-500 mb-1">
+                              {project.startDate}{project.endDate ? ` - ${project.endDate}` : ""}
+                            </p>
+                          ) : null}
+                          {project.summary ? <p className="text-sm text-gray-600 mb-1">{project.summary}</p> : null}
+                          {(project.teamSize || project.techStack) ? (
+                            <p className="text-xs text-gray-500 mb-1">
+                              {project.teamSize ? `Team: ${project.teamSize}` : ""}
+                              {project.teamSize && project.techStack ? " • " : ""}
+                              {project.techStack ? `Tech: ${project.techStack}` : ""}
+                            </p>
+                          ) : null}
+                          {project.responsibilities ? (
+                            <div
+                              className="text-gray-600 prose prose-sm max-w-none [&_table]:text-sm [&_table]:my-0 [&_tr]:!border-0 [&_th]:!p-2 [&_td]:!p-2 [&_td_p]:!my-0 [&_th_p]:!my-0"
+                              dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(project.responsibilities) }}
+                            />
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -100,7 +130,7 @@ export default function Resume() {
                     <h5 className="text-sm text-[#149ddd] font-semibold mb-1">{cert.issuer}</h5>
                     {cert.date ? <p className="italic text-sm text-gray-500 mb-1">{cert.date}</p> : null}
                     <div
-                      className="text-gray-600 prose prose-sm max-w-none"
+                      className="text-gray-600 prose prose-sm max-w-none [&_table]:text-sm [&_table]:my-0 [&_tr]:!border-0 [&_th]:!p-2 [&_td]:!p-2 [&_td_p]:!my-0 [&_th_p]:!my-0"
                       dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(cert.description) }}
                     />
                   </div>

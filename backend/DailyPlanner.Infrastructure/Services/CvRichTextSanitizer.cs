@@ -85,16 +85,25 @@ internal static class CvRichTextSanitizer
                 if (item is not JsonObject o)
                     continue;
 
-                if (!o.TryGetPropertyValue("description", out var descNode))
+                if (!o.TryGetPropertyValue("projects", out var projectsNode) || projectsNode is not JsonArray projectsArr)
                     continue;
 
-                if (descNode is not JsonValue v)
-                    continue;
+                foreach (var project in projectsArr)
+                {
+                    if (project is not JsonObject projectObj)
+                        continue;
 
-                if (!v.TryGetValue<string>(out var raw))
-                    continue;
+                    if (!projectObj.TryGetPropertyValue("responsibilities", out var respNode))
+                        continue;
 
-                o["description"] = JsonValue.Create(SanitizeHtml(raw));
+                    if (respNode is not JsonValue v)
+                        continue;
+
+                    if (!v.TryGetValue<string>(out var raw))
+                        continue;
+
+                    projectObj["responsibilities"] = JsonValue.Create(SanitizeHtml(raw));
+                }
             }
 
             return node.ToJsonString();
