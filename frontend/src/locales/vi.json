@@ -242,7 +242,12 @@
       "details": "Chi tiết",
       "softSkills": "Kỹ năng mềm",
       "addSoftSkill": "Thêm kỹ năng mềm",
-      "noSoftSkills": "Chưa có kỹ năng mềm."
+      "noSoftSkills": "Chưa có kỹ năng mềm.",
+      "modalTitleAdd": "Thêm kỹ năng chuyên môn",
+      "modalTitleEdit": "Sửa kỹ năng chuyên môn",
+      "tableHeaderCategory": "Nhóm kỹ năng",
+      "tableHeaderDetails": "Chi tiết",
+      "tableHeaderActions": "Hành động"
     },
     "servicesFields": {
       "introDescription": "Giới thiệu",
@@ -286,7 +291,25 @@
       "endYear": "Ngày kết thúc",
       "location": "Địa điểm",
       "description": "Mô tả (HTML)",
-      "descriptionPlaceholder": "Tóm tắt vai trò và thành tựu — văn bản định dạng hoặc HTML (hiển thị trên CV công khai)."
+      "descriptionPlaceholder": "Tóm tắt vai trò và thành tựu — văn bản định dạng hoặc HTML (hiển thị trên CV công khai).",
+      "projects": "Dự án",
+      "addProject": "Thêm dự án",
+      "noProjects": "Chưa có dự án.",
+      "projectName": "Tên dự án",
+      "projectRole": "Vai trò",
+      "projectSummary": "Tóm tắt",
+      "projectTeamSize": "Quy mô team",
+      "projectTechStack": "Công nghệ",
+      "projectResponsibilities": "Trách nhiệm (HTML)",
+      "projectResponsibilitiesPlaceholder": "Chi tiết trách nhiệm — văn bản định dạng hoặc HTML.",
+      "projectStartDate": "Bắt đầu",
+      "projectEndDate": "Kết thúc",
+      "projectModalTitleAdd": "Thêm dự án",
+      "projectModalTitleEdit": "Sửa dự án",
+      "tableHeaderProjectName": "Tên dự án",
+      "tableHeaderProjectRole": "Vai trò",
+      "tableHeaderProjectDuration": "Thời gian",
+      "tableHeaderProjectActions": "Hành động"
     },
     "certificatesFields": {
       "items": "Chứng chỉ",
@@ -316,7 +339,13 @@
       "iconPlaceholder": "Chọn icon…",
       "count": "Số",
       "title": "Tiêu đề mục",
-      "description": "Mô tả"
+      "description": "Mô tả",
+      "modalTitleAdd": "Thêm Fact",
+      "modalTitleEdit": "Chỉnh sửa Fact",
+      "tableHeaderIcon": "Icon",
+      "tableHeaderCount": "Số lượng",
+      "tableHeaderTitle": "Tiêu đề",
+      "tableHeaderActions": "Thao tác"
     },
     "testimonialsFields": {
       "introDescription": "Giới thiệu",

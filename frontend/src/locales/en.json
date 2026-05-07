@@ -242,7 +242,12 @@
       "details": "Details",
       "softSkills": "Soft skills",
       "addSoftSkill": "Add soft skill",
-      "noSoftSkills": "No soft skills yet."
+      "noSoftSkills": "No soft skills yet.",
+      "modalTitleAdd": "Add Technical Skill",
+      "modalTitleEdit": "Edit Technical Skill",
+      "tableHeaderCategory": "Category",
+      "tableHeaderDetails": "Details",
+      "tableHeaderActions": "Actions"
     },
     "servicesFields": {
       "introDescription": "Intro",
@@ -286,7 +291,25 @@
       "endYear": "End date",
       "location": "Location",
       "description": "Description (HTML)",
-      "descriptionPlaceholder": "Role summary and achievements — rich text or pasted HTML (shown on your public CV)."
+      "descriptionPlaceholder": "Role summary and achievements — rich text or pasted HTML (shown on your public CV).",
+      "projects": "Projects",
+      "addProject": "Add project",
+      "noProjects": "No projects.",
+      "projectName": "Project name",
+      "projectRole": "Role",
+      "projectSummary": "Summary",
+      "projectTeamSize": "Team size",
+      "projectTechStack": "Tech stack",
+      "projectResponsibilities": "Responsibilities (HTML)",
+      "projectResponsibilitiesPlaceholder": "Responsibility details — rich text or pasted HTML.",
+      "projectStartDate": "Start date",
+      "projectEndDate": "End date",
+      "projectModalTitleAdd": "Add project",
+      "projectModalTitleEdit": "Edit project",
+      "tableHeaderProjectName": "Project name",
+      "tableHeaderProjectRole": "Role",
+      "tableHeaderProjectDuration": "Duration",
+      "tableHeaderProjectActions": "Actions"
     },
     "certificatesFields": {
       "items": "Certificates",
@@ -316,7 +339,13 @@
       "iconPlaceholder": "Select icon…",
       "count": "Count",
       "title": "Item title",
-      "description": "Description"
+      "description": "Description",
+      "modalTitleAdd": "Add Fact",
+      "modalTitleEdit": "Edit Fact",
+      "tableHeaderIcon": "Icon",
+      "tableHeaderCount": "Count",
+      "tableHeaderTitle": "Title",
+      "tableHeaderActions": "Actions"
     },
     "testimonialsFields": {
       "introDescription": "Intro",
