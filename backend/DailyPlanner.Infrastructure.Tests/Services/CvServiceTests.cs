@@ -248,6 +248,44 @@ public class CvServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task PutContentAsync_PreservesTableHtml_InExperienceDescription()
+    {
+        var owner = TestHelpers.CreateTestUser();
+        _context.Users.Add(owner);
+        await _context.SaveChangesAsync();
+
+        var svc = CreateService();
+
+        var payload = """
+                      {
+                        "experience": [
+                          {
+                            "id": "e1",
+                            "description": "<table><tbody><tr><th>Role</th><td colspan='2'>Lead</td></tr></tbody></table>"
+                          }
+                        ]
+                      }
+                      """;
+
+        using var doc = JsonDocument.Parse(payload);
+        var r = await svc.PutContentAsync(owner.Id, doc.RootElement.Clone());
+
+        r.StatusCode.Should().Be(200);
+
+        var saved = await _context.CvDocuments.SingleAsync(d => d.UserId == owner.Id);
+
+        using var expDoc = JsonDocument.Parse(saved.ExperienceJson ?? "[]");
+        var desc = expDoc.RootElement[0].GetProperty("description").GetString();
+
+        desc.Should().Contain("<table>");
+        desc.Should().Contain("<tbody>");
+        desc.Should().Contain("<tr>");
+        desc.Should().Contain("<th>Role</th>");
+        desc.Should().Contain("colspan");
+        desc.Should().Contain("Lead");
+    }
+
+    [Fact]
     public async Task PutContentAsync_SanitizesCertificatesRichText()
     {
         var owner = TestHelpers.CreateTestUser();

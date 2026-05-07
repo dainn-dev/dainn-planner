@@ -29,8 +29,14 @@ const CV_RICH_TEXT_CONFIG = {
     "pre",
     "span",
     "div",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
   ],
-  ALLOWED_ATTR: ["href", "target", "rel", "class", "title"],
+  ALLOWED_ATTR: ["href", "target", "rel", "class", "title", "colspan", "rowspan"],
   ALLOW_DATA_ATTR: false,
 }
 

@@ -41,12 +41,18 @@ internal static class CvRichTextSanitizer
                      "pre",
                      "span",
                      "div",
+                     "table",
+                     "thead",
+                     "tbody",
+                     "tr",
+                     "th",
+                     "td",
                  })
             sanitizer.AllowedTags.Add(tag);
 
         // Attributes that are safe and useful for formatting.
         sanitizer.AllowedAttributes.Clear();
-        foreach (var attr in new[] { "href", "target", "rel", "class", "title" })
+        foreach (var attr in new[] { "href", "target", "rel", "class", "title", "colspan", "rowspan" })
             sanitizer.AllowedAttributes.Add(attr);
 
         // Ensure href-based attacks like `javascript:` are removed.
