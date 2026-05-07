@@ -39,26 +39,26 @@ export default function Skills() {
 
   if (loading) {
     return (
-      <section id="skills" className="py-16 bg-white">
+      <section id="skills" className="py-8 bg-[#0f1418]">
         <div className="container mx-auto px-4">
           <div className="section-title mb-12">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-8 bg-[#1c232b] rounded w-1/4 mb-4"></div>
+            <div className="h-4 bg-[#1c232b] rounded w-3/4"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div>
-              <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+              <div className="h-8 bg-[#1c232b] rounded w-1/3 mb-6"></div>
               <ul className="space-y-2">
                 {[...Array(8)].map((_, i) => (
-                  <li key={i} className="h-4 bg-gray-200 rounded w-full"></li>
+                  <li key={i} className="h-4 bg-[#1c232b] rounded w-full"></li>
                 ))}
               </ul>
             </div>
             <div>
-              <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+              <div className="h-8 bg-[#1c232b] rounded w-1/3 mb-6"></div>
               <ul className="space-y-2">
                 {[...Array(4)].map((_, i) => (
-                  <li key={i} className="h-4 bg-gray-200 rounded w-3/4"></li>
+                  <li key={i} className="h-4 bg-[#1c232b] rounded w-3/4"></li>
                 ))}
               </ul>
             </div>
@@ -69,26 +69,26 @@ export default function Skills() {
   }
 
   return (
-    <section id="skills" className="py-16 bg-white">
+    <section id="skills" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Skills</h2>
-          <p className="text-gray-600">{data.intro.description}</p>
+          <p className="text-gray-400">{data.intro.description}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div>
-            <h3 className="text-lg font-bold text-[#173b6c] mb-6">Technical Skills</h3>
-            <ul className="list-disc pl-6 space-y-2 text-sm">
+            <h3 className="text-lg font-bold text-[#4ab8e6] mb-6">Technical Skills</h3>
+            <ul className="list-disc pl-6 space-y-2 text-sm text-gray-300 marker:text-[#149ddd]">
               {data.technicalSkills.map((skill, idx) => (
                 <li key={idx}>
-                  <span className="font-semibold">{skill.category}:</span> {skill.details}
+                  <span className="font-semibold text-gray-100">{skill.category}:</span> {skill.details}
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-[#173b6c] mb-6">Soft Skills</h3>
-            <ul className="list-disc pl-6 space-y-2 text-sm">
+            <h3 className="text-lg font-bold text-[#4ab8e6] mb-6">Soft Skills</h3>
+            <ul className="list-disc pl-6 space-y-2 text-sm text-gray-300 marker:text-[#149ddd]">
               {data.softSkills.map((skill, idx) => (
                 <li key={idx}>{skill}</li>
               ))}

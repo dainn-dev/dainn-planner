@@ -33,27 +33,27 @@ export default function AboutContent() {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-8"></div>
+        <div className="h-4 bg-[#1c232b] rounded w-3/4 mb-8"></div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4">
-            <div className="bg-gray-200 rounded-lg h-[600px]"></div>
+            <div className="bg-[#1c232b] rounded-lg h-[600px]"></div>
           </div>
           <div className="lg:col-span-8 pt-4 lg:pt-0">
-            <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+            <div className="h-8 bg-[#1c232b] rounded w-1/2 mb-4"></div>
+            <div className="h-4 bg-[#1c232b] rounded w-full mb-4"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div key={i} className="h-4 bg-[#1c232b] rounded w-3/4"></div>
                 ))}
               </div>
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div key={i} className="h-4 bg-[#1c232b] rounded w-3/4"></div>
                 ))}
               </div>
             </div>
-            <div className="h-4 bg-gray-200 rounded w-full mt-6"></div>
+            <div className="h-4 bg-[#1c232b] rounded w-full mt-6"></div>
           </div>
         </div>
       </div>
@@ -63,7 +63,7 @@ export default function AboutContent() {
   return (
     <>
       <div
-        className="text-sm text-gray-600 mb-8 cv-about-prose prose prose-sm max-w-none dark:prose-invert"
+        className="text-sm text-gray-300 mb-8 cv-about-prose prose prose-sm prose-invert max-w-none"
         dangerouslySetInnerHTML={{
           __html: sanitizeCvHtml(
             typeof profileData.about === "string" ? profileData.about : ""
@@ -73,7 +73,7 @@ export default function AboutContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-12 pt-4 lg:pt-0" data-aos="fade-left">
-          <p className="text-base font-semibold text-[#173b6c] mb-4">
+          <p className="text-base font-semibold text-[#4ab8e6] mb-4">
             Professional Profile & Contact Details:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
@@ -81,26 +81,26 @@ export default function AboutContent() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Birthday:</span> {profileData.birthday}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Birthday:</span> {profileData.birthday}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Website:</span> {profileData.website}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Website:</span> {profileData.website}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Phone:</span> {profileData.phone}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Phone:</span> {profileData.phone}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">City:</span> {profileData.location}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">City:</span> {profileData.location}
                   </div>
                 </li>
               </ul>
@@ -109,26 +109,26 @@ export default function AboutContent() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Age:</span> 30
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Age:</span> 30
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Degree:</span> {profileData.degree}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Degree:</span> {profileData.degree}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Email:</span> {profileData.email}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Email:</span> {profileData.email}
                   </div>
                 </li>
                 <li className="flex items-start">
                   <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Freelance:</span> {profileData.freelance}
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium text-gray-100">Freelance:</span> {profileData.freelance}
                   </div>
                 </li>
               </ul>

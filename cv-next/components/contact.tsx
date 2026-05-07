@@ -86,43 +86,43 @@ export default function Contact() {
   }
 
   return (
-    <section id="contact" className="py-16 bg-white">
+    <section id="contact" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Contact</h2>
-          <p className="text-gray-600">{CONTACT_SECTION_INTRO}</p>
+          <p className="text-gray-400">{CONTACT_SECTION_INTRO}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" data-aos="fade-in">
           <div className="lg:col-span-5">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-[#151b22] p-6 rounded-lg shadow-sm border border-[#2a323c]">
               <div className="flex items-start mb-6">
-                <div className="flex items-center justify-center bg-[#dff3fc] w-12 h-12 rounded-full mr-4 flex-shrink-0">
+                <div className="flex items-center justify-center bg-[#149ddd]/15 w-12 h-12 rounded-full mr-4 flex-shrink-0">
                   <MapPin className="h-6 w-6 text-[#149ddd]" />
                 </div>
                 <div>
-                  <h4 className="text-base font-semibold text-[#173b6c]">Location:</h4>
-                  <p className="text-sm text-gray-600">{profile.location}</p>
+                  <h4 className="text-base font-semibold text-[#4ab8e6]">Location:</h4>
+                  <p className="text-sm text-gray-400">{profile.location}</p>
                 </div>
               </div>
 
               <div className="flex items-start mb-6">
-                <div className="flex items-center justify-center bg-[#dff3fc] w-12 h-12 rounded-full mr-4 flex-shrink-0">
+                <div className="flex items-center justify-center bg-[#149ddd]/15 w-12 h-12 rounded-full mr-4 flex-shrink-0">
                   <Mail className="h-6 w-6 text-[#149ddd]" />
                 </div>
                 <div>
-                  <h4 className="text-base font-semibold text-[#173b6c]">Email:</h4>
-                  <p className="text-sm text-gray-600">{profile.email}</p>
+                  <h4 className="text-base font-semibold text-[#4ab8e6]">Email:</h4>
+                  <p className="text-sm text-gray-400">{profile.email}</p>
                 </div>
               </div>
 
               <div className="flex items-start mb-6">
-                <div className="flex items-center justify-center bg-[#dff3fc] w-12 h-12 rounded-full mr-4 flex-shrink-0">
+                <div className="flex items-center justify-center bg-[#149ddd]/15 w-12 h-12 rounded-full mr-4 flex-shrink-0">
                   <Phone className="h-6 w-6 text-[#149ddd]" />
                 </div>
                 <div>
-                  <h4 className="text-base font-semibold text-[#173b6c]">Call:</h4>
-                  <p className="text-sm text-gray-600">{profile.phone}</p>
+                  <h4 className="text-base font-semibold text-[#4ab8e6]">Call:</h4>
+                  <p className="text-sm text-gray-400">{profile.phone}</p>
                 </div>
               </div>
 
@@ -137,10 +137,10 @@ export default function Contact() {
           </div>
 
           <div className="lg:col-span-7">
-            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-sm">
+            <form onSubmit={handleSubmit} className="bg-[#151b22] p-6 rounded-lg shadow-sm border border-[#2a323c]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm text-gray-700 mb-2">
+                  <label htmlFor="name" className="block text-sm text-gray-300 mb-2">
                     Your Name
                   </label>
                   <input
@@ -149,12 +149,12 @@ export default function Contact() {
                     id="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd]"
+                    className="w-full px-4 py-2 bg-[#0f1418] border border-[#2a323c] text-gray-100 placeholder:text-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd] focus:border-transparent"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm text-gray-300 mb-2">
                     Your Email
                   </label>
                   <input
@@ -163,13 +163,13 @@ export default function Contact() {
                     id="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd]"
+                    className="w-full px-4 py-2 bg-[#0f1418] border border-[#2a323c] text-gray-100 placeholder:text-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd] focus:border-transparent"
                     required
                   />
                 </div>
               </div>
               <div className="mb-4">
-                <label htmlFor="subject" className="block text-sm text-gray-700 mb-2">
+                <label htmlFor="subject" className="block text-sm text-gray-300 mb-2">
                   Subject
                 </label>
                 <input
@@ -178,12 +178,12 @@ export default function Contact() {
                   id="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd]"
+                  className="w-full px-4 py-2 bg-[#0f1418] border border-[#2a323c] text-gray-100 placeholder:text-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd] focus:border-transparent"
                   required
                 />
               </div>
               <div className="mb-4">
-                <label htmlFor="message" className="block text-sm text-gray-700 mb-2">
+                <label htmlFor="message" className="block text-sm text-gray-300 mb-2">
                   Message
                 </label>
                 <textarea
@@ -192,14 +192,14 @@ export default function Contact() {
                   rows={10}
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd]"
+                  className="w-full px-4 py-2 bg-[#0f1418] border border-[#2a323c] text-gray-100 placeholder:text-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-[#149ddd] focus:border-transparent"
                   required
                 ></textarea>
               </div>
               <div className="mb-4 text-center">
-                {status.loading && <div className="text-gray-600">Loading...</div>}
-                {status.error && <div className="text-red-500">{status.message}</div>}
-                {status.success && <div className="text-green-500">{status.message}</div>}
+                {status.loading && <div className="text-gray-400">Loading...</div>}
+                {status.error && <div className="text-red-400">{status.message}</div>}
+                {status.success && <div className="text-green-400">{status.message}</div>}
               </div>
               <div className="text-center">
                 <button

@@ -31,11 +31,11 @@ export default function Resume() {
   }, [apiCv])
 
   return (
-    <section id="resume" className="py-16 bg-white">
+    <section id="resume" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Resume</h2>
-          {profile.resumeIntro ? <p className="text-gray-600">{profile.resumeIntro}</p> : null}
+          {profile.resumeIntro ? <p className="text-gray-400">{profile.resumeIntro}</p> : null}
         </div>
 
         <div className="flex flex-col gap-12">

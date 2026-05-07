@@ -1,11 +1,11 @@
 export default function Footer() {
   return (
-    <footer id="footer" className="py-8 bg-[#f7f8f9] text-center">
+    <footer id="footer" className="py-8 bg-[#0a0e12] border-t border-[#2a323c] text-center">
       <div className="container mx-auto px-4">
-        <div className="text-gray-600">
+        <div className="text-gray-300">
           &copy; Copyright{" "}
           <strong>
-            <span>Dainn</span>
+            <span className="text-[#149ddd]">Dainn</span>
           </strong>
         </div>
         <div className="text-gray-500 text-sm mt-1">Designed with Next.js and Tailwind CSS</div>

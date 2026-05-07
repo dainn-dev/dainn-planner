@@ -3,10 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 255, 255;
+  --foreground-rgb: 230, 235, 240;
+  --background-rgb: 15, 20, 24;
   --primary-color: #149ddd;
-  --secondary-color: #2563a8;
+  --secondary-color: #4ab8e6;
+  --surface-bg: #151b22;
+  --surface-bg-alt: #1c232b;
+  --border-color: #2a323c;
 }
 
 body {
@@ -36,13 +39,13 @@ body {
 }
 
 .section-bg {
-  background-color: #f5f8fd;
+  background-color: var(--surface-bg);
 }
 
 .progress-bar {
   display: block;
   height: 10px;
-  background-color: #e9ecef;
+  background-color: #2a323c;
   border-radius: 5px;
   overflow: hidden;
 }
@@ -105,10 +108,11 @@ body {
   position: relative;
   overflow: hidden;
   margin-bottom: 20px;
-  background: #fff;
-  box-shadow: 0 0 29px 0 rgba(68, 88, 144, 0.12);
+  background: var(--surface-bg);
+  box-shadow: 0 0 29px 0 rgba(0, 0, 0, 0.35);
   transition: all 0.3s ease-in-out;
   border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .icon-box:hover {
@@ -130,16 +134,17 @@ body {
   padding: 30px;
   margin: 30px 15px;
   min-height: 200px;
-  box-shadow: 0px 0 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 0 20px rgba(0, 0, 0, 0.4);
   position: relative;
-  background: #fff;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
 }
 
 .testimonial-img {
   width: 90px;
   border-radius: 50%;
-  border: 6px solid #fff;
+  border: 6px solid var(--surface-bg);
   position: absolute;
   left: -45px;
 }
@@ -153,9 +158,10 @@ body {
 
 .contact .info {
   padding: 30px;
-  background: #fff;
+  background: var(--surface-bg);
   width: 100%;
-  box-shadow: 0 0 24px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 24px 0 rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
 }
 
 .contact .info i {
@@ -164,7 +170,7 @@ body {
   float: left;
   width: 44px;
   height: 44px;
-  background: #dff3fc;
+  background: rgba(20, 157, 221, 0.15);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -184,7 +190,7 @@ body {
   padding: 0 0 10px 60px;
   margin-bottom: 20px;
   font-size: 14px;
-  color: #2563a8;
+  color: #b8c5d1;
 }
 
 .contact .info .email:hover i,

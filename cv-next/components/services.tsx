@@ -40,20 +40,20 @@ export default function Services() {
 
   if (loading) {
     return (
-      <section id="services" className="py-16 bg-white">
+      <section id="services" className="py-8 bg-[#0f1418]">
         <div className="container mx-auto px-4">
           <div className="section-title mb-12">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-8 bg-[#1c232b] rounded w-1/4 mb-4"></div>
+            <div className="h-4 bg-[#1c232b] rounded w-3/4"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg shadow-sm animate-pulse">
+              <div key={i} className="bg-[#151b22] p-6 rounded-lg shadow-sm border border-[#2a323c] animate-pulse">
                 <div className="flex gap-4">
-                  <div className="h-12 w-12 bg-gray-200 rounded-full"></div>
+                  <div className="h-12 w-12 bg-[#1c232b] rounded-full"></div>
                   <div className="flex-1">
-                    <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    <div className="h-6 bg-[#1c232b] rounded w-1/2 mb-2"></div>
+                    <div className="h-4 bg-[#1c232b] rounded w-full"></div>
                   </div>
                 </div>
               </div>
@@ -65,29 +65,29 @@ export default function Services() {
   }
 
   return (
-    <section id="services" className="py-16 bg-white">
+    <section id="services" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Services</h2>
-          <p className="text-gray-600">{data.intro.description}</p>
+          <p className="text-gray-400">{data.intro.description}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.services.map((service, index) => {
             const Icon = SERVICE_ICONS[service.icon as ServiceIconName] || SERVICE_ICONS.Briefcase
             return (
-              <div key={service.id || index} className="icon-box bg-white p-6 rounded-lg shadow-sm" data-aos="fade-up" data-aos-delay={index * 100}>
+              <div key={service.id || index} className="icon-box" data-aos="fade-up" data-aos-delay={index * 100}>
                 <div className="flex gap-4">
                   <div className="icon">
                     <Icon className="h-10 w-10 text-[#149ddd]" />
                   </div>
                   <div className="flex-1">
                     <h5 className="title text-base font-bold mb-1">
-                      <a href="#" className="text-[#173b6c] hover:text-[#149ddd]">
+                      <a href="#" className="text-[#4ab8e6] hover:text-[#149ddd]">
                         {service.title}
                       </a>
                     </h5>
-                    <p className="description text-sm text-gray-600">{service.description}</p>
+                    <p className="description text-sm text-gray-300">{service.description}</p>
                   </div>
                 </div>
               </div>

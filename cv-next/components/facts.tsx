@@ -93,22 +93,22 @@ export default function Facts() {
 
   if (loading) {
     return (
-      <section id="facts" className="py-16 bg-white">
+      <section id="facts" className="py-8 bg-[#0f1418]">
         <div className="container mx-auto px-4">
           <div className="section-title mb-12">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-8 bg-[#1c232b] rounded w-1/4 mb-4"></div>
+            <div className="h-4 bg-[#1c232b] rounded w-3/4"></div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex flex-col items-center" data-aos="fade-up">
-                <div className="flex justify-center items-center w-16 h-16 rounded-full bg-[#e8f7fb] mb-4">
-                  <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                <div className="flex justify-center items-center w-16 h-16 rounded-full bg-[#149ddd]/15 mb-4">
+                  <div className="h-8 w-8 bg-[#1c232b] rounded"></div>
                 </div>
                 <div className="text-center">
-                  <div className="h-8 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                  <div className="h-8 bg-[#1c232b] rounded w-16 mx-auto mb-2"></div>
+                  <div className="h-4 bg-[#1c232b] rounded w-3/4 mx-auto"></div>
                 </div>
               </div>
             ))}
@@ -119,25 +119,25 @@ export default function Facts() {
   }
 
   return (
-    <section id="facts" className="py-16 bg-white">
+    <section id="facts" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Facts</h2>
-          <p className="text-gray-600">{data.intro.description}</p>
+          <p className="text-gray-400">{data.intro.description}</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {data.facts.map((fact, index) => (
             <div key={fact.id || index} className="flex flex-col items-center" data-aos="fade-up">
-              <div className="flex justify-center items-center w-16 h-16 rounded-full bg-[#e8f7fb] mb-4">
+              <div className="flex justify-center items-center w-16 h-16 rounded-full bg-[#149ddd]/15 mb-4">
                 {getIcon(fact.icon)}
               </div>
               <div className="text-center">
-                <span className="count-number text-3xl font-bold text-[#173b6c]" data-target={fact.count}>
+                <span className="count-number text-3xl font-bold text-[#4ab8e6]" data-target={fact.count}>
                   0
                 </span>
-                <p className="mt-2 text-sm text-gray-600">
-                  <strong>{fact.title}</strong> {fact.description}
+                <p className="mt-2 text-sm text-gray-300">
+                  <strong className="text-gray-100">{fact.title}</strong> {fact.description}
                 </p>
               </div>
             </div>

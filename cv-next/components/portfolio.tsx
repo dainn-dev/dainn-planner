@@ -62,11 +62,11 @@ export default function Portfolio() {
   }
 
   return (
-    <section id="portfolio" className="py-16 bg-white">
+    <section id="portfolio" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Portfolio</h2>
-          <p className="text-gray-600">{intro.description}</p>
+          <p className="text-gray-400">{intro.description}</p>
         </div>
 
         <div className="flex justify-center mb-8" data-aos="fade-up">
@@ -74,7 +74,7 @@ export default function Portfolio() {
             <li>
               <button
                 onClick={() => setFilter("*")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "*" ? "bg-[#149ddd] text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-4 py-2 rounded-md transition-colors ${filter === "*" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
               >
                 All
               </button>
@@ -82,7 +82,7 @@ export default function Portfolio() {
             <li>
               <button
                 onClick={() => setFilter("app")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "app" ? "bg-[#149ddd] text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-4 py-2 rounded-md transition-colors ${filter === "app" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
               >
                 App
               </button>
@@ -90,7 +90,7 @@ export default function Portfolio() {
             <li>
               <button
                 onClick={() => setFilter("card")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "card" ? "bg-[#149ddd] text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-4 py-2 rounded-md transition-colors ${filter === "card" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
               >
                 Card
               </button>
@@ -98,7 +98,7 @@ export default function Portfolio() {
             <li>
               <button
                 onClick={() => setFilter("web")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "web" ? "bg-[#149ddd] text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-4 py-2 rounded-md transition-colors ${filter === "web" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
               >
                 Web
               </button>
@@ -126,7 +126,7 @@ export default function Portfolio() {
                   </a>
                 </div>
               </div>
-              <div className="mt-1 text-center text-sm font-semibold text-[#173b6c]">{item.title}</div>
+              <div className="mt-1 text-center text-sm font-semibold text-[#4ab8e6]">{item.title}</div>
             </div>
           ))}
         </div>
