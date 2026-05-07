@@ -78,6 +78,15 @@ const FACT_ICON_OPTIONS = [...FACT_ICON_NAMES].sort((a, b) => a.localeCompare(b)
 /** Must match `cv-next/lib/constants/service-icons.ts` keys */
 const SERVICE_ICON_NAMES = ['Briefcase', 'ClipboardList', 'BarChart', 'Binoculars', 'Sun', 'Calendar'];
 const SERVICE_ICON_OPTIONS = [...SERVICE_ICON_NAMES].sort((a, b) => a.localeCompare(b));
+/** Map lexical icon names to Material Symbols font names */
+const SERVICE_ICON_TO_MATERIAL = {
+  Briefcase: 'work',
+  ClipboardList: 'assignment',
+  BarChart: 'bar_chart',
+  Binoculars: 'search',
+  Sun: 'wb_sunny',
+  Calendar: 'calendar_today',
+};
 /** `id` is stored on each item but hidden in the Education form */
 const EDUCATION_ITEM_FIELDS = ['degree', 'school', 'startYear', 'endYear', 'location', 'description'];
 /** `id` is stored on each item (see handleAddExperience) but not shown in the form */
@@ -123,12 +132,18 @@ const MyCvPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadingCvAvatar, setUploadingCvAvatar] = useState(false);
   const [uploadingCvBgImage, setUploadingCvBgImage] = useState(false);
-  const [uploadingPortfolioImageIndex, setUploadingPortfolioImageIndex] = useState(null);
   const [uploadingTestimonialImageIndex, setUploadingTestimonialImageIndex] = useState(null);
+  const [portfolioModal, setPortfolioModal] = useState({ open: false, mode: 'add', index: null, draft: null });
+  const [uploadingPortfolioCover, setUploadingPortfolioCover] = useState(false);
+  const [serviceModal, setServiceModal] = useState({ open: false, mode: 'add', index: null, draft: null });
+  const [testimonialModal, setTestimonialModal] = useState({ open: false, mode: 'add', index: null, draft: null });
+  const [uploadingTestimonialModalImage, setUploadingTestimonialModalImage] = useState(false);
+  const [certificateModal, setCertificateModal] = useState({ open: false, mode: 'add', index: null, draft: null });
   const cvAvatarFileRef = useRef(null);
   const cvBgImageFileRef = useRef(null);
-  const portfolioImageFileRefs = useRef({});
   const testimonialImageFileRefs = useRef({});
+  const portfolioCoverFileRef = useRef(null);
+  const testimonialModalImageFileRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -549,86 +564,53 @@ const MyCvPage = () => {
     }));
   };
 
-  const handlePortfolioItemChange = (index, key, value) => {
-    updatePortfolioDraft((current) => {
-      const items = Array.isArray(current.items) ? [...current.items] : [];
-      const target = items[index] && typeof items[index] === 'object' ? items[index] : {};
-      items[index] = { ...target, [key]: value };
-      return { ...current, items };
-    });
+  const handleAddPortfolioItem = () => {
+    const newItem = {
+      id: `portfolio-${Date.now()}`,
+      title: '',
+      category: '',
+      imageUrl: '',
+      detailsUrl: '',
+      client: '',
+      date: '',
+      url: '',
+      description: '',
+      images: [],
+    };
+    setPortfolioModal({ open: true, mode: 'add', index: null, draft: newItem });
   };
 
-  const handleRemovePortfolioImage = (itemIndex, imgIndex) => {
-    updatePortfolioDraft((current) => {
-      const items = Array.isArray(current.items) ? [...current.items] : [];
-      const target = items[itemIndex] && typeof items[itemIndex] === 'object' ? items[itemIndex] : {};
-      const imgs = Array.isArray(target.images) ? [...target.images] : [];
-      imgs.splice(imgIndex, 1);
-      items[itemIndex] = { ...target, images: imgs };
-      return { ...current, items };
-    });
-  };
-
-  const handlePortfolioImagesUpload = async (index, e) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    if (!files.length) return;
-    setUploadingPortfolioImageIndex(index);
-    try {
-      const urls = [];
-      for (const file of files) {
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(t('settings.fileSizeError'));
-          continue;
-        }
-        const result = await cvMeAPI.uploadImage(file);
-        const url = result?.url;
-        if (url) urls.push(url);
-      }
-      if (urls.length > 0) {
-        updatePortfolioDraft((current) => {
-          const items = Array.isArray(current.items) ? [...current.items] : [];
-          const target = items[index] && typeof items[index] === 'object' ? items[index] : {};
-          const existing = Array.isArray(target.images) ? target.images : [];
-          items[index] = { ...target, images: [...existing, ...urls] };
-          return { ...current, items };
-        });
-      }
-    } catch {
-      // error toast auto-fired by apiRequest
-    } finally {
-      setUploadingPortfolioImageIndex(null);
+  const handleEditPortfolioItem = (index) => {
+    const portfolioDraft = getParsedSectionDraft('portfolio');
+    const items = Array.isArray(portfolioDraft?.items) ? portfolioDraft.items : [];
+    const item = items[index];
+    if (item) {
+      setPortfolioModal({ open: true, mode: 'edit', index, draft: { ...item } });
     }
   };
 
-  const handleAddPortfolioItem = () => {
+  const handleSavePortfolioModal = () => {
+    const { mode, index, draft } = portfolioModal;
+    if (!draft) return;
+
     updatePortfolioDraft((current) => {
       const items = Array.isArray(current.items) ? [...current.items] : [];
-      items.push({
-        id: `portfolio-${Date.now()}`,
-        title: '',
-        category: '',
-        imageUrl: '',
-        detailsUrl: '',
-        client: '',
-        date: '',
-        url: '',
-        description: '',
-        images: [],
-      });
+      if (mode === 'add') {
+        items.push(draft);
+      } else if (mode === 'edit' && index !== null) {
+        items[index] = draft;
+      }
       return { ...current, items };
     });
+
+    setPortfolioModal({ open: false, mode: 'add', index: null, draft: null });
   };
 
-  const handleRemovePortfolioItem = (index) => {
-    updatePortfolioDraft((current) => {
-      const items = Array.isArray(current.items) ? [...current.items] : [];
-      items.splice(index, 1);
-      return { ...current, items };
-    });
+  const handleClosePortfolioModal = () => {
+    setPortfolioModal({ open: false, mode: 'add', index: null, draft: null });
   };
 
-  const handlePortfolioCoverFileChange = async (index, e) => {
+  const handlePortfolioCoverFileChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -640,16 +622,39 @@ const MyCvPage = () => {
       toast.error(t('settings.fileTypeError'));
       return;
     }
-    setUploadingPortfolioImageIndex(index);
+    setUploadingPortfolioCover(true);
     try {
-      const url = await cvMeAPI.uploadImage(file);
-      const path = url?.url ?? '';
-      if (path) handlePortfolioItemChange(index, 'imageUrl', path);
-    } catch {
-      // error toast auto-fired by apiRequest
+      const result = await cvMeAPI.uploadImage(file);
+      console.log('[portfolio cover] upload result:', result);
+      const path = result?.url ?? '';
+      console.log('[portfolio cover] extracted path:', path);
+      if (path) {
+        handlePortfolioModalFieldChange('imageUrl', path);
+        console.log('[portfolio cover] updated imageUrl to:', path);
+      } else {
+        console.log('[portfolio cover] no path extracted from result');
+      }
+    } catch (err) {
+      console.error('[portfolio cover] upload error:', err);
+      // error toast from apiRequest
     } finally {
-      setUploadingPortfolioImageIndex(null);
+      setUploadingPortfolioCover(false);
     }
+  };
+
+  const handlePortfolioModalFieldChange = (key, value) => {
+    setPortfolioModal((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, [key]: value },
+    }));
+  };
+
+  const handleRemovePortfolioItem = (index) => {
+    updatePortfolioDraft((current) => {
+      const items = Array.isArray(current.items) ? [...current.items] : [];
+      items.splice(index, 1);
+      return { ...current, items };
+    });
   };
 
   const updateSkillsDraft = useCallback((updater) => {
@@ -739,11 +744,77 @@ const MyCvPage = () => {
   };
 
   const handleAddTestimonial = () => {
+    const newItem = {
+      id: `testimonial-${Date.now()}`,
+      name: '',
+      position: '',
+      text: '',
+      imageUrl: '',
+    };
+    setTestimonialModal({ open: true, mode: 'add', index: null, draft: newItem });
+  };
+
+  const handleEditTestimonial = (index) => {
+    const testimonialsDraft = getParsedSectionDraft('testimonials');
+    const items = Array.isArray(testimonialsDraft?.testimonials) ? testimonialsDraft.testimonials : [];
+    const item = items[index];
+    if (item) {
+      setTestimonialModal({ open: true, mode: 'edit', index, draft: { ...item } });
+    }
+  };
+
+  const handleSaveTestimonialModal = () => {
+    const { mode, index, draft } = testimonialModal;
+    if (!draft) return;
+
     updateTestimonialsDraft((current) => {
       const testimonials = Array.isArray(current.testimonials) ? [...current.testimonials] : [];
-      testimonials.push({ name: '', position: '', text: '', imageUrl: '' });
+      if (mode === 'add') {
+        testimonials.push(draft);
+      } else if (mode === 'edit' && index !== null) {
+        testimonials[index] = draft;
+      }
       return { ...current, testimonials };
     });
+
+    setTestimonialModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleCloseTestimonialModal = () => {
+    setTestimonialModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleTestimonialModalFieldChange = (key, value) => {
+    setTestimonialModal((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, [key]: value },
+    }));
+  };
+
+  const handleTestimonialModalImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t('settings.fileSizeError'));
+      return;
+    }
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+      toast.error(t('settings.fileTypeError'));
+      return;
+    }
+    setUploadingTestimonialModalImage(true);
+    try {
+      const result = await cvMeAPI.uploadImage(file);
+      const path = result?.url ?? '';
+      if (path) {
+        handleTestimonialModalFieldChange('imageUrl', path);
+      }
+    } catch {
+      // error toast from apiRequest
+    } finally {
+      setUploadingTestimonialModalImage(false);
+    }
   };
 
   const handleRemoveTestimonial = (index) => {
@@ -846,11 +917,50 @@ const MyCvPage = () => {
   };
 
   const handleAddServiceItem = () => {
+    const newItem = {
+      id: `service-${Date.now()}`,
+      icon: '',
+      title: '',
+      description: '',
+    };
+    setServiceModal({ open: true, mode: 'add', index: null, draft: newItem });
+  };
+
+  const handleEditServiceItem = (index) => {
+    const servicesDraft = getParsedSectionDraft('services');
+    const items = Array.isArray(servicesDraft?.services) ? servicesDraft.services : [];
+    const item = items[index];
+    if (item) {
+      setServiceModal({ open: true, mode: 'edit', index, draft: { ...item } });
+    }
+  };
+
+  const handleSaveServiceModal = () => {
+    const { mode, index, draft } = serviceModal;
+    if (!draft) return;
+
     updateServicesDraft((current) => {
       const servicesList = Array.isArray(current.services) ? [...current.services] : [];
-      servicesList.push({ icon: '', title: '', description: '' });
+      if (mode === 'add') {
+        servicesList.push(draft);
+      } else if (mode === 'edit' && index !== null) {
+        servicesList[index] = draft;
+      }
       return { ...current, services: servicesList };
     });
+
+    setServiceModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleCloseServiceModal = () => {
+    setServiceModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleServiceModalFieldChange = (key, value) => {
+    setServiceModal((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, [key]: value },
+    }));
   };
 
   const handleRemoveServiceItem = (index) => {
@@ -999,16 +1109,51 @@ const MyCvPage = () => {
   };
 
   const handleAddCertificate = () => {
-    updateCertificatesDraft((list) => [
-      ...list,
-      {
-        id: `cert-${Date.now()}`,
-        title: '',
-        issuer: '',
-        date: '',
-        description: '',
-      },
-    ]);
+    const newItem = {
+      id: `cert-${Date.now()}`,
+      title: '',
+      issuer: '',
+      date: '',
+      description: '',
+    };
+    setCertificateModal({ open: true, mode: 'add', index: null, draft: newItem });
+  };
+
+  const handleEditCertificate = (index) => {
+    const certificatesParsed = getParsedSectionDraft('certificates');
+    const items = Array.isArray(certificatesParsed) ? certificatesParsed : [];
+    const item = items[index];
+    if (item) {
+      setCertificateModal({ open: true, mode: 'edit', index, draft: { ...item } });
+    }
+  };
+
+  const handleSaveCertificateModal = () => {
+    const { mode, index, draft } = certificateModal;
+    if (!draft) return;
+
+    updateCertificatesDraft((list) => {
+      const next = [...list];
+      if (mode === 'add') {
+        next.push(draft);
+      } else if (mode === 'edit' && index !== null) {
+        next[index] = draft;
+      }
+      return next;
+    });
+
+    setCertificateModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleCloseCertificateModal = () => {
+    setCertificateModal({ open: false, mode: 'add', index: null, draft: null });
+  };
+
+  const handleCertificateModalFieldChange = (key, value) => {
+    setCertificateModal((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, [key]: value },
+    }));
   };
 
   const handleRemoveCertificate = (index) => {
@@ -1367,65 +1512,139 @@ const MyCvPage = () => {
                     {t('myCv.portfolioFields.addItem')}
                   </button>
                 </div>
-                <div className="flex flex-col gap-4">
-                  {portfolioItems.length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.portfolioFields.noItems')}</p>
-                  )}
-                  {portfolioItems.map((item, index) => (
-                    <div key={item?.id || `portfolio-item-${index}`} className={CV_ITEM_CARD}>
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="text-sm font-semibold text-zinc-800 dark:text-slate-200">
-                          {t('myCv.portfolioFields.itemTitle', { index: index + 1 })}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePortfolioItem(index)}
-                          className={CV_BTN_REMOVE}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </div>
-                      <div className="flex flex-col gap-4">
-                        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)] gap-4 md:gap-5">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="md:col-span-2">
-                              <label className={CV_LABEL}>
-                                {t('myCv.portfolioFields.title')}
-                              </label>
-                              <input
-                                type="text"
-                                value={typeof item?.title === 'string' ? item.title : ''}
-                                onChange={(e) => handlePortfolioItemChange(index, 'title', e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            </div>
+                {portfolioItems.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.portfolioFields.noItems')}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.portfolioFields.tableHeaderImage')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.portfolioFields.tableHeaderTitle')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.portfolioFields.tableHeaderCategory')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.portfolioFields.tableHeaderDate')}
+                          </th>
+                          <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.portfolioFields.tableHeaderActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                        {portfolioItems.map((item, index) => {
+                          const rawImg = typeof item?.imageUrl === 'string' ? item.imageUrl : '';
+                          const previewUrl = getAvatarFullUrl(rawImg);
+                          return (
+                            <tr key={item?.id || `portfolio-item-${index}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="w-16 h-16 rounded-lg overflow-hidden border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800 shrink-0">
+                                  {previewUrl ? (
+                                    <img src={previewUrl} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-zinc-400 dark:text-slate-500">
+                                      <span className="material-symbols-outlined text-xl" aria-hidden>image</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                                {item?.title || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                                {item?.category || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                                {item?.date || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditPortfolioItem(index)}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                    aria-label={t('common.edit')}
+                                  >
+                                    <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                    {t('common.edit')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePortfolioItem(index)}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                    aria-label={t('common.remove')}
+                                  >
+                                    <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                    {t('common.remove')}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Portfolio Item Modal */}
+              {portfolioModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleClosePortfolioModal}
+                >
+                  <div
+                    className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {portfolioModal.mode === 'add' ? t('myCv.portfolioFields.modalTitleAdd') : t('myCv.portfolioFields.modalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleClosePortfolioModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6">
+                        <div className="flex flex-col gap-4">
+                          <div>
+                            <label className={CV_LABEL}>
+                              {t('myCv.portfolioFields.title')}
+                            </label>
+                            <input
+                              type="text"
+                              value={typeof portfolioModal.draft?.title === 'string' ? portfolioModal.draft.title : ''}
+                              onChange={(e) => handlePortfolioModalFieldChange('title', e.target.value)}
+                              className={CV_INPUT}
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className={CV_LABEL}>
                                 {t('myCv.portfolioFields.category')}
                               </label>
-                              {(() => {
-                                const rawCategory = typeof item?.category === 'string' ? item.category : '';
-                                const normalizedRaw = rawCategory.trim().toLowerCase();
-                                const matchedOption = PORTFOLIO_CATEGORY_OPTIONS.find(
-                                  (opt) => opt.toLowerCase() === normalizedRaw
-                                );
-                                const known = Boolean(matchedOption);
-                                return (
-                                  <select
-                                    value={known ? matchedOption : ''}
-                                    onChange={(e) => handlePortfolioItemChange(index, 'category', e.target.value)}
-                                    className={`${CV_INPUT_NESTED} cursor-pointer`}
-                                  >
-                                    <option value="">Select category…</option>
-                                    {PORTFOLIO_CATEGORY_OPTIONS.map((name) => (
-                                      <option key={name} value={name}>{name}</option>
-                                    ))}
-                                    {!known && rawCategory ? (
-                                      <option value={rawCategory}>{rawCategory}</option>
-                                    ) : null}
-                                  </select>
-                                );
-                              })()}
+                              <select
+                                value={typeof portfolioModal.draft?.category === 'string' ? portfolioModal.draft.category : ''}
+                                onChange={(e) => handlePortfolioModalFieldChange('category', e.target.value)}
+                                className={`${CV_INPUT} cursor-pointer`}
+                              >
+                                <option value="">Select category…</option>
+                                {PORTFOLIO_CATEGORY_OPTIONS.map((name) => (
+                                  <option key={name} value={name}>{name}</option>
+                                ))}
+                              </select>
                             </div>
                             <div>
                               <label className={CV_LABEL}>
@@ -1433,167 +1652,120 @@ const MyCvPage = () => {
                               </label>
                               <input
                                 type="text"
-                                value={typeof item?.date === 'string' ? item.date : ''}
-                                onChange={(e) => handlePortfolioItemChange(index, 'date', e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className={CV_LABEL}>
-                                {t('myCv.portfolioFields.client')}
-                              </label>
-                              <input
-                                type="text"
-                                value={typeof item?.client === 'string' ? item.client : ''}
-                                onChange={(e) => handlePortfolioItemChange(index, 'client', e.target.value)}
-                                className={CV_INPUT_NESTED}
+                                value={typeof portfolioModal.draft?.date === 'string' ? portfolioModal.draft.date : ''}
+                                onChange={(e) => handlePortfolioModalFieldChange('date', e.target.value)}
+                                className={CV_INPUT}
                               />
                             </div>
                           </div>
-
-                          <div className="self-start flex flex-col rounded-lg border border-zinc-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3.5 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-slate-400 mb-2.5">
-                              {t('myCv.portfolioFields.imageUrl')}
-                            </p>
-                            {(() => {
-                              const rawImg = typeof item?.imageUrl === 'string' ? item.imageUrl : '';
-                              const previewUrl = getAvatarFullUrl(rawImg);
-                              const isUploading = uploadingPortfolioImageIndex === index;
-                              return (
-                                <div className="flex flex-col gap-2.5">
-                                  <div className="group relative h-40 w-full overflow-hidden rounded-lg border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800">
-                                    {previewUrl ? (
-                                      <img src={previewUrl} alt="" className="h-full w-full object-cover" />
-                                    ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-zinc-400 dark:text-slate-500">
-                                        <span className="material-symbols-outlined text-3xl" aria-hidden>image</span>
-                                      </div>
-                                    )}
-                                    {!isUploading ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => portfolioImageFileRefs.current[index]?.click()}
-                                        className="absolute inset-0 flex items-center justify-center bg-zinc-900/0 group-hover:bg-zinc-900/35 transition-colors"
-                                        aria-label={t('myCv.uploadAvatar')}
-                                        title={t('myCv.uploadAvatar')}
-                                      >
-                                        <span
-                                          className={`material-symbols-outlined text-white text-2xl transition-opacity ${
-                                            previewUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-90'
-                                          }`}
-                                          aria-hidden
-                                        >
-                                          edit
-                                        </span>
-                                      </button>
-                                    ) : null}
-                                    {isUploading ? (
-                                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/45">
-                                        <span className="material-symbols-outlined text-white text-3xl animate-spin" aria-hidden>
-                                          progress_activity
-                                        </span>
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                  <input
-                                    ref={(el) => {
-                                      portfolioImageFileRefs.current[index] = el;
-                                    }}
-                                    type="file"
-                                    accept="image/jpeg,image/jpg,image/png,image/gif"
-                                    className="sr-only"
-                                    onChange={(e) => handlePortfolioCoverFileChange(index, e)}
-                                  />
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className={CV_LABEL}>
-                            {t('myCv.portfolioFields.url')}
-                          </label>
-                          <input
-                            type="text"
-                            value={typeof item?.url === 'string' ? item.url : ''}
-                            onChange={(e) => handlePortfolioItemChange(index, 'url', e.target.value)}
-                            className={CV_INPUT_NESTED}
-                          />
-                        </div>
-
-                        <div>
-                          <label className={CV_LABEL}>
-                            {t('myCv.portfolioFields.description')}
-                          </label>
-                          <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                            <DefaultTemplate
-                              key={item?.id ? `portfolio-desc-${item.id}` : `portfolio-desc-${index}`}
-                              className="cv-lexkit-html-field"
-                              placeholder={t('myCv.portfolioFields.descriptionPlaceholder')}
-                              onReady={(methods) => {
-                                const html = typeof item?.description === 'string' ? item.description : '';
-                                if (html) methods.injectHTML(html);
-                              }}
-                              onHtmlChange={(html) => handlePortfolioItemChange(index, 'description', html)}
+                          <div>
+                            <label className={CV_LABEL}>
+                              {t('myCv.portfolioFields.client')}
+                            </label>
+                            <input
+                              type="text"
+                              value={typeof portfolioModal.draft?.client === 'string' ? portfolioModal.draft.client : ''}
+                              onChange={(e) => handlePortfolioModalFieldChange('client', e.target.value)}
+                              className={CV_INPUT}
                             />
                           </div>
                         </div>
-
-                        <div>
+                        <div className="flex flex-col gap-2">
                           <label className={CV_LABEL}>
-                            {t('myCv.portfolioFields.images')}
+                            {t('myCv.portfolioFields.coverImage')}
                           </label>
-                          {(Array.isArray(item?.images) && item.images.length > 0) || uploadingPortfolioImageIndex === index ? (
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {Array.isArray(item?.images) && item.images.map((imgUrl, imgIdx) => (
-                                <div
-                                  key={imgIdx}
-                                  className="relative group w-16 h-16 rounded-lg overflow-hidden border border-zinc-200 dark:border-slate-600 bg-zinc-50 dark:bg-slate-700 shrink-0"
-                                >
-                                  <img
-                                    src={getAvatarFullUrl(imgUrl) || imgUrl}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePortfolioImage(index, imgIdx)}
-                                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                    aria-label={t('common.remove')}
-                                  >
-                                    <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>close</span>
-                                  </button>
-                                </div>
-                              ))}
-                              {uploadingPortfolioImageIndex === index && (
-                                <div className="w-16 h-16 rounded-lg border border-dashed border-zinc-300 dark:border-slate-600 bg-zinc-50 dark:bg-slate-700 flex items-center justify-center shrink-0">
-                                  <span className="material-symbols-outlined text-[20px] text-zinc-400 animate-spin">progress_activity</span>
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                            multiple
-                            className="hidden"
-                            id={`portfolio-images-upload-${index}`}
-                            onChange={(e) => handlePortfolioImagesUpload(index, e)}
-                          />
-                          <label
-                            htmlFor={`portfolio-images-upload-${index}`}
-                            className={`inline-flex items-center gap-1.5 cursor-pointer ${CV_BTN_ADD}`}
+                          <div
+                            className="group relative w-full aspect-square rounded-lg overflow-hidden border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800 cursor-pointer"
+                            onClick={() => {
+                              if (!uploadingPortfolioCover) {
+                                portfolioCoverFileRef.current?.click();
+                              }
+                            }}
                           >
-                            <span className="material-symbols-outlined text-sm">add_photo_alternate</span>
-                            {t('myCv.portfolioFields.uploadImages')}
-                          </label>
+                            {portfolioModal.draft?.imageUrl ? (
+                              <img
+                                src={getAvatarFullUrl(portfolioModal.draft.imageUrl)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[48px] text-zinc-300 dark:text-slate-500">image</span>
+                              </div>
+                            )}
+                            {!uploadingPortfolioCover && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/0 group-hover:bg-zinc-900/35 dark:group-hover:bg-black/45 transition-colors">
+                                <span className={`material-symbols-outlined text-white text-3xl transition-opacity ${portfolioModal.draft?.imageUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-80'}`}>
+                                  edit
+                                </span>
+                              </div>
+                            )}
+                            {uploadingPortfolioCover && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50 dark:bg-black/45 backdrop-blur-[1px]">
+                                <span className="material-symbols-outlined text-white text-4xl animate-spin">progress_activity</span>
+                              </div>
+                            )}
+                          </div>
+                          <input
+                            ref={portfolioCoverFileRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/gif"
+                            className="sr-only"
+                            onChange={handlePortfolioCoverFileChange}
+                          />
+                          <p className="text-[11px] text-zinc-500 dark:text-slate-500 leading-relaxed">
+                            {t('myCv.portfolioFields.coverImageHint')}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.portfolioFields.url')}
+                        </label>
+                        <input
+                          type="text"
+                          value={typeof portfolioModal.draft?.url === 'string' ? portfolioModal.draft.url : ''}
+                          onChange={(e) => handlePortfolioModalFieldChange('url', e.target.value)}
+                          className={CV_INPUT}
+                        />
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.portfolioFields.description')}
+                        </label>
+                        <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
+                          <DefaultTemplate
+                            key={portfolioModal.draft?.id ? `modal-desc-${portfolioModal.draft.id}` : 'modal-desc-new'}
+                            className="cv-lexkit-html-field"
+                            placeholder={t('myCv.portfolioFields.descriptionPlaceholder')}
+                            onReady={(methods) => {
+                              const html = typeof portfolioModal.draft?.description === 'string' ? portfolioModal.draft.description : '';
+                              if (html) methods.injectHTML(html);
+                            }}
+                            onHtmlChange={(html) => handlePortfolioModalFieldChange('description', html)}
+                          />
                         </div>
                       </div>
                     </div>
-                  ))}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleClosePortfolioModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSavePortfolioModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : isSkillsSection ? (
             <div className="flex flex-col gap-5">
@@ -1747,120 +1919,209 @@ const MyCvPage = () => {
                     {t('myCv.testimonialsFields.addItem')}
                   </button>
                 </div>
-                <div className="flex flex-col gap-4">
-                  {testimonialsItems.length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.testimonialsFields.noItems')}</p>
-                  )}
-                  {testimonialsItems.map((item, index) => (
-                    <div key={`testimonial-${index}`} className={CV_ITEM_CARD}>
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="text-sm font-semibold text-zinc-800 dark:text-slate-200">
-                          {t('myCv.testimonialsFields.itemTitle', { index: index + 1 })}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTestimonial(index)}
-                          className={CV_BTN_REMOVE}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </div>
-                      <div className="flex flex-col gap-4">
-                        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)] gap-4 md:gap-5">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="md:col-span-2">
-                              <label className={CV_LABEL}>
-                                {t('myCv.testimonialsFields.name')}
-                              </label>
-                              <input
-                                type="text"
-                                value={typeof item?.name === 'string' ? item.name : ''}
-                                onChange={(e) => handleTestimonialChange(index, 'name', e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className={CV_LABEL}>
-                                {t('myCv.testimonialsFields.position')}
-                              </label>
-                              <input
-                                type="text"
-                                value={typeof item?.position === 'string' ? item.position : ''}
-                                onChange={(e) => handleTestimonialChange(index, 'position', e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col rounded-lg border border-zinc-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3.5 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-none">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-slate-400 mb-2.5">
-                              {t('myCv.testimonialsFields.imageUrl')}
-                            </p>
-                            {(() => {
-                              const rawImg = typeof item?.imageUrl === 'string' ? item.imageUrl : '';
-                              const previewUrl = getAvatarFullUrl(rawImg);
-                              const isUploading = uploadingTestimonialImageIndex === index;
-                              return (
-                                <div className="flex flex-col gap-2.5">
-                                <div className="group relative h-24 w-full overflow-hidden rounded-lg border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800">
-                                    {previewUrl ? (
-                                      <img src={previewUrl} alt="" className="h-full w-full object-cover" />
-                                    ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-zinc-400 dark:text-slate-500">
-                                        <span className="material-symbols-outlined text-3xl" aria-hidden>image</span>
-                                      </div>
-                                    )}
-                                  {!isUploading ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => testimonialImageFileRefs.current[index]?.click()}
-                                      className="absolute inset-0 flex items-center justify-center bg-zinc-900/0 group-hover:bg-zinc-900/35 transition-colors"
-                                      aria-label={t('myCv.uploadAvatar')}
-                                      title={t('myCv.uploadAvatar')}
-                                    >
-                                      <span className="material-symbols-outlined text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden>
-                                        edit
-                                      </span>
-                                    </button>
-                                  ) : null}
-                                    {isUploading ? (
-                                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/45">
-                                        <span className="material-symbols-outlined text-white text-3xl animate-spin" aria-hidden>
-                                          progress_activity
-                                        </span>
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                  <input
-                                    ref={(el) => {
-                                      testimonialImageFileRefs.current[index] = el;
-                                    }}
-                                    type="file"
-                                    accept="image/jpeg,image/jpg,image/png,image/gif"
-                                    className="sr-only"
-                                    onChange={(e) => handleTestimonialImageFileChange(index, e)}
-                                  />
+                {testimonialsItems.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.testimonialsFields.noItems')}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.testimonialsFields.tableHeaderImage')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.testimonialsFields.tableHeaderName')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.testimonialsFields.tableHeaderPosition')}
+                          </th>
+                          <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.testimonialsFields.tableHeaderActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                        {testimonialsItems.map((item, index) => {
+                          const rawImg = typeof item?.imageUrl === 'string' ? item.imageUrl : '';
+                          const previewUrl = getAvatarFullUrl(rawImg);
+                          return (
+                            <tr key={item?.id || `testimonial-item-${index}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="w-16 h-16 rounded-full overflow-hidden border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800 shrink-0">
+                                  {previewUrl ? (
+                                    <img src={previewUrl} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-zinc-400 dark:text-slate-500">
+                                      <span className="material-symbols-outlined text-xl" aria-hidden>person</span>
+                                    </div>
+                                  )}
                                 </div>
-                              );
-                            })()}
+                              </td>
+                              <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                                {item?.name || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                                {item?.position || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditTestimonial(index)}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                    aria-label={t('common.edit')}
+                                  >
+                                    <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                    {t('common.edit')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveTestimonial(index)}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                    aria-label={t('common.remove')}
+                                  >
+                                    <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                    {t('common.remove')}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Testimonial Modal */}
+              {testimonialModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseTestimonialModal}
+                >
+                  <div
+                    className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {testimonialModal.mode === 'add' ? t('myCv.testimonialsFields.modalTitleAdd') : t('myCv.testimonialsFields.modalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseTestimonialModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6">
+                        <div className="flex flex-col gap-4">
+                          <div>
+                            <label className={CV_LABEL}>
+                              {t('myCv.testimonialsFields.name')}
+                            </label>
+                            <input
+                              type="text"
+                              value={typeof testimonialModal.draft?.name === 'string' ? testimonialModal.draft.name : ''}
+                              onChange={(e) => handleTestimonialModalFieldChange('name', e.target.value)}
+                              className={CV_INPUT}
+                            />
+                          </div>
+                          <div>
+                            <label className={CV_LABEL}>
+                              {t('myCv.testimonialsFields.position')}
+                            </label>
+                            <input
+                              type="text"
+                              value={typeof testimonialModal.draft?.position === 'string' ? testimonialModal.draft.position : ''}
+                              onChange={(e) => handleTestimonialModalFieldChange('position', e.target.value)}
+                              className={CV_INPUT}
+                            />
                           </div>
                         </div>
-                      <div className="w-full">
+                        <div className="flex flex-col gap-2">
+                          <label className={CV_LABEL}>
+                            {t('myCv.testimonialsFields.imageUrl')}
+                          </label>
+                          <div
+                            className="group relative w-full h-24 rounded-full overflow-hidden border border-zinc-200 dark:border-slate-600 bg-zinc-100 dark:bg-slate-800 cursor-pointer"
+                            onClick={() => {
+                              if (!uploadingTestimonialModalImage) {
+                                testimonialModalImageFileRef.current?.click();
+                              }
+                            }}
+                          >
+                            {testimonialModal.draft?.imageUrl ? (
+                              <img
+                                src={getAvatarFullUrl(testimonialModal.draft.imageUrl)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[48px] text-zinc-300 dark:text-slate-500">person</span>
+                              </div>
+                            )}
+                            {!uploadingTestimonialModalImage && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/0 group-hover:bg-zinc-900/35 dark:group-hover:bg-black/45 transition-colors">
+                                <span className={`material-symbols-outlined text-white text-3xl transition-opacity ${testimonialModal.draft?.imageUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-80'}`}>
+                                  edit
+                                </span>
+                              </div>
+                            )}
+                            {uploadingTestimonialModalImage && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50 dark:bg-black/45 backdrop-blur-[1px]">
+                                <span className="material-symbols-outlined text-white text-4xl animate-spin">progress_activity</span>
+                              </div>
+                            )}
+                          </div>
+                          <input
+                            ref={testimonialModalImageFileRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/gif"
+                            className="sr-only"
+                            onChange={handleTestimonialModalImageFileChange}
+                          />
+                          <p className="text-[11px] text-zinc-500 dark:text-slate-500 leading-relaxed">
+                            {t('myCv.testimonialsFields.imageHint')}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
                         <label className={CV_LABEL}>
                           {t('myCv.testimonialsFields.text')}
                         </label>
                         <textarea
-                          value={typeof item?.text === 'string' ? item.text : ''}
-                          onChange={(e) => handleTestimonialChange(index, 'text', e.target.value)}
+                          value={typeof testimonialModal.draft?.text === 'string' ? testimonialModal.draft.text : ''}
+                          onChange={(e) => handleTestimonialModalFieldChange('text', e.target.value)}
                           rows={4}
-                          className={CV_TEXTAREA_NESTED}
+                          className={CV_TEXTAREA}
                         />
                       </div>
-                      </div>
                     </div>
-                  ))}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleCloseTestimonialModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveTestimonialModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : isFactsSection ? (
             <div className="flex flex-col gap-5">
@@ -2003,63 +2264,147 @@ const MyCvPage = () => {
                     {t('myCv.servicesFields.addItem')}
                   </button>
                 </div>
-                <div className="flex flex-col gap-4">
-                  {serviceItems.length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.servicesFields.noItems')}</p>
-                  )}
-                  {serviceItems.map((item, index) => (
-                    <div key={`service-${index}`} className={CV_ITEM_CARD}>
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="text-sm font-semibold text-zinc-800 dark:text-slate-200">
-                          {t('myCv.servicesFields.itemTitle', { index: index + 1 })}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveServiceItem(index)}
-                          className={CV_BTN_REMOVE}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {SERVICE_ITEM_FIELDS.map((field) => (
-                          <div
-                            key={`${field}-${index}`}
-                            className={field === 'description' || field === 'title' ? 'md:col-span-2' : ''}
-                          >
-                            <label className={CV_LABEL}>
-                              {t(`myCv.servicesFields.${field}`)}
-                            </label>
-                            {field === 'icon' ? (
-                              <CvIconPicker
-                                value={typeof item?.icon === 'string' ? item.icon : ''}
-                                onChange={(next) => handleServiceItemChange(index, 'icon', next)}
-                                optionNames={SERVICE_ICON_OPTIONS}
-                                placeholder={t('myCv.servicesFields.iconPlaceholder')}
-                                className={CV_INPUT_NESTED}
-                              />
-                            ) : field === 'description' ? (
-                              <textarea
-                                value={typeof item?.[field] === 'string' ? item[field] : ''}
-                                onChange={(e) => handleServiceItemChange(index, field, e.target.value)}
-                                rows={3}
-                                className={CV_TEXTAREA_NESTED}
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                value={typeof item?.[field] === 'string' ? item[field] : ''}
-                                onChange={(e) => handleServiceItemChange(index, field, e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            )}
-                          </div>
+                {serviceItems.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.servicesFields.noItems')}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.servicesFields.tableHeaderIcon')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.servicesFields.tableHeaderTitle')}
+                          </th>
+                          <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.servicesFields.tableHeaderActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                        {serviceItems.map((item, index) => (
+                          <tr key={item?.id || `service-item-${index}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400">
+                                {item?.icon ? (
+                                  <span className="material-symbols-outlined text-xl">{SERVICE_ICON_TO_MATERIAL[item.icon] || 'help'}</span>
+                                ) : (
+                                  <span className="material-symbols-outlined text-xl">help</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                              {item?.title || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditServiceItem(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                  aria-label={t('common.edit')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                  {t('common.edit')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveServiceItem(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                  aria-label={t('common.remove')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                  {t('common.remove')}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Service Item Modal */}
+              {serviceModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseServiceModal}
+                >
+                  <div
+                    className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {serviceModal.mode === 'add' ? t('myCv.servicesFields.modalTitleAdd') : t('myCv.servicesFields.modalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseServiceModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.servicesFields.icon')}
+                        </label>
+                        <CvIconPicker
+                          value={typeof serviceModal.draft?.icon === 'string' ? serviceModal.draft.icon : ''}
+                          onChange={(next) => handleServiceModalFieldChange('icon', next)}
+                          optionNames={SERVICE_ICON_OPTIONS}
+                          placeholder={t('myCv.servicesFields.iconPlaceholder')}
+                          className={CV_INPUT}
+                        />
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.servicesFields.title')}
+                        </label>
+                        <input
+                          type="text"
+                          value={typeof serviceModal.draft?.title === 'string' ? serviceModal.draft.title : ''}
+                          onChange={(e) => handleServiceModalFieldChange('title', e.target.value)}
+                          className={CV_INPUT}
+                        />
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.servicesFields.description')}
+                        </label>
+                        <textarea
+                          value={typeof serviceModal.draft?.description === 'string' ? serviceModal.draft.description : ''}
+                          onChange={(e) => handleServiceModalFieldChange('description', e.target.value)}
+                          rows={4}
+                          className={CV_TEXTAREA}
+                        />
                       </div>
                     </div>
-                  ))}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleCloseServiceModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveServiceModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : isExperienceSection ? (
             <div className="flex flex-col gap-5">
@@ -2294,61 +2639,165 @@ const MyCvPage = () => {
                     {t('myCv.certificatesFields.addItem')}
                   </button>
                 </div>
-                <div className="flex flex-col gap-4">
-                  {certificateItems.length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.certificatesFields.noItems')}</p>
-                  )}
-                  {certificateItems.map((item, index) => (
-                    <div key={item?.id || `certificate-${index}`} className={CV_ITEM_CARD}>
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="text-sm font-semibold text-zinc-800 dark:text-slate-200">
-                          {t('myCv.certificatesFields.itemTitle', { index: index + 1 })}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCertificate(index)}
-                          className={CV_BTN_REMOVE}
-                        >
-                          {t('common.remove')}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {CERTIFICATE_ITEM_FIELDS.map((field) => (
-                          <div
-                            key={`${field}-${index}`}
-                            className={field === 'description' || field === 'title' ? 'md:col-span-2' : ''}
-                          >
-                            <label className={CV_LABEL}>
-                              {t(`myCv.certificatesFields.${field}`)}
-                            </label>
-                            {field === 'description' ? (
-                              <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                                <DefaultTemplate
-                                  key={item?.id ? `cert-desc-${item.id}` : `cert-desc-${index}`}
-                                  className="cv-lexkit-html-field"
-                                  placeholder={t('myCv.certificatesFields.descriptionPlaceholder')}
-                                  onReady={(methods) => {
-                                    const html = typeof item?.description === 'string' ? item.description : '';
-                                    if (html) methods.injectHTML(html);
-                                  }}
-                                  onHtmlChange={(html) => handleCertificateChange(index, 'description', html)}
-                                />
+                {certificateItems.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('myCv.certificatesFields.noItems')}</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-slate-600/70 bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50/90 dark:bg-slate-800/90 border-b border-zinc-200 dark:border-slate-700">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.certificatesFields.tableHeaderTitle')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.certificatesFields.tableHeaderIssuer')}
+                          </th>
+                          <th className="text-left px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.certificatesFields.tableHeaderDate')}
+                          </th>
+                          <th className="text-right px-4 py-3 font-semibold text-zinc-700 dark:text-slate-300 text-xs uppercase tracking-wide">
+                            {t('myCv.certificatesFields.tableHeaderActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-slate-700">
+                        {certificateItems.map((item, index) => (
+                          <tr key={item?.id || `certificate-item-${index}`} className="hover:bg-zinc-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="px-4 py-3 text-zinc-900 dark:text-slate-100 font-medium">
+                              {item?.title || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                              {item?.issuer || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-slate-400">
+                              {item?.date || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditCertificate(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                                  aria-label={t('common.edit')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">edit</span>
+                                  {t('common.edit')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCertificate(index)}
+                                  className="inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200/90 dark:border-red-900/50 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/35 transition-colors"
+                                  aria-label={t('common.remove')}
+                                >
+                                  <span className="material-symbols-outlined text-base mr-1">delete</span>
+                                  {t('common.remove')}
+                                </button>
                               </div>
-                            ) : (
-                              <input
-                                type="text"
-                                value={typeof item?.[field] === 'string' ? item[field] : ''}
-                                onChange={(e) => handleCertificateChange(index, field, e.target.value)}
-                                className={CV_INPUT_NESTED}
-                              />
-                            )}
-                          </div>
+                            </td>
+                          </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Certificate Modal */}
+              {certificateModal.open && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseCertificateModal}
+                >
+                  <div
+                    className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {certificateModal.mode === 'add' ? t('myCv.certificatesFields.modalTitleAdd') : t('myCv.certificatesFields.modalTitleEdit')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseCertificateModal}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 dark:text-slate-400 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label={t('common.close')}
+                      >
+                        <span className="material-symbols-outlined text-xl">close</span>
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.certificatesFields.title')}
+                        </label>
+                        <input
+                          type="text"
+                          value={typeof certificateModal.draft?.title === 'string' ? certificateModal.draft.title : ''}
+                          onChange={(e) => handleCertificateModalFieldChange('title', e.target.value)}
+                          className={CV_INPUT}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.certificatesFields.issuer')}
+                          </label>
+                          <input
+                            type="text"
+                            value={typeof certificateModal.draft?.issuer === 'string' ? certificateModal.draft.issuer : ''}
+                            onChange={(e) => handleCertificateModalFieldChange('issuer', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                        <div>
+                          <label className={CV_LABEL}>
+                            {t('myCv.certificatesFields.date')}
+                          </label>
+                          <input
+                            type="text"
+                            value={typeof certificateModal.draft?.date === 'string' ? certificateModal.draft.date : ''}
+                            onChange={(e) => handleCertificateModalFieldChange('date', e.target.value)}
+                            className={CV_INPUT}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={CV_LABEL}>
+                          {t('myCv.certificatesFields.description')}
+                        </label>
+                        <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
+                          <DefaultTemplate
+                            key={certificateModal.draft?.id ? `modal-cert-desc-${certificateModal.draft.id}` : 'modal-cert-desc-new'}
+                            className="cv-lexkit-html-field"
+                            placeholder={t('myCv.certificatesFields.descriptionPlaceholder')}
+                            onReady={(methods) => {
+                              const html = typeof certificateModal.draft?.description === 'string' ? certificateModal.draft.description : '';
+                              if (html) methods.injectHTML(html);
+                            }}
+                            onHtmlChange={(html) => handleCertificateModalFieldChange('description', html)}
+                          />
+                        </div>
                       </div>
                     </div>
-                  ))}
+                    <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                      <button
+                        type="button"
+                        onClick={handleCloseCertificateModal}
+                        className="inline-flex items-center justify-center min-h-[44px] px-6 py-2.5 rounded-xl text-sm font-semibold border border-zinc-200/90 dark:border-slate-600 text-zinc-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-zinc-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveCertificateModal}
+                        className={CV_BTN_SAVE}
+                      >
+                        {t('common.save')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <textarea

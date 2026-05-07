@@ -212,6 +212,10 @@
       "itemTitle": "Project {{index}}",
       "title": "Project title",
       "category": "Category",
+      "coverImage": "Cover image",
+      "coverModeUrl": "URL",
+      "coverModeUpload": "Upload",
+      "coverImageHint": "JPG, PNG or GIF. Max 5MB.",
       "imageUrl": "Cover image URL",
       "detailsUrl": "Details URL",
       "client": "Client",
@@ -220,7 +224,14 @@
       "description": "Description (HTML)",
       "descriptionPlaceholder": "Project details — rich text or pasted HTML (shown on your public CV).",
       "images": "Project images",
-      "uploadImages": "Upload images"
+      "uploadImages": "Upload images",
+      "modalTitleAdd": "Add new project",
+      "modalTitleEdit": "Edit project",
+      "tableHeaderImage": "Image",
+      "tableHeaderTitle": "Project title",
+      "tableHeaderCategory": "Category",
+      "tableHeaderDate": "Date",
+      "tableHeaderActions": "Actions"
     },
     "skillsFields": {
       "introDescription": "Intro",
@@ -242,7 +253,12 @@
       "icon": "Icon",
       "iconPlaceholder": "Select icon…",
       "title": "Service title",
-      "description": "Service description"
+      "description": "Service description",
+      "modalTitleAdd": "Add new service",
+      "modalTitleEdit": "Edit service",
+      "tableHeaderIcon": "Icon",
+      "tableHeaderTitle": "Service title",
+      "tableHeaderActions": "Actions"
     },
     "educationFields": {
       "items": "Education",
@@ -282,7 +298,13 @@
       "issuer": "Issuer",
       "date": "Date",
       "description": "Description (HTML)",
-      "descriptionPlaceholder": "Certificate details — rich text or pasted HTML (shown on your public CV)."
+      "descriptionPlaceholder": "Certificate details — rich text or pasted HTML (shown on your public CV).",
+      "modalTitleAdd": "Add Certificate",
+      "modalTitleEdit": "Edit Certificate",
+      "tableHeaderTitle": "Title",
+      "tableHeaderIssuer": "Issuer",
+      "tableHeaderDate": "Date",
+      "tableHeaderActions": "Actions"
     },
     "factsFields": {
       "introDescription": "Intro",
@@ -305,7 +327,14 @@
       "name": "Reviewer name",
       "position": "Position",
       "text": "Testimonial text",
-      "imageUrl": "Avatar image URL"
+      "imageUrl": "Avatar image URL",
+      "imageHint": "JPG, PNG or GIF, max 5 MB.",
+      "modalTitleAdd": "Add new testimonial",
+      "modalTitleEdit": "Edit testimonial",
+      "tableHeaderImage": "Image",
+      "tableHeaderName": "Name",
+      "tableHeaderPosition": "Position",
+      "tableHeaderActions": "Actions"
     },
     "sections": {
       "profile": "Profile",

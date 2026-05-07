@@ -212,6 +212,10 @@
       "itemTitle": "Dự án {{index}}",
       "title": "Tên dự án",
       "category": "Danh mục",
+      "coverImage": "Ảnh bìa",
+      "coverModeUrl": "URL",
+      "coverModeUpload": "Tải lên",
+      "coverImageHint": "JPG, PNG hoặc GIF. Tối đa 5MB.",
       "imageUrl": "Ảnh đại diện URL",
       "detailsUrl": "Chi tiết URL",
       "client": "Khách hàng",
@@ -220,7 +224,14 @@
       "description": "Mô tả (HTML)",
       "descriptionPlaceholder": "Mô tả chi tiết dự án — văn bản định dạng hoặc HTML (hiển thị trên CV công khai).",
       "images": "Ảnh dự án",
-      "uploadImages": "Tải lên ảnh"
+      "uploadImages": "Tải lên ảnh",
+      "modalTitleAdd": "Thêm dự án mới",
+      "modalTitleEdit": "Chỉnh sửa dự án",
+      "tableHeaderImage": "Ảnh",
+      "tableHeaderTitle": "Tên dự án",
+      "tableHeaderCategory": "Danh mục",
+      "tableHeaderDate": "Thời gian",
+      "tableHeaderActions": "Thao tác"
     },
     "skillsFields": {
       "introDescription": "Giới thiệu",
@@ -242,7 +253,12 @@
       "icon": "Icon",
       "iconPlaceholder": "Chọn icon…",
       "title": "Tên dịch vụ",
-      "description": "Mô tả dịch vụ"
+      "description": "Mô tả dịch vụ",
+      "modalTitleAdd": "Thêm dịch vụ mới",
+      "modalTitleEdit": "Chỉnh sửa dịch vụ",
+      "tableHeaderIcon": "Biểu tượng",
+      "tableHeaderTitle": "Tên dịch vụ",
+      "tableHeaderActions": "Thao tác"
     },
     "educationFields": {
       "items": "Học vấn",
@@ -282,7 +298,13 @@
       "issuer": "Tổ chức cấp",
       "date": "Thời gian",
       "description": "Mô tả (HTML)",
-      "descriptionPlaceholder": "Chi tiết chứng chỉ — văn bản định dạng hoặc HTML (hiển thị trên CV công khai)."
+      "descriptionPlaceholder": "Chi tiết chứng chỉ — văn bản định dạng hoặc HTML (hiển thị trên CV công khai).",
+      "modalTitleAdd": "Thêm chứng chỉ",
+      "modalTitleEdit": "Chỉnh sửa chứng chỉ",
+      "tableHeaderTitle": "Tên",
+      "tableHeaderIssuer": "Tổ chức cấp",
+      "tableHeaderDate": "Thời gian",
+      "tableHeaderActions": "Thao tác"
     },
     "factsFields": {
       "introDescription": "Giới thiệu",
@@ -305,7 +327,14 @@
       "name": "Tên người đánh giá",
       "position": "Chức vụ",
       "text": "Nội dung nhận xét",
-      "imageUrl": "Ảnh đại diện URL"
+      "imageUrl": "Ảnh đại diện URL",
+      "imageHint": "JPG, PNG hoặc GIF, tối đa 5 MB.",
+      "modalTitleAdd": "Thêm nhận xét mới",
+      "modalTitleEdit": "Chỉnh sửa nhận xét",
+      "tableHeaderImage": "Ảnh",
+      "tableHeaderName": "Tên",
+      "tableHeaderPosition": "Chức vụ",
+      "tableHeaderActions": "Thao tác"
     },
     "sections": {
       "profile": "Hồ sơ",
