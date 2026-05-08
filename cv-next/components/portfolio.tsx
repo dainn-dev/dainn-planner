@@ -68,44 +68,6 @@ export default function Portfolio() {
           <h2>Portfolio</h2>
           <p className="text-gray-400">{intro.description}</p>
         </div>
-
-        <div className="flex justify-center mb-8" data-aos="fade-up">
-          <ul className="flex flex-wrap justify-center gap-2">
-            <li>
-              <button
-                onClick={() => setFilter("*")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "*" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
-              >
-                All
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => setFilter("app")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "app" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
-              >
-                App
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => setFilter("card")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "card" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
-              >
-                Card
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => setFilter("web")}
-                className={`px-4 py-2 rounded-md transition-colors ${filter === "web" ? "bg-[#149ddd] text-white" : "bg-[#1c232b] text-gray-300 hover:bg-[#252d36]"}`}
-              >
-                Web
-              </button>
-            </li>
-          </ul>
-        </div>
-
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-aos="fade-up" data-aos-delay="100">
           {filteredItems.map((item, idx) => (
             <div key={item.id ?? idx} className="portfolio-item cursor-pointer" onClick={() => handleItemClick(item.id)}>
