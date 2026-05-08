@@ -8,7 +8,7 @@ import { toast } from '../utils/toast';
 import { formatDateTime } from '../utils/dateFormat';
 import CvIconPicker from '../components/CvIconPicker';
 import CvSocialPlatformPicker from '../components/CvSocialPlatformPicker';
-import { DefaultTemplate } from '../components/lexkit/DefaultTemplate';
+import { DefaultTemplateWithImagePaste } from '../components/lexkit/DefaultTemplateWithImagePaste';
 import CvDdMmDateField from '../components/CvDdMmDateField';
 import { getCvRootDomain } from '../utils/tenantHost';
 
@@ -190,10 +190,17 @@ const MyCvPage = () => {
     setError(null);
     try {
       const data = await cvMeAPI.getMySite();
+      console.log('[load] Raw data from API:', data);
+      console.log('[load] Content:', data.content);
+      if (data.content?.profile?.about) {
+        console.log('[load] Profile about HTML:', data.content.profile.about);
+        console.log('[load] Profile about HTML length:', data.content.profile.about.length);
+      }
       setSite(data.site ?? null);
       setContent(data.content ?? {});
       if (data.site?.slug) setSlugInput(data.site.slug);
     } catch (err) {
+      console.error('[load] Error loading data:', err);
       setError(err.message || 'error');
     } finally {
       setLoading(false);
@@ -425,6 +432,12 @@ const MyCvPage = () => {
     if (section === 'education' || section === 'experience' || section === 'certificates') {
       parsed = Array.isArray(parsed) ? parsed : [];
     }
+    console.log('[handleSaveSection] Section:', section);
+    console.log('[handleSaveSection] Parsed data:', parsed);
+    if (section === 'profile' && parsed.about) {
+      console.log('[handleSaveSection] About HTML:', parsed.about);
+      console.log('[handleSaveSection] About HTML length:', parsed.about.length);
+    }
     setSectionErrors((e) => ({ ...e, [section]: null }));
     setSavingSection((s) => ({ ...s, [section]: true }));
     try {
@@ -434,6 +447,7 @@ const MyCvPage = () => {
           try {
             const profileParsed = JSON.parse(profileRaw);
             if (profileParsed && typeof profileParsed === 'object') {
+              console.log('[handleSaveSection] Saving profile with experience:', profileParsed);
               await cvMeAPI.putContent('profile', profileParsed);
               setContent((prev) => ({ ...prev, profile: profileParsed }));
             }
@@ -442,11 +456,14 @@ const MyCvPage = () => {
           }
         }
       }
-      await cvMeAPI.putContent(section, parsed);
+      console.log('[handleSaveSection] Calling API putContent for section:', section);
+      const result = await cvMeAPI.putContent(section, parsed);
+      console.log('[handleSaveSection] API response:', result);
       setContent((prev) => ({ ...prev, [section]: parsed }));
       setSectionDraft((d) => ({ ...d, [section]: JSON.stringify(parsed, null, 2) }));
       toast.success(t('myCv.saveSuccess'));
-    } catch {
+    } catch (error) {
+      console.error('[handleSaveSection] Error:', error);
       // error toast auto-fired
     } finally {
       setSavingSection((s) => ({ ...s, [section]: false }));
@@ -1322,6 +1339,32 @@ const MyCvPage = () => {
     });
   };
 
+  const handleEditorImageUpload = async (file) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t('settings.fileSizeError'));
+      return null;
+    }
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+      toast.error(t('settings.fileTypeError'));
+      return null;
+    }
+    try {
+      const result = await cvMeAPI.uploadImage(file);
+      const path = result?.url ?? '';
+      console.log('[handleEditorImageUpload] Upload result:', result);
+      console.log('[handleEditorImageUpload] Path:', path);
+      if (path) {
+        const fullUrl = getAvatarFullUrl(path);
+        console.log('[handleEditorImageUpload] Full URL:', fullUrl);
+        return fullUrl;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      return null;
+    }
+  };
+
   const renderCvContentEditor = () => {
     const section = activeContentSection;
     const isProfileSection = section === 'profile';
@@ -1349,7 +1392,7 @@ const MyCvPage = () => {
           </label>
           {profileRichHtmlFields.has(field) ? (
             <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-              <DefaultTemplate
+              <DefaultTemplateWithImagePaste
                 key={`cv-profile-${field}`}
                 className="cv-lexkit-html-field"
                 placeholder={t('myCv.profileFields.aboutPlaceholder')}
@@ -1360,7 +1403,11 @@ const MyCvPage = () => {
                   const html = aboutHtml || legacyMainIntro;
                   if (html) methods.injectHTML(html);
                 }}
-                onHtmlChange={(html) => handleProfileFieldChange('about', html)}
+                onHtmlChange={(html) => {
+                  console.log('[Profile About] HTML changed:', html);
+                  handleProfileFieldChange('about', html);
+                }}
+                onImageUpload={handleEditorImageUpload}
               />
             </div>
           ) : field === 'freelance' ? (() => {
@@ -1892,7 +1939,7 @@ const MyCvPage = () => {
                           {t('myCv.portfolioFields.description')}
                         </label>
                         <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                          <DefaultTemplate
+                          <DefaultTemplateWithImagePaste
                             key={portfolioModal.draft?.id ? `modal-desc-${portfolioModal.draft.id}` : 'modal-desc-new'}
                             className="cv-lexkit-html-field"
                             placeholder={t('myCv.portfolioFields.descriptionPlaceholder')}
@@ -1901,6 +1948,7 @@ const MyCvPage = () => {
                               if (html) methods.injectHTML(html);
                             }}
                             onHtmlChange={(html) => handlePortfolioModalFieldChange('description', html)}
+                            onImageUpload={handleEditorImageUpload}
                           />
                         </div>
                       </div>
@@ -3058,7 +3106,7 @@ const MyCvPage = () => {
                           {t('myCv.experienceFields.projectResponsibilities')}
                         </label>
                         <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                          <DefaultTemplate
+                          <DefaultTemplateWithImagePaste
                             key={projectModal.draft?.id ? `modal-proj-resp-${projectModal.draft.id}` : 'modal-proj-resp-new'}
                             className="cv-lexkit-html-field"
                             placeholder={t('myCv.experienceFields.projectResponsibilitiesPlaceholder')}
@@ -3067,6 +3115,7 @@ const MyCvPage = () => {
                               if (html) methods.injectHTML(html);
                             }}
                             onHtmlChange={(html) => handleProjectModalFieldChange('responsibilities', html)}
+                            onImageUpload={handleEditorImageUpload}
                           />
                         </div>
                       </div>
@@ -3315,7 +3364,7 @@ const MyCvPage = () => {
                           {t('myCv.certificatesFields.description')}
                         </label>
                         <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
-                          <DefaultTemplate
+                          <DefaultTemplateWithImagePaste
                             key={certificateModal.draft?.id ? `modal-cert-desc-${certificateModal.draft.id}` : 'modal-cert-desc-new'}
                             className="cv-lexkit-html-field"
                             placeholder={t('myCv.certificatesFields.descriptionPlaceholder')}
@@ -3324,6 +3373,7 @@ const MyCvPage = () => {
                               if (html) methods.injectHTML(html);
                             }}
                             onHtmlChange={(html) => handleCertificateModalFieldChange('description', html)}
+                            onImageUpload={handleEditorImageUpload}
                           />
                         </div>
                       </div>
