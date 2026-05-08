@@ -79,26 +79,26 @@ export default function AboutContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
             <div>
               <ul className="space-y-3">
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Birthday:</span> {profileData.birthday}
                   </div>
                 </li>
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Website:</span> {profileData.website}
                   </div>
                 </li>
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Phone:</span> {profileData.phone}
                   </div>
                 </li>
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">City:</span> {profileData.location}
                   </div>
@@ -107,26 +107,26 @@ export default function AboutContent() {
             </div>
             <div>
               <ul className="space-y-3">
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Age:</span> 30
                   </div>
                 </li>
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Degree:</span> {profileData.degree}
                   </div>
                 </li>
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Email:</span> {profileData.email}
                   </div>
                 </li>
-                <li className="flex items-start">
-                  <ChevronRight className="h-5 w-5 text-[#149ddd] mt-1 flex-shrink-0" />
+                <li className="flex items-center">
+                  <ChevronRight className="h-5 w-5 text-[#149ddd] flex-shrink-0" />
                   <div className="text-sm text-gray-300">
                     <span className="font-medium text-gray-100">Freelance:</span> {profileData.freelance}
                   </div>
