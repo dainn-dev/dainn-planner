@@ -34,7 +34,7 @@ export default function Resume() {
   return (
     <section id="resume" className="py-8 bg-[#0f1418]">
       <div className="container mx-auto px-4">
-        <div className="section-title mb-12">
+        <div className="section-title">
           <h2>Resume</h2>
           {profile.resumeIntro ? (
             <div
