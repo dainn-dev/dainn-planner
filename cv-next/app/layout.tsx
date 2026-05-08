@@ -4,6 +4,7 @@ import { Open_Sans } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
+import { getPublicCvPayload } from "@/lib/server/public-cv"
 
 const openSans = Open_Sans({
   subsets: ["latin"],
@@ -12,10 +13,24 @@ const openSans = Open_Sans({
   display: "swap",
 })
 
-export const metadata: Metadata = {
-  title: "Your Portfolio",
-  description: "Professional portfolio website showcasing skills and projects",
+export async function generateMetadata(): Promise<Metadata> {
+  const payload = await getPublicCvPayload()
+
+  if (payload.kind === "cv") {
+    const profile = payload.content?.profile as { name?: string } | null | undefined
+    const name = profile?.name || "Portfolio"
+    return {
+      title: `${name} | Portfolio`,
+      description: "Professional portfolio website showcasing skills and projects",
+      generator: 'v0.dev'
+    }
+  }
+
+  return {
+    title: "Your Portfolio",
+    description: "Professional portfolio website showcasing skills and projects",
     generator: 'v0.dev'
+  }
 }
 
 export default function RootLayout({
