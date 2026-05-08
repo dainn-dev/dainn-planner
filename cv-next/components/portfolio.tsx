@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Eye, X } from "lucide-react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
 import { getAssetFullUrl } from "@/lib/api/cv"
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 interface PortfolioItem {
   id: string
@@ -175,7 +176,7 @@ export default function Portfolio() {
                   <h3 className="text-xl font-semibold text-white mb-3">Description</h3>
                   <div
                     className="text-gray-300 leading-relaxed prose prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedItem.description }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(selectedItem.description) }}
                   />
                 </div>
               )}

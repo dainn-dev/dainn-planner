@@ -35,8 +35,11 @@ const CV_RICH_TEXT_CONFIG = {
     "tr",
     "th",
     "td",
+    "img",
+    "figure",
+    "figcaption",
   ],
-  ALLOWED_ATTR: ["href", "target", "rel", "class", "title", "colspan", "rowspan"],
+  ALLOWED_ATTR: ["href", "target", "rel", "class", "title", "colspan", "rowspan", "src", "alt", "width", "height"],
   ALLOW_DATA_ATTR: false,
 }
 

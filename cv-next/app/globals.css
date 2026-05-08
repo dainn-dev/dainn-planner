@@ -231,3 +231,46 @@ body {
   font-weight: 700;
   color: inherit;
 }
+
+/* Image alignment and sizing for rich text content */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em auto;
+}
+
+.prose figure {
+  margin: 1em 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Center alignment (default) */
+.prose figure,
+.prose img {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Left alignment */
+.prose figure.align-left,
+.prose img.align-left {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* Right alignment */
+.prose figure.align-right,
+.prose img.align-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Figcaption styling */
+.prose figcaption {
+  margin-top: 0.5em;
+  font-size: 0.875em;
+  color: var(--tw-prose-captions);
+  text-align: center;
+}

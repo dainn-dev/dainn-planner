@@ -393,3 +393,45 @@
   min-height: 168px;
   max-height: min(420px, 55vh);
 }
+
+/* Image alignment styles */
+.lexkit-content-editable img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em auto;
+}
+
+.lexkit-content-editable img.align-left {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.lexkit-content-editable img.align-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.lexkit-content-editable figure {
+  margin: 1em 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.lexkit-content-editable figure,
+.lexkit-content-editable figure img {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lexkit-content-editable figure.align-left,
+.lexkit-content-editable figure.align-left img {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.lexkit-content-editable figure.align-right,
+.lexkit-content-editable figure.align-right img {
+  margin-left: auto;
+  margin-right: 0;
+}

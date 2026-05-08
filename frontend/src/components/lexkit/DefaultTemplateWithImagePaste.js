@@ -24,7 +24,7 @@ import {
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { COMMAND_PRIORITY_LOW } from 'lexical';
+import { COMMAND_PRIORITY_LOW, $getSelection, $isNodeSelection, $getNodeByKey } from 'lexical';
 import { PASTE_COMMAND } from 'lexical';
 import {
   Bold,
@@ -40,6 +40,9 @@ import {
   RemoveFormatting,
   Table,
   Image as ImageIcon,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react';
 import { defaultTheme } from './theme';
 import './styles.css';
@@ -70,6 +73,46 @@ const { Provider, useEditor } = createEditorSystem();
 
 function ErrorBoundary({ children }) {
   return <>{children}</>;
+}
+
+// Plugin to track selected image and provide alignment commands
+function ImageAlignmentPlugin({ onAlignmentChange }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateImageSelection = () => {
+      editor.getEditorState().read(() => {
+        const selection = $getSelection();
+        if ($isNodeSelection(selection)) {
+          const nodes = selection.getNodes();
+          if (nodes.length === 1) {
+            const node = nodes[0];
+            // Check if node is an image by checking its type
+            if (node.getType() === 'image') {
+              // Get alignment from the node's getAlignment method
+              let alignment = 'center';
+              if (typeof node.getAlignment === 'function') {
+                alignment = node.getAlignment() || 'center';
+              }
+              onAlignmentChange?.({ hasImage: true, alignment, nodeKey: node.getKey() });
+              return;
+            }
+          }
+        }
+        onAlignmentChange?.({ hasImage: false, alignment: null, nodeKey: null });
+      });
+    };
+
+    const unregister = editor.registerUpdateListener(() => {
+      updateImageSelection();
+    });
+
+    return () => unregister();
+  }, [editor, onAlignmentChange]);
+
+  return null;
 }
 
 // Plugin to handle image paste
@@ -110,7 +153,7 @@ function ImagePastePlugin({ onImageUpload }) {
   return null;
 }
 
-function Toolbar({ commands, activeStates, hasExtension, onInsertImage }) {
+function Toolbar({ commands, activeStates, hasExtension, onInsertImage, imageAlignment, onImageAlign }) {
   const [showTablePopover, setShowTablePopover] = useState(false);
   const [tableRows, setTableRows] = useState(3);
   const [tableCols, setTableCols] = useState(3);
@@ -226,6 +269,36 @@ function Toolbar({ commands, activeStates, hasExtension, onInsertImage }) {
         </div>
       )}
 
+      {/* Image Alignment Controls */}
+      {imageAlignment?.hasImage && (
+        <div className="lexkit-toolbar-section">
+          <button
+            type="button"
+            onClick={() => onImageAlign?.('left')}
+            className={`lexkit-toolbar-button ${imageAlignment.alignment === 'left' ? 'active' : ''}`}
+            title="Align Left"
+          >
+            <AlignLeft size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onImageAlign?.('center')}
+            className={`lexkit-toolbar-button ${imageAlignment.alignment === 'center' ? 'active' : ''}`}
+            title="Align Center"
+          >
+            <AlignCenter size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onImageAlign?.('right')}
+            className={`lexkit-toolbar-button ${imageAlignment.alignment === 'right' ? 'active' : ''}`}
+            title="Align Right"
+          >
+            <AlignRight size={16} />
+          </button>
+        </div>
+      )}
+
       {hasExtension('table') && (
         <div className="lexkit-toolbar-section" style={{ position: 'relative' }}>
           <button
@@ -315,6 +388,7 @@ function EditorContent({ placeholder, onReady, onHtmlChange, enableHtmlSync, onI
   const readyRef = useRef(false);
   const onHtmlChangeRef = useRef(onHtmlChange);
   const onImageUploadRef = useRef(onImageUpload);
+  const [imageAlignment, setImageAlignment] = useState({ hasImage: false, alignment: null, nodeKey: null });
 
   useEffect(() => {
     commandsRef.current = commands;
@@ -339,6 +413,20 @@ function EditorContent({ placeholder, onReady, onHtmlChange, enableHtmlSync, onI
     } catch (error) {
       console.error('Failed to upload image:', error);
     }
+  };
+
+  const handleImageAlign = (alignment) => {
+    if (!editor || !imageAlignment.nodeKey) return;
+
+    editor.update(() => {
+      const node = $getNodeByKey(imageAlignment.nodeKey);
+      if (node && node.getType() === 'image') {
+        // Use the built-in setAlignment method from @lexkit/editor
+        if (typeof node.setAlignment === 'function') {
+          node.setAlignment(alignment);
+        }
+      }
+    });
   };
 
   const methods = useMemo(
@@ -402,8 +490,11 @@ function EditorContent({ placeholder, onReady, onHtmlChange, enableHtmlSync, onI
         activeStates={activeStates}
         hasExtension={hasExtension}
         onInsertImage={handleImageUpload}
+        imageAlignment={imageAlignment}
+        onImageAlign={handleImageAlign}
       />
       <div className="lexkit-editor">
+        <ImageAlignmentPlugin onAlignmentChange={setImageAlignment} />
         <ImagePastePlugin onImageUpload={handleImageUpload} />
         <RichTextPlugin
           contentEditable={<ContentEditable className="lexkit-content-editable" />}

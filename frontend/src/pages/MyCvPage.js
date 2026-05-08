@@ -190,12 +190,6 @@ const MyCvPage = () => {
     setError(null);
     try {
       const data = await cvMeAPI.getMySite();
-      console.log('[load] Raw data from API:', data);
-      console.log('[load] Content:', data.content);
-      if (data.content?.profile?.about) {
-        console.log('[load] Profile about HTML:', data.content.profile.about);
-        console.log('[load] Profile about HTML length:', data.content.profile.about.length);
-      }
       setSite(data.site ?? null);
       setContent(data.content ?? {});
       if (data.site?.slug) setSlugInput(data.site.slug);
@@ -432,12 +426,6 @@ const MyCvPage = () => {
     if (section === 'education' || section === 'experience' || section === 'certificates') {
       parsed = Array.isArray(parsed) ? parsed : [];
     }
-    console.log('[handleSaveSection] Section:', section);
-    console.log('[handleSaveSection] Parsed data:', parsed);
-    if (section === 'profile' && parsed.about) {
-      console.log('[handleSaveSection] About HTML:', parsed.about);
-      console.log('[handleSaveSection] About HTML length:', parsed.about.length);
-    }
     setSectionErrors((e) => ({ ...e, [section]: null }));
     setSavingSection((s) => ({ ...s, [section]: true }));
     try {
@@ -447,7 +435,6 @@ const MyCvPage = () => {
           try {
             const profileParsed = JSON.parse(profileRaw);
             if (profileParsed && typeof profileParsed === 'object') {
-              console.log('[handleSaveSection] Saving profile with experience:', profileParsed);
               await cvMeAPI.putContent('profile', profileParsed);
               setContent((prev) => ({ ...prev, profile: profileParsed }));
             }
@@ -456,9 +443,7 @@ const MyCvPage = () => {
           }
         }
       }
-      console.log('[handleSaveSection] Calling API putContent for section:', section);
-      const result = await cvMeAPI.putContent(section, parsed);
-      console.log('[handleSaveSection] API response:', result);
+      await cvMeAPI.putContent(section, parsed);
       setContent((prev) => ({ ...prev, [section]: parsed }));
       setSectionDraft((d) => ({ ...d, [section]: JSON.stringify(parsed, null, 2) }));
       toast.success(t('myCv.saveSuccess'));
@@ -682,14 +667,9 @@ const MyCvPage = () => {
     setUploadingPortfolioCover(true);
     try {
       const result = await cvMeAPI.uploadImage(file);
-      console.log('[portfolio cover] upload result:', result);
       const path = result?.url ?? '';
-      console.log('[portfolio cover] extracted path:', path);
       if (path) {
         handlePortfolioModalFieldChange('imageUrl', path);
-        console.log('[portfolio cover] updated imageUrl to:', path);
-      } else {
-        console.log('[portfolio cover] no path extracted from result');
       }
     } catch (err) {
       console.error('[portfolio cover] upload error:', err);
@@ -1351,12 +1331,8 @@ const MyCvPage = () => {
     try {
       const result = await cvMeAPI.uploadImage(file);
       const path = result?.url ?? '';
-      console.log('[handleEditorImageUpload] Upload result:', result);
-      console.log('[handleEditorImageUpload] Path:', path);
       if (path) {
-        const fullUrl = getAvatarFullUrl(path);
-        console.log('[handleEditorImageUpload] Full URL:', fullUrl);
-        return fullUrl;
+        return getAvatarFullUrl(path);
       }
       return null;
     } catch (error) {
@@ -1393,7 +1369,7 @@ const MyCvPage = () => {
           {profileRichHtmlFields.has(field) ? (
             <div className="rounded-xl border border-zinc-200/90 dark:border-slate-600 bg-white dark:bg-slate-800/90 shadow-sm hover:border-zinc-300 dark:hover:border-slate-500 transition-colors overflow-hidden">
               <DefaultTemplateWithImagePaste
-                key={`cv-profile-${field}`}
+                key={`cv-profile-${field}-${profileDraft?.about?.substring(0, 50) || 'empty'}`}
                 className="cv-lexkit-html-field"
                 placeholder={t('myCv.profileFields.aboutPlaceholder')}
                 onReady={(methods) => {
@@ -1404,7 +1380,6 @@ const MyCvPage = () => {
                   if (html) methods.injectHTML(html);
                 }}
                 onHtmlChange={(html) => {
-                  console.log('[Profile About] HTML changed:', html);
                   handleProfileFieldChange('about', html);
                 }}
                 onImageUpload={handleEditorImageUpload}

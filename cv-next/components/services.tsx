@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useCvContentFromApi } from "@/components/cv-content-context"
 import { SERVICE_ICONS, type ServiceIconName } from "@/lib/constants/service-icons"
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 interface Service {
   id?: string
@@ -87,7 +88,10 @@ export default function Services() {
                         {service.title}
                       </a>
                     </h5>
-                    <p className="description text-sm text-gray-300">{service.description}</p>
+                    <div
+                      className="description text-sm text-gray-300 prose prose-sm prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(service.description) }}
+                    />
                   </div>
                 </div>
               </div>

@@ -1,5 +1,7 @@
 "use client"
 
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
+
 export default function ResumeEducation({ education }: { education: any[] }) {
   return (
     <div>
@@ -14,7 +16,12 @@ export default function ResumeEducation({ education }: { education: any[] }) {
             <h4 className="text-base font-bold text-gray-100">{edu.school}</h4>
             <h5 className="text-sm text-[#149ddd] font-semibold mb-1">{edu.degree}</h5>
             {edu.location ? <p className="italic text-sm text-gray-500 mb-1">{edu.location}</p> : null}
-            {edu.description ? <p className="text-gray-300 text-sm">{edu.description}</p> : null}
+            {edu.description ? (
+              <div
+                className="text-gray-300 text-sm prose prose-sm prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: sanitizeCvHtml(edu.description) }}
+              />
+            ) : null}
           </div>
         ))
       )}

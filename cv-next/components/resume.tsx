@@ -5,6 +5,7 @@ import { useCvContentFromApi } from "@/components/cv-content-context"
 import ResumeExperience from "@/components/resume/resume-experience"
 import ResumeEducation from "@/components/resume/resume-education"
 import ResumeCertificates from "@/components/resume/resume-certificates"
+import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 export default function Resume() {
   const apiCv = useCvContentFromApi()
@@ -35,7 +36,14 @@ export default function Resume() {
       <div className="container mx-auto px-4">
         <div className="section-title mb-12">
           <h2>Resume</h2>
-          {profile.resumeIntro ? <p className="text-gray-400">{profile.resumeIntro}</p> : null}
+          {profile.resumeIntro ? (
+            <div
+              className="text-gray-400 cv-resume-intro-prose prose prose-sm prose-invert max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: sanitizeCvHtml(profile.resumeIntro),
+              }}
+            />
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-12">
