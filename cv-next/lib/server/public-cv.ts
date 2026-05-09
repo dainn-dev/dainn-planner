@@ -3,7 +3,11 @@ import { getTenantSlugFromRequest } from "@/lib/server/tenant-request"
 import { resolveThemeTokens } from "@/lib/theme/merge"
 import { emptyCvDocument, rowToCvDoc, type CvContentDocument } from "@/lib/cv-content"
 import { PENDING_SITE_PUBLIC_BEHAVIOR } from "@/lib/constants/platform"
-import { cvApi, cvUrl } from "@/lib/api/cv"
+import { cvApi, cvUrl, getApiBaseUrl } from "@/lib/api/cv"
+
+function ssrBaseUrl(): string {
+  return process.env.SSR_API_BASE_URL?.replace(/\/$/, "") || getApiBaseUrl()
+}
 
 export type PublicCvPayload =
   | { kind: "marketing" }
@@ -38,7 +42,7 @@ export async function getPublicCvPayload(): Promise<PublicCvPayload> {
     const h = await headers()
     const tenantHeader = h.get("x-tenant-slug") ?? slug
     console.log("[cv-next] X-Tenant-Slug (site fetch):", tenantHeader)
-    const res = await fetch(cvUrl(cvApi.site), {
+    const res = await fetch(`${ssrBaseUrl()}${cvApi.site}`, {
       cache: "no-store",
       headers: {
         "X-Tenant-Slug": tenantHeader,

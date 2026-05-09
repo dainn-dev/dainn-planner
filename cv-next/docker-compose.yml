@@ -12,9 +12,12 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.dainn.online}
     container_name: cv-next
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.dainn.online}
+      SSR_API_BASE_URL: ${SSR_API_BASE_URL:-http://host.docker.internal:8080}
       ROOT_DOMAIN: ${ROOT_DOMAIN:-dainn.online}
     ports:
       - "${CV_PORT:-3001}:3000"

@@ -71,6 +71,9 @@ services:
       - dailyplanner_logs:/app/wwwroot/logs
       - dailyplanner_uploads:/app/wwwroot/uploads
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     networks:
       - dailyplanner-network
 
