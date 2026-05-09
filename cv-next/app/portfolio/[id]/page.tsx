@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { notFound } from "next/navigation"
 import { parseTenantSlugFromHost } from "@/lib/tenant"
-import { cvApi, cvUrl } from "@/lib/api/cv"
+import { cvApi, cvUrl, getAssetFullUrl } from "@/lib/api/cv"
 import { sanitizeCvHtml } from "@/lib/sanitize-html"
 
 interface PortfolioItem {
@@ -119,7 +119,7 @@ export default function PortfolioDetails({ params }: { params: Promise<{ id: str
               <div className="relative bg-white p-2 rounded-lg shadow-md">
                 <div className="relative aspect-video overflow-hidden rounded-md">
                   <Image
-                    src={images[currentImageIndex] || "/placeholder.svg"}
+                    src={getAssetFullUrl(images[currentImageIndex]) || "/placeholder.svg"}
                     alt={`${item.title} - image ${currentImageIndex + 1}`}
                     fill
                     className="object-cover"
