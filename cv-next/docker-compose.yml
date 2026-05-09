@@ -1,0 +1,21 @@
+# cv-next — run from this directory: docker compose up --build -d
+#
+# Override env via .env file in this folder:
+#   NEXT_PUBLIC_API_BASE_URL=https://api.dainn.online
+#   ROOT_DOMAIN=dainn.online
+
+services:
+  cv-next:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.dainn.online}
+    container_name: cv-next
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.dainn.online}
+      ROOT_DOMAIN: ${ROOT_DOMAIN:-dainn.online}
+    ports:
+      - "${CV_PORT:-3001}:3000"
+    restart: unless-stopped

@@ -11,21 +11,6 @@
 # and set Integrations__Todoist__PublicBaseUrl / RedirectUri to match (or leave RedirectUri empty to derive from request).
 
 services:
-  cv-next:
-    build:
-      context: ../cv-next
-      dockerfile: Dockerfile
-    container_name: cv-next
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_BASE_URL: ${CV_API_BASE_URL:-http://dailyplanner-api:8080}
-      ROOT_DOMAIN: ${CV_ROOT_DOMAIN:-localhost}
-    ports:
-      - "${CV_PORT:-3001}:3000"
-    networks:
-      - dailyplanner-network
-    restart: unless-stopped
-
   dailyplanner-api:
     build:
       context: .
